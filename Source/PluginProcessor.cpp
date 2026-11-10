@@ -46,6 +46,7 @@ bool BiscotProcessor::isBusesLayoutSupported(const BusesLayout& l)const{
 }
 void BiscotProcessor::prepareToPlay(double sr,int){
  sampleRateHz=sr>0?sr:44100.;voices={};lfos={};filters={};pressed={};arpPoolCounts={};nextPress=0;
+ for(auto& s:outputStages)s.prepare(sampleRateHz);
  for(int i=0;i<3;++i){voices[(size_t)i].noiseSeed^=(uint32_t)(i*0x9e3779b9u);lfos[(size_t)i].seed^=(uint32_t)(i*0x51ed270bu);lfos[(size_t)i].phase=param(131+23*i);}
  filterEnvelope={};lastPlaying=false;
 }
@@ -353,11 +354,16 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  const float filterInputGain=gain(param(6));
  for(int i=0;i<3;++i){
   const float x=oscOut[(size_t)i];
-  const float l=x*std::sqrt((1.f-xfade[(size_t)i])*0.5f);
-  const float r=x*std::sqrt((1.f+xfade[(size_t)i])*0.5f);
-  stems[(size_t)i*2]=l;stems[(size_t)i*2+1]=r;
+  // JSFX center pan is unity in BOTH channels. Previous equal-power pan
+  // attenuated every centered voice by -3dB and changed the filter drive.
+  const float pan=xfade[(size_t)i];
+  const float l=x*(1.f-std::max(0.f,pan));
+  const float r=x*(1.f+std::min(0.f,pan));
   if(param(114+i)>0.5f){filterInput[0]+=l*filterInputGain;filterInput[1]+=r*filterInputGain;}
-  else if(i!=2 || param(103)<0.5f){dry[0]+=l;dry[1]+=r;}
+  else if(i!=2 || param(103)<0.5f){
+   dry[0]+=l;dry[1]+=r;
+   stems[(size_t)i*2]=l;stems[(size_t)i*2+1]=r;
+  }
  }
  float keyFollow=0;
  for(const auto& v:voices)if(v.gate){keyFollow=(v.note-60.f)*param(113)*14.f;break;}
@@ -365,21 +371,32 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  const float norm=filterRegister/2047.f;
  const float cutoff=param(5)>0.5f?4.f+std::pow(norm,1.38f)*12500.f:28.f+std::pow(norm,2.12f)*8170.f;
  const float filterGain=gain(param(7));
- const float masterGain=gain(param(8));
- const float maxGain=2.5f;
+ const double masterGain=gain(param(8));
+ const bool model6581=param(5)>0.5f;
+ // JSFX 2.38 normalizes three automatically allocated chord voices, but not
+ // single-note or separately addressed MIDI-channel modes.
+ const double normTotal=0.0001+(integer(param(3))==1?3.0:1.0);
+ const bool multichannel=param(2)>0.5f;
  for(int ch=0;ch<2;++ch){
   const float filtered=processFilter(filterInput[ch],cutoff,ch,resMod)*filterGain;
-  stems[(size_t)6+ch]=filtered;
-  float out=(dry[ch]+filtered)*masterGain;
-  // C64 output analogue RC and DC blocker; no hard PWM-endpoint mute.
-  auto& st=filters[(size_t)ch];
-  const float alpha=1.f-std::exp(-2.f*(float)pi*std::min(16000.f,(float)sampleRateHz*0.45f)/(float)sampleRateHz);
-  st.outLow+=(out-st.outLow)*alpha;
-  const float dcCoef=std::exp(-2.f*(float)pi*1.6f/(float)sampleRateHz);
-  const float y=st.outLow-st.prev+dcCoef*st.dc;
-  st.prev=st.outLow;st.dc=y;
-  out=saturate(y/maxGain)*maxGain;
+  double mix=(dry[ch]*(model6581?1.122018454:1.0)+filtered)/normTotal;
+  // The JSFX post-mix 6581 parallel rounding precedes the analogue output amp.
+  if(model6581){
+   const double dirty=SidOutputStage::softclip(mix*1.006)/1.006;
+   mix=mix*0.88+dirty*0.12;
+  }
+  const float out=(float)(outputStages[(size_t)ch].process(mix,model6581)*masterGain);
   if(ch==0)left=out;else right=out;
+  if(multichannel){
+   // Same independent analogue stages as JSFX v2.38 multichannel mode.
+   for(int i=0;i<3;++i){
+    const int slot=2+2*i+ch;
+    const double stem=stems[(size_t)(2*i+ch)]/normTotal;
+    stems[(size_t)(2*i+ch)]=(float)(outputStages[(size_t)slot].process(stem,model6581)*masterGain);
+   }
+   const double filterStem=filtered/normTotal;
+   stems[(size_t)(6+ch)]=(float)(outputStages[(size_t)(8+ch)].process(filterStem,model6581)*masterGain);
+  }
  }
 }
 void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi){

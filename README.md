@@ -1,4 +1,30 @@
-# Biscot1 Synth VST3 — TEST0.2.1 (JUCE 8 compilation fix; accessible editor + extended native DSP)
+# Biscot1 Synth VST3 — TEST0.2.2 (JSFX output stage and accessible navigation)
+
+## Changes from TEST0.2.1
+
+**Audio output chain ported from the supplied Biscot1 JSFX v2.38:**
+- Restored the model-dependent 6581/8580 asymmetric SID output amplifier, bias, parallel wet/dry rounding and makeup constants.
+- Restored the original approx. 16 kHz external analogue RC low-pass and 1.6 Hz DC blocker, **before** Master Volume. Removed the VST-only generic terminal saturator.
+- Restored JSFX center-pan law (unity on both channels), the 3-voice chord normalization, and the 6581 final post-mix parallel coloration.
+- In multichannel mode, the four stereo stems now pass through independent final output stages, and operators routed to the filter are not also duplicated into dry stems.
+- Source comparison: `Reference/Biscot1Synth_v2.38.jsfx`, functions `sid_output_amp`, `@slider` output coefficients, and the final `mix_l/mix_r` stage.
+
+**Accessible keyboard improvements:**
+- `Alt+Shift+Right` = next page; `Alt+Shift+Left` = previous page. Silent at boundaries; handled before the existing Alt+Right/Left step shortcuts; Ctrl+Tab aliases retained.
+- Incremental name search from LB-303: type letters/digits in Grid or Value, build up a prefix for 1 second, search starts of names or words, repeat a character to cycle, hold Shift to search backward (including digits), wrap within the current page. The search announces selected parameter and value; the numeric Edit stays a normal edit box.
+- Arrow keys at page boundaries continue to be handled inside the plugin, not by REAPER.
+
+**Limitations:** the FINAL amplifier/RC/DC chain now uses the JSFX equations, but upstream oscillator AA, combined waves, SID filters and some ARP logic remain approximate. This is **not** complete DSP parity. Windows JUCE/MSVC and NVDA runtime tests have not been performed locally. Use GitHub Actions to build and compare audio against the original JSFX.
+
+## Git command for the existing repository
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.2 port JSFX output and improve accessible search" && git push
+```
+
+---
+
+## Historical notes: TEST0.2.1 (JUCE 8 build fix; accessible editor + extended DSP)
 
 ## What TEST0.2.1 fixes from the GitHub Actions failure
 
@@ -44,7 +70,8 @@ accessibility design of the user-supplied LB-303 project.
 
 | Key | Action |
 | --- | --- |
-| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous context |
+| Alt+Shift+Right / Alt+Shift+Left | Next / previous context (preferred) |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous context (legacy aliases) |
 | Grid arrows | Navigate the 8-row multi-column grid |
 | Grid Home / End | First / last row of current column |
 | Grid PageUp / PageDown | Move five rows within the column |
@@ -60,7 +87,7 @@ accessibility design of the user-supplied LB-303 project.
 | Alt+E / Alt+L | Focus numeric Edit / Grid |
 | Backspace | Reset selected parameter to default |
 | Esc in Edit | Cancel and return to Grid |
-| Letters in Grid/Value | Incremental name search |
+| Letters and digits in Grid/Value | Incremental name search; Shift searches backward |
 | Alt+Q | Future tracker placeholder only; does not open a sequencer |
 
 ## Extended native sound implementation
@@ -96,19 +123,19 @@ All 224 parameter IDs are exposed and their major destinations are connected
 to the native engine, but this does not mean every sonic edge case is identical
 to the original JSFX. Keep the JSFX installed for A/B listening.
 
-## GitHub Actions / installation
+## GitHub Actions / installation (current TEST0.2.2)
 
 Open a CMD in the existing Git clone of
 `https://github.com/Lo-lo78/Biscot1-Synth`, extract this archive at the repo
 root **without deleting `.git`**, then run:
 
 ```cmd
-git add . && git commit -m "Fix Biscot1 VST3 TEST0.2.1 JUCE 8 compile errors" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.2 port JSFX output and improve accessible search" && git push
 ```
 
 `.github/workflows/build-windows.yml` runs four source-level checks, builds
 the VST3 on `windows-2022` / Visual Studio 2022 with JUCE 8.0.15, and uploads
-`Biscot1-TEST0.2.1-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
+`Biscot1-TEST0.2.2-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
 not automatically published as a GitHub Release.
 
 **Validation:** static source checks passed in the preparation environment. A

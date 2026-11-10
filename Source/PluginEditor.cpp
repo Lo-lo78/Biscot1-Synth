@@ -43,9 +43,9 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.1",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.2",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
- instructions.setText("Grid / Value / Edit | Ctrl+Tab: section | Alt+arrows: value / step | Alt+E: edit | Alt+L: grid",juce::dontSendNotification);
+ instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+arrows: value / step | type: search | Alt+E: edit | Alt+L: grid",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){l->setColour(juce::Label::textColourId,foreground);addAndMakeVisible(*l);}
  grid.setName("Parameters");grid.setWantsKeyboardFocus(true);grid.setExplicitFocusOrder(1);
  grid.setEditableText(false);grid.setJustificationType(juce::Justification::centredLeft);
@@ -145,7 +145,7 @@ void BiscotEditor::move(int rows,int cols){
 void BiscotEditor::changeGroup(int dir){
  const int next=group+dir;
  if(next<0||next>=12)return;
- group=next;searchText.clear();populateGroup();
+ group=next;parameterSearch.reset();populateGroup();
  announce(grid,groupNames[(size_t)group]+". "+labelFor(selected));
 }
 void BiscotEditor::setValue(double x){
@@ -220,28 +220,21 @@ bool BiscotEditor::keyPressed(const juce::KeyPress& key){
  const Control c=edit.hasKeyboardFocus(true)?Control::edit:value.hasKeyboardFocus(true)?Control::value:Control::grid;
  return handleKey(key,c);
 }
-void BiscotEditor::typeSearch(juce::juce_wchar c,bool backwards){
- const uint32_t now=juce::Time::getMillisecondCounter();
- if(now-lastSearchMs>950)searchText.clear();lastSearchMs=now;
- const juce::String charText=juce::String::charToString(juce::CharacterFunctions::toLowerCase(c));
- if(searchText==charText)searchText.clear();
- searchText+=charText;
- auto find=[this,backwards](const juce::String& text)->int{
-  const auto& entries=groups[(size_t)group];
-  for(int offset=0;offset<(int)entries.size();++offset){
-   const int i=(selected+(backwards?-offset-1:offset+1)+(int)entries.size()*2)%(int)entries.size();
-   juce::String name=catalog[(size_t)(entries[(size_t)i]-2)].name;
-   if(name.startsWithIgnoreCase(text)||name.containsIgnoreCase(" "+text))return i;
-  }
-  return -1;
- };
- int found=find(searchText);
- if(found<0 && searchText.length()>1){searchText=charText;found=find(searchText);}
- if(found>=0)select(found);
-}
 bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
  const auto m=k.getModifiers();const int code=k.getKeyCode();
+ // Reuse the proven LB-303 incremental search: leading words, Shift-backward,
+ // Shift+digits, repeated-key cycling, 1000ms prefix window, no value matching.
+ if(biscotParameterSearchCharacter(k)==0 || c==Control::edit)parameterSearch.reset();
  auto letter=[&](char ch){return juce::CharacterFunctions::toLowerCase(k.getTextCharacter())==ch;};
+ if(m.isAltDown() && m.isShiftDown() && !m.isCtrlDown() && !m.isCommandDown()
+    && (code==juce::KeyPress::rightKey || code==juce::KeyPress::leftKey)){
+  if(c==Control::edit && !commitEdit())return true;
+  const int oldGroup=group;
+  changeGroup(code==juce::KeyPress::rightKey?1:-1);
+  if(c==Control::edit && group!=oldGroup)focus(Control::grid,true);
+  else if(c==Control::value && group!=oldGroup)announce(value,labelFor(selected));
+  return true; // never let REAPER consume page-navigation arrows
+ }
  if(m.isCtrlDown() && code==juce::KeyPress::tabKey){changeGroup(m.isShiftDown()?-1:1);return true;}
  if(m.isAltDown() && !m.isCtrlDown()){
   if(letter('l')){focus(Control::grid,c==Control::edit);return true;}
@@ -274,10 +267,19 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
  if(code==juce::KeyPress::backspaceKey){resetValue();return true;}
  if(m.isCtrlDown() && code==juce::KeyPress::homeKey){select(0);return true;}
  if(m.isCtrlDown() && code==juce::KeyPress::endKey){select((int)groups[(size_t)group].size()-1);return true;}
- if(!m.isCtrlDown() && !m.isAltDown() && !m.isCommandDown()){
-  const auto ch=k.getTextCharacter();
-  if(juce::CharacterFunctions::isLetterOrDigit(ch)){
-   typeSearch(ch,m.isShiftDown());return true;
+ if(c==Control::grid || c==Control::value){
+  if(const auto ch=biscotParameterSearchCharacter(k);ch!=0){
+   const auto& entries=groups[(size_t)group];
+   const int found=parameterSearch.next(
+      (wchar_t)ch,selected,(int)entries.size(),m.isShiftDown()?-1:1,
+      juce::Time::getMillisecondCounter(),[this,&entries](int n){
+       return std::wstring(juce::String(catalog[(size_t)(entries[(size_t)n]-2)].name).trimStart().toWideCharPointer());
+      });
+   if(found>=0){
+    if(found!=selected)select(found);
+    announce(c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(grid),labelFor(selected));
+   }
+   return true; // prevent native ComboBox one-letter cycling
   }
  }
  if(c==Control::value){

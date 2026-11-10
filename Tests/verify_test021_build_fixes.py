@@ -14,5 +14,5 @@ assert 'labels[i].equalsIgnoreCase(entered)' in editor
 assert 'int n=-1;' in editor
 assert 'if(n<0)n=entered.getIntValue();' in editor
 assert 'labels.indexOfIgnoreCase(' not in editor
-assert 'TEST0.2.1' in editor
+assert 'TEST0.2.2' in editor
 print('OK: JUCE 8 build fixes for transport bool and choice-label lookup (static check)')

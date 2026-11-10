@@ -1,6 +1,8 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include "IncrementalParameterSearch.h"
+#include "ParameterSearchKey.h"
 #include <array>
 #include <vector>
 #include <memory>
@@ -44,8 +46,7 @@ private:
  bool updating=false, initialFocusPending=false;
  int focusRetries=0, stepScaleIndex=0;
  std::array<double,9> stepScales {{0.001,0.01,0.1,0.5,1,2,5,10,20}};
- juce::String searchText;
- uint32_t lastSearchMs=0;
+ IncrementalParameterSearch parameterSearch;
  juce::Rectangle<int> drawingArea;
  void timerCallback() override;
  void createGroups();
@@ -70,7 +71,6 @@ private:
  void focus(Control,bool deferred=false);
  void initialFocus();
  bool handleKey(const juce::KeyPress&,Control);
- void typeSearch(juce::juce_wchar,bool);
  void announce(juce::Component&, const juce::String&) const;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BiscotEditor)
 };

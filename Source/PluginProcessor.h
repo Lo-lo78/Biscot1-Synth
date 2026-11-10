@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ParameterCatalog.h"
+#include "SidOutputStage.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -52,11 +53,13 @@ private:
   uint32_t seed=0xabcdef01u;
   bool active=true;
  };
- struct FilterChannel {float ic1=0,ic2=0,prev=0,dc=0,outLow=0;};
+ struct FilterChannel {float ic1=0,ic2=0;};
  std::array<Voice,3> voices{};
  std::array<Lfo,3> lfos{};
  Envelope filterEnvelope;
  std::array<FilterChannel,2> filters{};
+ // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
+ std::array<SidOutputStage,10> outputStages{};
  std::array<std::atomic<float>*,226> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::uint64_t nextPress=0;
