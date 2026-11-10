@@ -1,0 +1,2381 @@
+[
+  {
+    "index": 2,
+    "name": "Audio Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Stereo",
+      "Multichannel"
+    ]
+  },
+  {
+    "index": 3,
+    "name": "MIDI Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 1.0,
+    "enum": [
+      "All Operators Same Note",
+      "Chord Allocate 3 Mono Ops",
+      "MIDI Channels 1-3"
+    ]
+  },
+  {
+    "index": 4,
+    "name": "Hard Restart",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Fast",
+      "Env Reset",
+      "Full Reset"
+    ]
+  },
+  {
+    "index": 5,
+    "name": "Model",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "8580 Clearer",
+      "6581 Dirtier"
+    ]
+  },
+  {
+    "index": 6,
+    "name": "Filter Input",
+    "default": 0.0,
+    "min": -24.0,
+    "max": 24.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 7,
+    "name": "Filter Output",
+    "default": 0.0,
+    "min": -24.0,
+    "max": 24.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 8,
+    "name": "Master Volume",
+    "default": -6.0,
+    "min": -60.0,
+    "max": 6.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 9,
+    "name": "Noise Character",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 10,
+    "name": "Op1 Mode Trigger",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Trigger",
+      "Legato"
+    ]
+  },
+  {
+    "index": 11,
+    "name": "Op2 Mode Trigger",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Trigger",
+      "Legato"
+    ]
+  },
+  {
+    "index": 12,
+    "name": "Op3 Mode Trigger",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Trigger",
+      "Legato"
+    ]
+  },
+  {
+    "index": 13,
+    "name": "Op1 Drift",
+    "default": 0.18,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 14,
+    "name": "Op2 Drift",
+    "default": 0.18,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 15,
+    "name": "Op3 Drift",
+    "default": 0.18,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 16,
+    "name": "Op1 Level",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 17,
+    "name": "Op2 Level",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 18,
+    "name": "Op3 Level",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 19,
+    "name": "Op1 Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 20,
+    "name": "Op2 Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 21,
+    "name": "Op3 Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 22,
+    "name": "Op1 Wave",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 7.0,
+    "step": 1.0,
+    "enum": [
+      "Triangle",
+      "Saw",
+      "Pulse",
+      "Noise",
+      "Triangle+Saw",
+      "Triangle+Pulse",
+      "Saw+Pulse",
+      "Triangle+Saw+Pulse"
+    ]
+  },
+  {
+    "index": 23,
+    "name": "Op2 Wave",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 7.0,
+    "step": 1.0,
+    "enum": [
+      "Triangle",
+      "Saw",
+      "Pulse",
+      "Noise",
+      "Triangle+Saw",
+      "Triangle+Pulse",
+      "Saw+Pulse",
+      "Triangle+Saw+Pulse"
+    ]
+  },
+  {
+    "index": 24,
+    "name": "Op3 Wave",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 7.0,
+    "step": 1.0,
+    "enum": [
+      "Triangle",
+      "Saw",
+      "Pulse",
+      "Noise",
+      "Triangle+Saw",
+      "Triangle+Pulse",
+      "Saw+Pulse",
+      "Triangle+Saw+Pulse"
+    ]
+  },
+  {
+    "index": 25,
+    "name": "Op1 Pitch",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 26,
+    "name": "Op2 Pitch",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 27,
+    "name": "Op3 Pitch",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 28,
+    "name": "Op1 Fine Pitch",
+    "default": 0.0,
+    "min": -100.0,
+    "max": 100.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 29,
+    "name": "Op2 Fine Pitch",
+    "default": 0.0,
+    "min": -100.0,
+    "max": 100.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 30,
+    "name": "Op3 Fine Pitch",
+    "default": 0.0,
+    "min": -100.0,
+    "max": 100.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 31,
+    "name": "Op1 PWM",
+    "default": 0.0,
+    "min": -64.0,
+    "max": 64.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 32,
+    "name": "Op2 PWM",
+    "default": 0.0,
+    "min": -64.0,
+    "max": 64.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 33,
+    "name": "Op3 PWM",
+    "default": 0.0,
+    "min": -64.0,
+    "max": 64.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 34,
+    "name": "Op1 Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 35,
+    "name": "Op2 Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 36,
+    "name": "Op3 Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 37,
+    "name": "Op1 Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 38,
+    "name": "Op2 Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 39,
+    "name": "Op3 Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 40,
+    "name": "Op1 Sustain",
+    "default": 0.7,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 41,
+    "name": "Op2 Sustain",
+    "default": 0.7,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 42,
+    "name": "Op3 Sustain",
+    "default": 0.7,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 43,
+    "name": "Op1 Release",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 44,
+    "name": "Op2 Release",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 45,
+    "name": "Op3 Release",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 46,
+    "name": "Op1 Portamento",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 47,
+    "name": "Op2 Portamento",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 48,
+    "name": "Op3 Portamento",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 49,
+    "name": "Op1 Pan Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 50,
+    "name": "Op2 Pan Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 51,
+    "name": "Op3 Pan Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 52,
+    "name": "Op1 Pitch Mod Depth",
+    "default": 0.0,
+    "min": -48.0,
+    "max": 48.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 53,
+    "name": "Op2 Pitch Mod Depth",
+    "default": 0.0,
+    "min": -48.0,
+    "max": 48.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 54,
+    "name": "Op3 Pitch Mod Depth",
+    "default": 0.0,
+    "min": -48.0,
+    "max": 48.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 55,
+    "name": "Op1 PWM Mod Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 56,
+    "name": "Op2 PWM Mod Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 57,
+    "name": "Op3 PWM Mod Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 58,
+    "name": "Op1 LFO Rate Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 59,
+    "name": "Op2 LFO Rate Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 60,
+    "name": "Op3 LFO Rate Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 61,
+    "name": "Op1 LFO Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 62,
+    "name": "Op2 LFO Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 63,
+    "name": "Op3 LFO Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 64,
+    "name": "Op1 Mod Env Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 65,
+    "name": "Op2 Mod Env Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 66,
+    "name": "Op3 Mod Env Attack",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 67,
+    "name": "Op1 Mod Env Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 68,
+    "name": "Op2 Mod Env Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 69,
+    "name": "Op3 Mod Env Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 70,
+    "name": "Op1 Mod Env Sustain",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 71,
+    "name": "Op2 Mod Env Sustain",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 72,
+    "name": "Op3 Mod Env Sustain",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 73,
+    "name": "Op1 Mod Env Release",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 74,
+    "name": "Op2 Mod Env Release",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 75,
+    "name": "Op3 Mod Env Release",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 76,
+    "name": "Op1 Arp Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "SID Seq",
+      "Up",
+      "Down",
+      "Pendulum",
+      "Held Order",
+      "Random"
+    ]
+  },
+  {
+    "index": 77,
+    "name": "Op2 Arp Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "SID Seq",
+      "Up",
+      "Down",
+      "Pendulum",
+      "Held Order",
+      "Random"
+    ]
+  },
+  {
+    "index": 78,
+    "name": "Op3 Arp Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "SID Seq",
+      "Up",
+      "Down",
+      "Pendulum",
+      "Held Order",
+      "Random"
+    ]
+  },
+  {
+    "index": 79,
+    "name": "Op1 Arp Rate",
+    "default": 16.0,
+    "min": 0.125,
+    "max": 128.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 80,
+    "name": "Op2 Arp Rate",
+    "default": 16.0,
+    "min": 0.125,
+    "max": 128.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 81,
+    "name": "Op3 Arp Rate",
+    "default": 16.0,
+    "min": 0.125,
+    "max": 128.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 82,
+    "name": "Op1 Arp Octave Up",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 83,
+    "name": "Op2 Arp Octave Up",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 84,
+    "name": "Op3 Arp Octave Up",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 85,
+    "name": "Op1 Arp Octave Down",
+    "default": 0.0,
+    "min": -4.0,
+    "max": 0.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 86,
+    "name": "Op2 Arp Octave Down",
+    "default": 0.0,
+    "min": -4.0,
+    "max": 0.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 87,
+    "name": "Op3 Arp Octave Down",
+    "default": 0.0,
+    "min": -4.0,
+    "max": 0.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 88,
+    "name": "Op1 Arp Glide Depth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 89,
+    "name": "Op2 Arp Glide Depth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 90,
+    "name": "Op3 Arp Glide Depth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 91,
+    "name": "Op1 Pitch Bend",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 96.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 92,
+    "name": "Op2 Pitch Bend",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 96.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 93,
+    "name": "Op3 Pitch Bend",
+    "default": 2.0,
+    "min": 0.0,
+    "max": 96.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 94,
+    "name": "Op1 Ring From Op3",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 95,
+    "name": "Op2 Ring From Op1",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 96,
+    "name": "Op3 Ring From Op2",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 97,
+    "name": "Op1 Sync By Op3",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 98,
+    "name": "Op2 Sync By Op1",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 99,
+    "name": "Op3 Sync By Op2",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 100,
+    "name": "Op1 Test Bit",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 101,
+    "name": "Op2 Test Bit",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 102,
+    "name": "Op3 Test Bit",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 103,
+    "name": "Voice 3 Off",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 104,
+    "name": "Op3 OSC Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 105,
+    "name": "Op3 OSC Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 106,
+    "name": "Op3 ENV Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 107,
+    "name": "Op3 ENV Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 108,
+    "name": "Filter Cutoff",
+    "default": 1200.0,
+    "min": -2047.0,
+    "max": 2047.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 109,
+    "name": "Filter Resonance",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 15.0,
+    "step": 0.1,
+    "enum": []
+  },
+  {
+    "index": 110,
+    "name": "Filter Low Pass",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 111,
+    "name": "Filter Band Pass",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 112,
+    "name": "Filter High Pass",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 113,
+    "name": "Filter Key Follow",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 114,
+    "name": "Op1 To Filter",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 115,
+    "name": "Op2 To Filter",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 116,
+    "name": "Op3 To Filter",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 117,
+    "name": "Filter Env Amount",
+    "default": 0.0,
+    "min": -2047.0,
+    "max": 2047.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 118,
+    "name": "Filter Attack",
+    "default": 0.002,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 119,
+    "name": "Filter Decay",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 120,
+    "name": "Filter Sustain",
+    "default": 0.7,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 121,
+    "name": "Filter Release",
+    "default": 0.12,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 122,
+    "name": "LFO1 Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Free",
+      "Trigger"
+    ]
+  },
+  {
+    "index": 123,
+    "name": "LFO1 Rate",
+    "default": 1.0,
+    "min": 0.125,
+    "max": 512.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 124,
+    "name": "LFO1 Wave",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Sine",
+      "Triangle",
+      "Saw Up",
+      "Saw Down",
+      "Square",
+      "Sample Hold",
+      "Smooth Random"
+    ]
+  },
+  {
+    "index": 125,
+    "name": "LFO1 Upper Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 126,
+    "name": "LFO1 Lower Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 127,
+    "name": "LFO1 Delay",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 128,
+    "name": "LFO1 Smooth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 129,
+    "name": "LFO1 One Shot",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 130,
+    "name": "LFO1 One Shot Length",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 131,
+    "name": "LFO1 Phase",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 132,
+    "name": "LFO1 Cutoff Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 133,
+    "name": "LFO1 Op1 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 134,
+    "name": "LFO1 Op2 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 135,
+    "name": "LFO1 Op3 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 136,
+    "name": "LFO1 Op1 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 137,
+    "name": "LFO1 Op2 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 138,
+    "name": "LFO1 Op3 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 139,
+    "name": "LFO1 Op1 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 140,
+    "name": "LFO1 Op2 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 141,
+    "name": "LFO1 Op3 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 142,
+    "name": "LFO1 Op1 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 143,
+    "name": "LFO1 Op2 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 144,
+    "name": "LFO1 Op3 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 145,
+    "name": "LFO2 Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Free",
+      "Trigger"
+    ]
+  },
+  {
+    "index": 146,
+    "name": "LFO2 Rate",
+    "default": 1.0,
+    "min": 0.125,
+    "max": 512.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 147,
+    "name": "LFO2 Wave",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Sine",
+      "Triangle",
+      "Saw Up",
+      "Saw Down",
+      "Square",
+      "Sample Hold",
+      "Smooth Random"
+    ]
+  },
+  {
+    "index": 148,
+    "name": "LFO2 Upper Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 149,
+    "name": "LFO2 Lower Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 150,
+    "name": "LFO2 Delay",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 151,
+    "name": "LFO2 Smooth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 152,
+    "name": "LFO2 One Shot",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 153,
+    "name": "LFO2 One Shot Length",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 154,
+    "name": "LFO2 Phase",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 155,
+    "name": "LFO2 Cutoff Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 156,
+    "name": "LFO2 Op1 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 157,
+    "name": "LFO2 Op2 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 158,
+    "name": "LFO2 Op3 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 159,
+    "name": "LFO2 Op1 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 160,
+    "name": "LFO2 Op2 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 161,
+    "name": "LFO2 Op3 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 162,
+    "name": "LFO2 Op1 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 163,
+    "name": "LFO2 Op2 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 164,
+    "name": "LFO2 Op3 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 165,
+    "name": "LFO2 Op1 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 166,
+    "name": "LFO2 Op2 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 167,
+    "name": "LFO2 Op3 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 168,
+    "name": "LFO3 Mode",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Free",
+      "Trigger"
+    ]
+  },
+  {
+    "index": 169,
+    "name": "LFO3 Rate",
+    "default": 1.0,
+    "min": 0.125,
+    "max": 512.0,
+    "step": 0.125,
+    "enum": []
+  },
+  {
+    "index": 170,
+    "name": "LFO3 Wave",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 6.0,
+    "step": 1.0,
+    "enum": [
+      "Sine",
+      "Triangle",
+      "Saw Up",
+      "Saw Down",
+      "Square",
+      "Sample Hold",
+      "Smooth Random"
+    ]
+  },
+  {
+    "index": 171,
+    "name": "LFO3 Upper Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 172,
+    "name": "LFO3 Lower Squash",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 173,
+    "name": "LFO3 Delay",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 10.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 174,
+    "name": "LFO3 Smooth",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 175,
+    "name": "LFO3 One Shot",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "On"
+    ]
+  },
+  {
+    "index": 176,
+    "name": "LFO3 One Shot Length",
+    "default": 1.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 177,
+    "name": "LFO3 Phase",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 178,
+    "name": "LFO3 Cutoff Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 179,
+    "name": "LFO3 Op1 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 180,
+    "name": "LFO3 Op2 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 181,
+    "name": "LFO3 Op3 Pitch Depth",
+    "default": 0.0,
+    "min": -96.0,
+    "max": 96.0,
+    "step": 0.01,
+    "enum": []
+  },
+  {
+    "index": 182,
+    "name": "LFO3 Op1 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 183,
+    "name": "LFO3 Op2 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 184,
+    "name": "LFO3 Op3 PWM Depth",
+    "default": 0.0,
+    "min": -1.5,
+    "max": 1.5,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 185,
+    "name": "LFO3 Op1 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 186,
+    "name": "LFO3 Op2 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 187,
+    "name": "LFO3 Op3 Level Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 188,
+    "name": "LFO3 Op1 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 189,
+    "name": "LFO3 Op2 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 190,
+    "name": "LFO3 Op3 Pan Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 191,
+    "name": "Op1 Ring Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 192,
+    "name": "Op2 Ring Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 193,
+    "name": "Op3 Ring Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 194,
+    "name": "Op1 Ring Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 195,
+    "name": "Op2 Ring Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 196,
+    "name": "Op3 Ring Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 197,
+    "name": "Op1 Sync Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 198,
+    "name": "Op2 Sync Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 199,
+    "name": "Op3 Sync Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 4.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3",
+      "Mod ENV"
+    ]
+  },
+  {
+    "index": 200,
+    "name": "Op1 Sync Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 201,
+    "name": "Op2 Sync Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 202,
+    "name": "Op3 Sync Mod Threshold",
+    "default": 50.0,
+    "min": 0.0,
+    "max": 100.0,
+    "step": 1.0,
+    "enum": []
+  },
+  {
+    "index": 203,
+    "name": "Op1 OSC Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 204,
+    "name": "Op1 OSC Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 205,
+    "name": "Op2 OSC Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 206,
+    "name": "Op2 OSC Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 207,
+    "name": "Op1 ENV Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 208,
+    "name": "Op1 ENV Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 209,
+    "name": "Op2 ENV Mod Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 210,
+    "name": "Op2 ENV Mod Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 211,
+    "name": "Cross LFO Route 1 Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 212,
+    "name": "Cross LFO Route 1 Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 213,
+    "name": "Cross LFO Route 1 Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 214,
+    "name": "Cross LFO Route 2 Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 215,
+    "name": "Cross LFO Route 2 Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 216,
+    "name": "Cross LFO Route 2 Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 217,
+    "name": "Cross LFO Route 3 Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 218,
+    "name": "Cross LFO Route 3 Target",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 11.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "Filter Cutoff",
+      "Op1 Pitch",
+      "Op2 Pitch",
+      "Op1 PWM",
+      "Op2 PWM",
+      "Op3 Pitch",
+      "Op3 PWM",
+      "Op1 Level",
+      "Op2 Level",
+      "Op3 Level",
+      "Filter Resonance"
+    ]
+  },
+  {
+    "index": 219,
+    "name": "Cross LFO Route 3 Depth",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 220,
+    "name": "LFO1 Rate Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 221,
+    "name": "LFO1 Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 222,
+    "name": "LFO2 Rate Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 223,
+    "name": "LFO2 Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  },
+  {
+    "index": 224,
+    "name": "LFO3 Rate Mod Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 225,
+    "name": "LFO3 Rate Mod Depth",
+    "default": 0.0,
+    "min": -2.0,
+    "max": 2.0,
+    "step": 0.001,
+    "enum": []
+  }
+]

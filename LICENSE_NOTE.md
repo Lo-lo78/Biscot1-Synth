@@ -1,0 +1,1 @@
+The supplied Biscot1 JSFX is included as user-provided reference source. JUCE and all third-party dependencies retain their own licenses. Project publication must respect those license terms. No existing ReaPack indices or unrelated GitHub repositories are modified by this package.
