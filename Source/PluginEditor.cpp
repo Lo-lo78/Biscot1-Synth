@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 namespace biscot {
 BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),proc(p){
- title.setText("Biscot1 Synth - VST3 native TEST0.1",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 native TEST0.1.1",juce::dontSendNotification);
  message.setText("DSP partial port; Alt+Q tracker not implemented",juce::dontSendNotification);
  valueLabel.setText("Value",juce::dontSendNotification);
  addAndMakeVisible(title);addAndMakeVisible(message);addAndMakeVisible(valueLabel);
