@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.1.1 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.0 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - experimental DSP"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -25,3 +25,8 @@ target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor
 target_compile_features(Biscot1 PRIVATE cxx_std_20)
 target_compile_definitions(Biscot1 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(Biscot1 PRIVATE juce::juce_audio_utils juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+
+# NVDA/UI Automation notifications, as in the user-provided LB-303 reference.
+if(WIN32)
+  target_link_libraries(Biscot1 PRIVATE Uiautomationcore OleAut32)
+endif()

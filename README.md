@@ -1,53 +1,102 @@
-# Biscot1 Synth VST3 — TEST0.1.1 (build configuration fix)
+# Biscot1 Synth VST3 — TEST0.2 (accessible editor + extended native DSP)
 
-**Important:** This is a **partial native audio port**, not a faithful 1:1 conversion of Biscot1 Synth v2.38. Do not replace the JSFX yet.
+**Development build; the VST3 has NOT reached sonic parity with the original JSFX.**
+This milestone starts from the known working TEST0.1.1 and the exact user's
+`Reference/Biscot1Synth_v2.38.jsfx`, and follows the workflow and native
+accessibility design of the user-supplied LB-303 project.
 
-## Source of truth
-`Reference/Biscot1Synth_v2.38.jsfx` is an unchanged copy of the user's November 10, 2026 source. The project includes all **224 native JSFX sliders** as automatable VST3 parameters with their original names, ranges and defaults. Plugin IDs are `s002` to `s225`; the first JSFX slider is 2 and no reindexing is performed.
+## Accessible main editor
 
-## Implemented in TEST0.1
-- JUCE 8 VST3 instrument / GitHub Actions Windows x64 packaging.
-- Basic native three-oscillator synth: independent MIDI note modes, per-operator waveform, pitch, fine pitch, pitch bend, pulse width, level and pan; simple amp ADSR.
-- Very basic shared low-pass and DC blocker; stereo mix output; optional additional output buses reserved for subsequent builds.
-- Keyboard-accessible JUCE parameter list and value editor. Native host parameters are exposed for accessibility and automation.
-- DAW project state recalls the full parameter catalogue.
+- 12 contexts: Global/MIDI, Op1, Op2, Op3, Filter, LFO1, LFO2, LFO3,
+  Arpeggiators, Ring/Sync, OSC/ENV Cross, LFO Cross/Rate.
+- All 224 original source sliders included exactly once, with stable plugin parameter IDs
+  `s002` through `s225`. No parameter renaming or reindexing.
+- Grid / Value / Edit are three keyboard-focusable native JUCE controls, modelled
+  on LB-303. Grid is a native ComboBox: selected item reads 'name, value'.
+- Categorical sliders are native VST3 **AudioParameterChoice** with named options
+  (rather than anonymous numeric floats); integer sliders use native parameter integers.
+  Values and changes propagate through JUCE/APVTS to the host.
+- The focused Grid captures all four arrow keys including RIGHT at the last column.
+  At column/page borders it remains in the plugin and produces no movement.
+- Windows UI Automation notification speech follows the LB-303 approach.
+  NVDA/REAPER actual focus behavior must still be verified in the user's Windows setup.
 
-## **Not implemented / not equivalent yet**
-- The faithful SID oscillator math, AA/mipmaps/oversampling and wave-combination details.
-- Original 6581/8580 nonlinear multi-mode filters and filter envelopes.
-- Exact chord voice allocation/legato/arp logic, oscillator hard sync and ring modulation, three LFOs, cross-mod matrix, modulation envelopes and LFO rate cross modulation.
-- Full independent output buses and sophisticated audio sleep behavior.
-- The accessible LB-303-style main editor and Alt+Q Pattern/Song interface (placeholder only).
-- Exact silence/click behavior at pulse endpoints: native approximation is **not yet a parity test**.
-- `Reference/*.jsfx` cannot be executed by the VST3 as-is. This is not a JSFX wrapper.
+### Keyboard commands
 
-The plugin deliberately exposes parameters before all DSP connections are implemented. An automated catalogue check does not prove DSP/audio equivalence. Windows compilation still requires GitHub Actions verification; the local environment cannot execute the Windows runner.
+| Key | Action |
+| --- | --- |
+| Ctrl+Tab / Ctrl+Shift+Tab | Next / previous context |
+| Grid arrows | Navigate the 8-row multi-column grid |
+| Grid Home / End | First / last row of current column |
+| Grid PageUp / PageDown | Move five rows within the column |
+| Ctrl+Home / Ctrl+End | First / last item in context |
+| Tab and Shift+Tab | Cycle Grid / Value / Edit |
+| Enter | Grid ↔ Value; Edit accepts numeric value |
+| Value arrows Up/Down | Edit selected value |
+| Alt+Up / Alt+Down | Change value in ANY of the three controls |
+| Alt+Shift+Up / Down | Change value by 10 steps |
+| Alt+Left / Alt+Right | Change step precision |
+| Alt+PageUp / PageDown | Change value by 40 steps |
+| Alt+Home / Alt+End | Maximum / minimum |
+| Alt+E / Alt+L | Focus numeric Edit / Grid |
+| Backspace | Reset selected parameter to default |
+| Esc in Edit | Cancel and return to Grid |
+| Letters in Grid/Value | Incremental name search |
+| Alt+Q | Future tracker placeholder only; does not open a sequencer |
 
-## Building on GitHub
-Create a **new** repository, e.g. `Lo-lo78/Biscot1-Synth`, upload contents from this archive at repository root, or push using the Git command below. On push, Actions builds the VST3 and publishes the ZIP under the workflow Artifacts (not Releases).
+## Extended native sound implementation
+
+TEST0.2 adds substantial sound connections compared with TEST0.1.1:
+
+- Amp ADSR and individual Mod ENV, trigger/legato, portamento, drift, pitch bend,
+  wave selection, PWM, noise color, level and pan on all three operators.
+- Ring modulation and hard sync in SID operator topology, Test Bit, plus LFO/ENV
+  bit gating with independent thresholds.
+- Three BPM-aware LFOs: shapes, phase, delay, smoothing, one-shot, squash,
+  pitch/PWM/level/pan/cutoff depths and mutual rate cross-modulation.
+- Six oscillator/envelope cross routes and three assignable LFO cross routes,
+  including positive and negative depths, cutoff and resonance targets.
+- Approximate 6581/8580 SVF with low/band/high combinations, cutoff, resonance,
+  filter ENV, key follow, input/output levels; Op3 mute semantics.
+- Per-operator ARP with BPM-aware Up/Down/Pendulum/Held Order/Random, octave ranges and glide;
+  note pools refreshed at MIDI events or block boundaries, not at every sample.
+- Multichannel bus support when hosts enable the optional output buses and Audio
+  Mode is Multichannel; idle modes/presets remain stable across saves/loads.
+- Natural PWM endpoints: neither -64 nor +64 hard-mutes the oscillator.
+
+### Not equivalent to JSFX yet
+
+The three oscillators are **not** a sample-identical DSP translation. In
+particular, original oversampling / spectral wavetable AA, 6581/8580 nonlinear
+filter math, combined SID wave DAC models, exact noise chip behavior, perfect
+SID Seq ARP and its recorded memory, full multi-note latch allocation, and some control
+corner cases are NOT yet ported faithfully. Arp SID Seq currently plays the held material without a faithful
+recorded SID sequence memory; the final tracker tables are not implemented. Cross-modulation and filters are currently C++ approximations.
+
+All 224 parameter IDs are exposed and their major destinations are connected
+to the native engine, but this does not mean every sonic edge case is identical
+to the original JSFX. Keep the JSFX installed for A/B listening.
+
+## GitHub Actions / installation
+
+Open a CMD in the existing Git clone of
+`https://github.com/Lo-lo78/Biscot1-Synth`, extract this archive at the repo
+root **without deleting `.git`**, then run:
 
 ```cmd
-git add . && git commit -m "Add Biscot1 VST3 native migration foundation TEST0.1" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2 accessible editor and native DSP expansion" && git push
 ```
 
-For a local build with Visual Studio 2022: `cmake -S . -B build -G "Visual Studio 17 2022" -A x64` followed by `cmake --build build --config Release`. GitHub Actions is pinned to `windows-2022` to ensure the matching generator is present.
+`.github/workflows/build-windows.yml` runs three source-level checks, builds
+the VST3 on `windows-2022` / Visual Studio 2022 with JUCE 8.0.15, and uploads
+`Biscot1-TEST0.2-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
+not automatically published as a GitHub Release.
 
-## Next steps for true DSP parity
-Port the oscillator accumulator + wave blending/AA and 6581/8580 filter directly from the JSFX, then per-operator envelopes, MIDI, modulation and arpeggiation, testing rendered audio against REAPER at each milestone. Only after the synth is equivalent, integrate the old tracker into Alt+Q. Do **not** confuse this initial proof of build structure with a finished replacement.
+**Validation:** static source checks passed in the preparation environment. A
+Windows build and NVDA/REAPER audio test have NOT been performed here. On a
+GitHub compiler error, share the full Actions log archive to correct the next
+test build.
 
-## Build fix — TEST0.1.1 (10 November 2026)
-The initial GitHub Actions log (`logs_116141940146.zip`) reported:
-`Generator Visual Studio 17 2022 could not find any instance of Visual Studio`.
-This occurred because `windows-latest` moved to a Visual Studio 2026 runner.
-The workflow now explicitly uses `windows-2022` (matching generator `Visual Studio 17 2022`).
-Also replaced `#include <JuceHeader.h>` with JUCE module headers. The project does not invoke `juce_generate_juce_header`, so relying on that generated header would otherwise fail at C++ compilation.
-The ZIP staging is explicit to retain the `.vst3` directory at the archive root.
-These are build-only changes: the synthesizer DSP, source JSFX, parameter catalog and MIDI behavior remain unchanged. This build has **not** been compiled on a GitHub Windows runner from this environment.
+## License
 
-Do **not** run `git init` again. Copy the extracted project contents into the existing local `Biscot1-Synth` repository (preserving its `.git` directory), then run:
-
-```cmd
-git add . && git commit -m "Fix Biscot1 VST3 TEST0.1.1 GitHub Actions build configuration" && git push
-```
-
-Build artifact name after a successful workflow run: `Biscot1-TEST0.1.1-Windows-x64`.
+See LICENSE.md and LICENSE_NOTE.md. The reference JSFX is preserved unchanged.

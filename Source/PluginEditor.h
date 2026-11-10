@@ -1,24 +1,77 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
+#include <array>
+#include <vector>
+#include <memory>
+
 namespace biscot {
-class BiscotEditor final : public juce::AudioProcessorEditor,private juce::ListBoxModel,private juce::Slider::Listener {
+class BiscotEditor final : public juce::AudioProcessorEditor, private juce::Timer {
 public:
  explicit BiscotEditor(BiscotProcessor&);
  ~BiscotEditor() override;
+ void paint(juce::Graphics&) override;
  void resized() override;
+ void focusGained(FocusChangeType) override;
  bool keyPressed(const juce::KeyPress&) override;
 private:
- int getNumRows() override {return (int)catalog.size();}
- void paintListBoxItem(int,juce::Graphics&,int,int,bool) override;
- void selectedRowsChanged(int) override;
- void sliderValueChanged(juce::Slider*) override;
- void select(int);
+ enum class Control { grid, value, edit };
+ struct ParameterGrid final : juce::ComboBox {
+   explicit ParameterGrid(BiscotEditor& e) : owner(e) {}
+   bool keyPressed(const juce::KeyPress& k) override {return owner.handleKey(k,Control::grid);}
+   void focusGained(FocusChangeType cause) override;
+   BiscotEditor& owner;
+ } grid;
+ struct ParameterValue final : juce::Slider {
+   explicit ParameterValue(BiscotEditor& e) : owner(e) {}
+   bool keyPressed(const juce::KeyPress& k) override {return owner.handleKey(k,Control::value);}
+   void focusGained(FocusChangeType cause) override;
+   BiscotEditor& owner;
+ } value;
+ struct NumericEdit final : juce::TextEditor {
+   explicit NumericEdit(BiscotEditor& e) : juce::TextEditor("Edit"), owner(e) {}
+   bool keyPressed(const juce::KeyPress& k) override {return owner.handleKey(k,Control::edit) || juce::TextEditor::keyPressed(k);}
+   void focusGained(FocusChangeType cause) override;
+   BiscotEditor& owner;
+ } edit;
  BiscotProcessor& proc;
- juce::Label title,message,valueLabel;
- juce::ListBox parametersList;
- juce::Slider slider;
- bool rebuilding=false;
+ juce::Label title, sectionLabel, instructions;
+ std::array<juce::String,12> groupNames {{"Global / MIDI", "Operator 1", "Operator 2", "Operator 3", "Filter", "LFO 1", "LFO 2", "LFO 3", "Arpeggiators", "Ring / Sync", "OSC / ENV Cross", "LFO Cross / Rate"}};
+ std::array<std::vector<int>,12> groups;
+ int group=0, selected=0;
+ std::array<int,12> lastSelected{};
+ std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+ bool updating=false, initialFocusPending=false;
+ int focusRetries=0, stepScaleIndex=0;
+ std::array<double,9> stepScales {{0.001,0.01,0.1,0.5,1,2,5,10,20}};
+ juce::String searchText;
+ uint32_t lastSearchMs=0;
+ juce::Rectangle<int> drawingArea;
+ void timerCallback() override;
+ void createGroups();
+ int currentIndex() const;
+ const ParameterDef& currentDef() const;
+ juce::String formatValue(int) const;
+ juce::String labelFor(int) const;
+ void refreshLabels(bool force=false);
+ void populateGroup();
+ void selectedFromGrid();
+ void select(int);
+ void move(int rowStep,int colStep);
+ void changeGroup(int);
+ void setValue(double);
+ void adjustValue(int,double);
+ void boundary(bool);
+ void changeStep(int);
+ void resetValue();
+ void enterEdit();
+ bool commitEdit();
+ void cancelEdit();
+ void focus(Control,bool deferred=false);
+ void initialFocus();
+ bool handleKey(const juce::KeyPress&,Control);
+ void typeSearch(juce::juce_wchar,bool);
+ void announce(juce::Component&, const juce::String&) const;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BiscotEditor)
 };
 }
