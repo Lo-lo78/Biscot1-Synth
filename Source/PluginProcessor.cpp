@@ -388,12 +388,13 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
  rebuildArpPools(); // refresh octave/routing changes once per block, never per sample
  if(auto* ph=getPlayHead())if(auto position=ph->getPosition()){
   if(auto bpm=position->getBpm())tempoBpm=juce::jlimit(1.,999.,*bpm);
-  if(auto running=position->getIsPlaying()){
-   if(*running && !lastPlaying){
-    for(int i=0;i<3;++i)if(param(122+i*23)<0.5f){lfos[(size_t)i].phase=param(131+i*23);lfos[(size_t)i].age=0;}
-   }
-   lastPlaying=*running;
+  // JUCE 8 getIsPlaying() returns bool, not std::optional<bool>.
+  // Restart free-running LFO phases only on the stopped -> playing edge.
+  const bool running=position->getIsPlaying();
+  if(running && !lastPlaying){
+   for(int i=0;i<3;++i)if(param(122+i*23)<0.5f){lfos[(size_t)i].phase=param(131+i*23);lfos[(size_t)i].age=0;}
   }
+  lastPlaying=running;
  }
  // Resolve bus views once per block: never allocate/copy bus metadata in @sample.
  auto mix=getBusBuffer(buffer,false,0);

@@ -43,7 +43,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.1",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Ctrl+Tab: section | Alt+arrows: value / step | Alt+E: edit | Alt+L: grid",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){l->setColour(juce::Label::textColourId,foreground);addAndMakeVisible(*l);}
@@ -177,8 +177,14 @@ bool BiscotEditor::commitEdit(){
  const auto& d=currentDef();
  if(d.choices[0]){
   juce::StringArray labels;labels.addTokens(juce::String(d.choices),"|","");
-  int n=labels.indexOfIgnoreCase(edit.getText().trim());
-  if(n<0)n=edit.getText().getIntValue();
+  // StringArray has no indexOfIgnoreCase() in JUCE 8.
+  // Preserve case-insensitive entry of named choices in the accessible editor.
+  const auto entered=edit.getText().trim();
+  int n=-1;
+  for(int i=0;i<labels.size();++i){
+   if(labels[i].equalsIgnoreCase(entered)){n=i;break;}
+  }
+  if(n<0)n=entered.getIntValue();
   setValue(n);return true;
  }
  const juce::String text=edit.getText().trim();

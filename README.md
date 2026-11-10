@@ -1,4 +1,23 @@
-# Biscot1 Synth VST3 — TEST0.2 (accessible editor + extended native DSP)
+# Biscot1 Synth VST3 — TEST0.2.1 (JUCE 8 compilation fix; accessible editor + extended native DSP)
+
+## What TEST0.2.1 fixes from the GitHub Actions failure
+
+The log `logs_116170501978.zip` demonstrated three Windows C++ compilation errors:
+
+- `PluginProcessor.cpp`: `AudioPlayHead::PositionInfo::getIsPlaying()` is
+  a plain `bool` in JUCE 8, not an optional value to dereference. The
+  stopped-to-playing transition still resets free-running LFO phases.
+- `PluginEditor.cpp`: `juce::StringArray` has no `indexOfIgnoreCase` member.
+  The Edit field now finds choice labels using `equalsIgnoreCase`, retaining
+  case-insensitive option selection and numeric fallback.
+
+No changes to the 224 parameter IDs, keyboard mapping, MIDI engine, or DSP
+behaviour are intended in this fix. The previous TEST0.2 features are retained.
+Other compiler *warnings* in the log (deprecated MIDI iterator and Font
+constructor, signed/unsigned comparison) are non-fatal and left for a separate
+cleanup.
+
+**The static checks pass locally; this archive has not been built with MSVC.**
 
 **Development build; the VST3 has NOT reached sonic parity with the original JSFX.**
 This milestone starts from the known working TEST0.1.1 and the exact user's
@@ -84,12 +103,12 @@ Open a CMD in the existing Git clone of
 root **without deleting `.git`**, then run:
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2 accessible editor and native DSP expansion" && git push
+git add . && git commit -m "Fix Biscot1 VST3 TEST0.2.1 JUCE 8 compile errors" && git push
 ```
 
-`.github/workflows/build-windows.yml` runs three source-level checks, builds
+`.github/workflows/build-windows.yml` runs four source-level checks, builds
 the VST3 on `windows-2022` / Visual Studio 2022 with JUCE 8.0.15, and uploads
-`Biscot1-TEST0.2-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
+`Biscot1-TEST0.2.1-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
 not automatically published as a GitHub Release.
 
 **Validation:** static source checks passed in the preparation environment. A

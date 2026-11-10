@@ -2,7 +2,7 @@
 
 Copyright (C) 2026 Lo-lo and project contributors.
 
-Biscot1 Synth VST3 TEST0.2 includes an accessibility implementation adapted from
+Biscot1 Synth VST3 TEST0.2.1 includes an accessibility implementation adapted from
 the user-supplied LB-303 project (AGPL-3.0-or-later). This derivative project
 is distributed under the GNU Affero General Public License, version 3 or later.
 
