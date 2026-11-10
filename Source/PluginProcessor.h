@@ -2,6 +2,8 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ParameterCatalog.h"
 #include "SidOutputStage.h"
+#include "SidFilterCore.h"
+#include "SidWaveCore.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -34,16 +36,18 @@ public:
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
  struct Envelope {
-  float level=0.f,releaseStep=0.f;int stage=0;
+  float level=0.f,releaseCoefficient=0.f;int stage=0;
   void noteOn(bool reset){if(reset)level=0;stage=1;}
-  void noteOff(float sec,double sr){releaseStep=sec<=0?1.f:level/(float)(sec*sr);stage=4;}
+  void noteOff(float sec,double sr){releaseCoefficient=1.f/(float)std::max(1.,(double)sec*sr);stage=4;}
   float tick(float attack,float decay,float sustain,double sr);
  };
  struct Voice {
   int note=-1,channel=1;bool gate=false;
   double phase=0,oldPhase=0,noteSmooth=-1,arpPhase=0;
   float vel=1.f,bend=0.f,drift=0.f,oscPrev=0.f,arpPitch=0.f;
-  uint32_t noiseSeed=0x12345678u;float noise=0.f;
+  uint32_t noiseSeed=0x12345678u;
+  uint64_t cleanNoiseSeed=1234567, sidNoiseSeed=5930003;
+  double noiseClock=0;float noise=0.f;
   Envelope amp,mod;
   int arpStep=0;bool arpGoingUp=true;
  };
@@ -53,11 +57,12 @@ private:
   uint32_t seed=0xabcdef01u;
   bool active=true;
  };
- struct FilterChannel {float ic1=0,ic2=0;};
+ 
  std::array<Voice,3> voices{};
  std::array<Lfo,3> lfos{};
  Envelope filterEnvelope;
- std::array<FilterChannel,2> filters{};
+ std::array<SidFilterCore,2> filters{};
+ SidWaveCore waveCore;
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
  std::array<std::atomic<float>*,226> parameters{};

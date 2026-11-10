@@ -1,3 +1,35 @@
+# Biscot1 Synth VST3 — TEST0.2.3 (JSFX filter and wavetable migration)
+
+## Changes compared with TEST0.2.2
+
+This release targets the **large tonal mismatch** between JSFX v2.38 and the VST3.
+Earlier builds used a generic trapezoidal filter and different oscillator waveforms. Those were different synthesis algorithms, not just different filter presets.
+
+**Ported directly from the supplied JSFX 2.38 source:**
+
+- The 8580 and 6581 state-variable filter's original update order, register-to-cutoff curves, damping, internal loss, resonance presence, 6581 low-frequency body leakage, model-specific colour/makeup and -12 dB R4 filtered trim. These replace the generic TPT SVF.
+- Original 2048-point, ten-mip Fourier lookup tables for Triangle and Saw, the exact 50% Square table and the two-Saw variable Pulse approximation.
+- The same antialiased Triangle+Saw, Triangle+Pulse, Saw+Pulse and triple-combination formulas, with model-dependent coefficients and analytical DC compensation.
+- Adaptive 2x/4x/8x/16x oscillator substeps for active Ring/Sync and high-register energy compensation (as in JSFX). The manual and modulated Ring/Sync switches remain available.
+- Noise clocked four times per oscillator cycle and the 23-bit SID colour path, replacing the old once-per-cycle noise.
+- Exponential Release using the current envelope level, instead of an unrelated linear release.
+- Removed the VST3-only velocity-to-amplitude multiplier: the original JSFX gates the notes on velocity but does not apply that multiplication to the signal.
+- Corrected Filter Key Follow (32 register units per semitone) and bipolar OSC/ENV Cross Mod source, preserving parameter IDs and keyboard editor controls.
+
+**Verification:** the included standalone C++ test checks the filter sample-by-sample against numerical reference outputs independently calculated from the JSFX formulas (for both 6581/8580), plus oscillator mip integrity. GitHub Actions builds and runs that test. A Windows VST3 compilation and listening test are still necessary.
+
+**Important limits:** this is **not yet a fully 1:1 migration**. The remaining differences include exact MIDI/ARP SID Seq memory and note allocation, LFO state and timing corner cases, oscillator cross-mod ordering, note reset/idle behaviours, and possible discrepancies in noise random-number sequences and dynamics. The JSFX should remain the sound reference. No blanket claim of sample-identical audio is made.
+
+### Git command (in the existing repository)
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.3 port SID filter and bandlimited oscillators from JSFX" && git push
+```
+
+---
+
+## Previous release: TEST0.2.2 (output stage and accessibility)
+
 # Biscot1 Synth VST3 — TEST0.2.2 (JSFX output stage and accessible navigation)
 
 ## Changes from TEST0.2.1
@@ -123,19 +155,19 @@ All 224 parameter IDs are exposed and their major destinations are connected
 to the native engine, but this does not mean every sonic edge case is identical
 to the original JSFX. Keep the JSFX installed for A/B listening.
 
-## GitHub Actions / installation (current TEST0.2.2)
+## GitHub Actions / installation (current TEST0.2.3)
 
 Open a CMD in the existing Git clone of
 `https://github.com/Lo-lo78/Biscot1-Synth`, extract this archive at the repo
 root **without deleting `.git`**, then run:
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2.2 port JSFX output and improve accessible search" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.3 port SID filter and bandlimited oscillators from JSFX" && git push
 ```
 
-`.github/workflows/build-windows.yml` runs four source-level checks, builds
+`.github/workflows/build-windows.yml` runs source-level checks and a compiled standalone filter/wavetable regression, builds
 the VST3 on `windows-2022` / Visual Studio 2022 with JUCE 8.0.15, and uploads
-`Biscot1-TEST0.2.2-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
+`Biscot1-TEST0.2.3-Windows-x64.zip` to GitHub Actions Artifacts. The VST3 is
 not automatically published as a GitHub Release.
 
 **Validation:** static source checks passed in the preparation environment. A

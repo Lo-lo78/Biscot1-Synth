@@ -47,7 +47,11 @@ bool BiscotProcessor::isBusesLayoutSupported(const BusesLayout& l)const{
 void BiscotProcessor::prepareToPlay(double sr,int){
  sampleRateHz=sr>0?sr:44100.;voices={};lfos={};filters={};pressed={};arpPoolCounts={};nextPress=0;
  for(auto& s:outputStages)s.prepare(sampleRateHz);
- for(int i=0;i<3;++i){voices[(size_t)i].noiseSeed^=(uint32_t)(i*0x9e3779b9u);lfos[(size_t)i].seed^=(uint32_t)(i*0x51ed270bu);lfos[(size_t)i].phase=param(131+23*i);}
+ waveCore.prepare();
+ for(int i=0;i<3;++i){voices[(size_t)i].noiseSeed^=(uint32_t)(i*0x9e3779b9u);
+  voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
+  voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
+  lfos[(size_t)i].seed^=(uint32_t)(i*0x51ed270bu);lfos[(size_t)i].phase=param(131+23*i);}
  filterEnvelope={};lastPlaying=false;
 }
 float BiscotProcessor::Envelope::tick(float a,float d,float s,double sr){
@@ -55,7 +59,7 @@ float BiscotProcessor::Envelope::tick(float a,float d,float s,double sr){
  if(stage==1){level+=a<=0?1.f:1.f/(float)(a*sr);if(level>=1.f){level=1;stage=2;}}
  else if(stage==2){level-=d<=0?1.f:(1.f-s)/(float)(d*sr);if(level<=s){level=s;stage=3;}}
  else if(stage==3){level=s;}
- else if(stage==4){level-=releaseStep;if(level<=0){level=0;stage=0;}}
+ else if(stage==4){level-=std::max(0.0000001f,level)*std::max(0.0000000001f,releaseCoefficient);if(level<=0.0001f){level=0;stage=0;}}
  return level;
 }
 void BiscotProcessor::noteOn(int i,int note,int channel){
@@ -199,26 +203,10 @@ float BiscotProcessor::processLfo(int i,const std::array<float,3>& prev){
  l.smoothed+=(raw-l.smoothed)*coeff;
  l.output=l.smoothed;return l.output;
 }
-float BiscotProcessor::processFilter(float input,float cutoff,int channel,float resonanceMod){
- auto& f=filters[(size_t)channel];
- // Topology-preserving SVF approximation, NOT exact SID 6581/8580 analogue circuit.
- const float nyquist=(float)sampleRateHz*0.42f;
- const float frequency=limit(cutoff,5.f,nyquist);
- const float g=std::tan((float)pi*frequency/(float)sampleRateHz);
- const float res=limit((param(109)+resonanceMod)/15.f,0.f,1.f);
- const float damping=1.75f-1.55f*res;
- const float denom=1.f+g*(g+damping);
- const float hp=(input-(damping+g)*f.ic1-f.ic2)/denom;
- const float bp=g*hp+f.ic1;
- const float lp=g*bp+f.ic2;
- f.ic1=g*hp+bp;f.ic2=g*bp+lp;
- float mix=0;
- if(param(110)>0.5f)mix+=lp;
- if(param(111)>0.5f)mix+=bp;
- if(param(112)>0.5f)mix+=hp;
- if(param(110)<0.5f && param(111)<0.5f && param(112)<0.5f)mix=input;
- if(param(5)>0.5f)mix=saturate(mix*1.35f)*1.2f;
- return mix;
+float BiscotProcessor::processFilter(float input,float registerCutoff,int channel,float resonanceMod){
+ return (float)filters[(size_t)channel].process(input,registerCutoff,
+   param(109)+resonanceMod,sampleRateHz,param(5)>0.5f,
+   param(110)>0.5f,param(111)>0.5f,param(112)>0.5f);
 }
 void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& stems){
  // All parameter groups are used by this intermediate DSP. Exact JSFX parity,
@@ -262,7 +250,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   const int oscTarget=i==0?203:i==1?205:104;
   const int envTarget=i==0?207:i==1?209:106;
   route(integer(param(oscTarget)),voices[(size_t)i].oscPrev*param(oscTarget+1));
-  route(integer(param(envTarget)),amp[(size_t)i]*param(envTarget+1));
+  route(integer(param(envTarget)),(amp[(size_t)i]*2.f-1.f)*param(envTarget+1));
  }
  for(int i=0;i<3;++i){const int base=211+i*3,src=integer(param(base));
   if(src>=1 && src<=3)route(integer(param(base+1)),lfo[(size_t)(src-1)]*param(base+2));
@@ -315,39 +303,86 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
     +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch;
   frequencies[(size_t)i]=std::min(sampleRateHz*0.45,440.*std::pow(2.,juce::jlimit(-130.,130.,(double)(pitch-69.)/12.)));
  }
- for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
-  v.oldPhase=v.phase;
-  if(param(100+i)>0.5f)v.phase=0;
-  else {v.phase+=frequencies[(size_t)i]/sampleRateHz;v.phase-=std::floor(v.phase);}
+ // Advance all three SID phase accumulators together. This follows the JSFX
+ // sub-sample order, including the source-oscillator MSB edges for Ring/Sync.
+ const bool hot=ring[0]||ring[1]||ring[2]||sync[0]||sync[1]||sync[2];
+ const double maxInc=std::max({frequencies[0],frequencies[1],frequencies[2]})/sampleRateHz;
+ int oversample=1;
+ if(hot){oversample=2;if(maxInc>0.032)oversample=4;
+         if(maxInc>0.065)oversample=8;if(maxInc>0.105)oversample=16;}
+ std::array<double,3> increments{frequencies[0]/sampleRateHz,frequencies[1]/sampleRateHz,
+                                 frequencies[2]/sampleRateHz};
+ std::array<double,3> widths{};
+ for(int i=0;i<3;++i)widths[(size_t)i]=limit(
+     0.5f+param(31+i)/128.f+pwmMod[(size_t)i]+mod[(size_t)i]*param(55+i),0.f,1.f);
+ std::array<double,3> accumulated{};
+ for(int sub=0;sub<oversample;++sub){
+  std::array<bool,3> msb{};
+  for(int i=0;i<3;++i){
+   auto& v=voices[(size_t)i];
+   const int next=(i+1)%3;
+   const bool phaseActive=v.note>=0||v.amp.stage!=0||
+       ((ring[(size_t)next]||sync[(size_t)next]) && voices[(size_t)next].note>=0);
+   v.oldPhase=v.phase;
+   if(param(100+i)>0.5f){v.phase=0.;continue;}
+   if(phaseActive){
+    v.phase+=increments[(size_t)i]/oversample;
+    if(v.phase>=1.)v.phase-=std::floor(v.phase);
+    v.noiseClock+=increments[(size_t)i]*4./oversample;
+    while(v.noiseClock>=1.){
+     v.noiseClock-=1.;
+     v.cleanNoiseSeed=(v.cleanNoiseSeed*1103515245ULL+12345ULL)%2147483647ULL;
+     const double clean=(double)v.cleanNoiseSeed/1073741823.5-1.;
+     const float character=limit(param(9),0.f,1.f);
+     if(character<=0.f)v.noise=(float)clean;
+     else{
+      uint32_t sid=(uint32_t)(v.sidNoiseSeed%8388608ULL);
+      if(sid==0)sid=8388607U;
+      const uint32_t feedback=((sid>>17)^(sid>>22))&1U;
+      sid=((sid<<1)&0x7fffffU)|feedback;
+      v.sidNoiseSeed=sid;
+      const int dac=((sid>>22)&1U)*128+((sid>>20)&1U)*64+
+        ((sid>>16)&1U)*32+((sid>>13)&1U)*16+
+        ((sid>>11)&1U)*8+((sid>>7)&1U)*4+
+        ((sid>>4)&1U)*2+((sid>>2)&1U);
+      const double coloured=dac/127.5-1.;
+      v.noise=(float)(clean*(1.-character)+coloured*character);
+     }
+    }
+   }
+   msb[(size_t)i]=(v.oldPhase<0.5 && v.phase>=0.5);
+  }
+  for(int i=0;i<3;++i)if(sync[(size_t)i] && msb[(size_t)((i+2)%3)])
+    voices[(size_t)i].phase=0.;
+  for(int i=0;i<3;++i){
+   const auto& v=voices[(size_t)i];
+   if((v.note<0 && v.amp.stage==0) || param(100+i)>0.5f)continue;
+   const int source=(i+2)%3;
+   accumulated[(size_t)i]+=waveCore.render(integer(param(22+i)),v.phase,
+      increments[(size_t)i]/oversample,widths[(size_t)i],v.noise,
+      param(5)>0.5f,ring[(size_t)i],sync[(size_t)i],
+      voices[(size_t)source].phase,increments[(size_t)source]/oversample);
+  }
  }
  for(int i=0;i<3;++i){
-  const int modulator=(i+2)%3;
-  auto& v=voices[(size_t)i];const auto& source=voices[(size_t)modulator];
-  if(sync[(size_t)i] && source.oldPhase<0.5 && source.phase>=0.5)v.phase=0;
-  const double p=v.phase,dt=std::max(1.e-7,frequencies[(size_t)i]/sampleRateHz);
-  const float pwm=limit(0.5f+param(31+i)/128.f+pwmMod[(size_t)i]+mod[(size_t)i]*param(55+i)*0.5f,0.f,1.f);
-  const float tri=(float)(1.-4.*std::abs(p-.5))*(ring[(size_t)i]?(source.phase<0.5?1.f:-1.f):1.f);
-  const float saw=(float)(2.*p-1.)-polyBlep(p,dt);
-  const float pul=pulse(p,pwm,dt);
-  const float noise=(v.noiseSeed&0x8000u)?1.f:-1.f;
-  if(v.phase<v.oldPhase){
-   const float oldNoise=noise;
-   const float rand=randomUnit(v.noiseSeed);
-   const float mix=param(9);v.noise=rand*mix+oldNoise*(1.f-mix);
+  auto& v=voices[(size_t)i];
+  double wave=accumulated[(size_t)i]/oversample;
+  if(hot && (v.note>=0||v.amp.stage!=0)){
+   // Exact JSFX aa_energy_comp() coefficient for Ring/Sync / BLEP path.
+   const double x=std::min(1.,std::max(0.,increments[(size_t)i]*14.));
+   const int shape=integer(param(22+i));
+   double bonus=(shape==1||shape==2||shape==6||shape==7)?0.16:0.;
+   if(ring[(size_t)i])bonus+=0.28;
+   if(sync[(size_t)i])bonus+=0.14;
+   double compensation=1.+x*(0.16+bonus);
+   if(oversample>=8)compensation*=1.035;
+   if(oversample>=16)compensation*=1.025;
+   wave*=std::min(1.85,compensation);
   }
-  float wave=0;switch(integer(param(22+i))){
-   case 0:wave=tri;break;case 1:wave=saw;break;case 2:wave=pul;break;
-   case 3:wave=v.noise;break;
-   case 4:wave=0.48f*tri+0.52f*saw+0.25f*tri*saw;break;
-   case 5:wave=0.6f*tri+0.4f*pul;break;
-   case 6:wave=0.5f*saw+0.5f*pul;break;
-   case 7:wave=(tri+saw+pul+tri*saw*0.2f)/3.f;break;
-  }
-  const float previousOsc=wave*amp[(size_t)i];
-  // Audio-rate routes read previous sample, never current (no algebraic loops).
-  v.oscPrev=previousOsc;
+  // JSFX uses oscillator * envelope as the previous-sample cross-mod source.
+  v.oscPrev=(float)wave*amp[(size_t)i];
   const float level=limit(param(16+i)*(1.f+levelMod[(size_t)i]),0.f,2.f);
-  oscOut[(size_t)i]=wave*amp[(size_t)i]*level*v.vel;
+  oscOut[(size_t)i]=(float)wave*amp[(size_t)i]*level;
   xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i],-1.f,1.f);
  }
  float filterInput[2]{},dry[2]{};
@@ -366,10 +401,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }
  }
  float keyFollow=0;
- for(const auto& v:voices)if(v.gate){keyFollow=(v.note-60.f)*param(113)*14.f;break;}
+ for(const auto& v:voices)if(v.gate){keyFollow=(v.note-60.f)*param(113)*32.f;break;}
  const float filterRegister=limit(param(108)+filterEnv*param(117)+cutoffMod+keyFollow,0.f,2047.f);
- const float norm=filterRegister/2047.f;
- const float cutoff=param(5)>0.5f?4.f+std::pow(norm,1.38f)*12500.f:28.f+std::pow(norm,2.12f)*8170.f;
  const float filterGain=gain(param(7));
  const double masterGain=gain(param(8));
  const bool model6581=param(5)>0.5f;
@@ -378,7 +411,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  const double normTotal=0.0001+(integer(param(3))==1?3.0:1.0);
  const bool multichannel=param(2)>0.5f;
  for(int ch=0;ch<2;++ch){
-  const float filtered=processFilter(filterInput[ch],cutoff,ch,resMod)*filterGain;
+  const float filtered=processFilter(filterInput[ch],filterRegister,ch,resMod)*filterGain;
   double mix=(dry[ch]*(model6581?1.122018454:1.0)+filtered)/normTotal;
   // The JSFX post-mix 6581 parallel rounding precedes the analogue output amp.
   if(model6581){

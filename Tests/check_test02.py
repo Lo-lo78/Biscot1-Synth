@@ -22,7 +22,7 @@ assert 'void BiscotEditor::focusGained' in ed
 assert 'UiaRaiseNotificationEvent' in ed
 for fragment in ['voices[(size_t)i].oscPrev','filterEnvelope.tick','processLfo','param(220+i*2)',
                  'param(191+i)','param(197+i)','param(122+i*23)','BiscotProcessor::rebuildArpPools',
-                 'std::sort(ordered.begin(),ordered.begin()+count,', 'processFilter(filterInput[ch],cutoff,ch,resMod)']:
+                 'std::sort(ordered.begin(),ordered.begin()+count,', 'processFilter(filterInput[ch],filterRegister,ch,resMod)']:
     assert fragment in cpp,fragment
 assert 'std::array<std::array<int,640>,3> arpPools' in h
 # Mirror group routing in editor and ensure every source slider occurs in exactly one page.
