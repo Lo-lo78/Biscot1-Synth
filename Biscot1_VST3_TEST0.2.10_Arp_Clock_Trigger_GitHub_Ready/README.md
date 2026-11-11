@@ -1,3 +1,40 @@
+# Biscot1 Synth VST3 — TEST0.2.10 (clock-quantized arpeggios)
+
+**Based on TEST0.2.9.** No filter, wavetable, analogue output-stage,
+parameter ID or accessible-editor workflow changes.
+
+- Classical ARP modes (Up / Down / Pendulum / Held Order / Random) **commit
+  their MIDI note pool only at the next arpeggiator clock step**. A new key
+  cannot immediately alter the oscillator frequency mid-step. This also
+  holds when CC64 is down and earlier notes are sustained.
+- Incoming notes in an active ARP phrase do not restart its clock or
+  interrupt the current pitch. SID Seq retains its dedicated 128-slot
+  record-and-insert memory and clock.
+- **Operator Mode Trigger:** each subsequent ARP step restarts that operator's
+  amplitude and modulation attack (ADSR). The first step is not double-
+  triggered. **Operator Mode Legato:** no per-step ADSR restart; the envelope
+  continues while the clock advances normally.
+- In Chord Allocate, Op1 Mode Trigger remains the common Trigger/Legato
+  selector. Outside Chord mode, Op1/2/3 Mode Trigger are independent.
+- On CC64 release, the existing tail may continue but the arpeggiator does
+  not re-trigger an ADSR that is already releasing.
+- When a new note is merely added to a running arpeggio, the global filter
+  envelope and LFO triggers are not restarted by that MIDI Note On.
+- No added VST3 parameters; this is a MIDI timing/voice state correction.
+
+Standalone regression `SidQuantizedArpTest` validates mid-step MIDI insertion,
+clock-pulse committing, per-step Trigger vs Legato, release-tail conditions,
+and SID Seq clock reporting. Existing tests remain enabled in GitHub Actions.
+A full Windows VST3 build and NVDA/REAPER audio tests remain to be confirmed.
+
+**Git command:**
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.10 quantize arpeggio note updates and fix Trigger Legato" && git push
+```
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.9 (MIDI held notes, legato, retrigger)
 
 **Base:** TEST0.2.5.1, whose audible DSP and NVDA Grid navigation are preserved.

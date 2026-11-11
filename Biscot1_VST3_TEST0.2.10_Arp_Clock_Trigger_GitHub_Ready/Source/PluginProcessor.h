@@ -8,6 +8,7 @@
 #include "SidSeqMemory.h"
 #include "SidAmpEnvelope.h"
 #include "SidArpSustain.h"
+#include "SidQuantizedArp.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -51,6 +52,7 @@ private:
   SidAmpEnvelope amp,mod;
   bool pedalLatched=false;int pedalChannel=1;
   int arpStep=0;bool arpGoingUp=true;
+  SidQuantizedArp quantizedArp{};
  };
  struct Lfo {
   double phase=0,age=0,delayAge=0;
@@ -87,7 +89,7 @@ private:
  bool opPedalEnabled(int op) const noexcept {return opSharedParam(227,op)>0.5f;}
  void rebuildArpPools();
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;
- void noteOn(int,int,int,bool);
+ void noteOn(int,int,int,bool,bool);
  void noteOff(int,int);
  void triggerFilterAndLfos(int,bool);
  void onMidi(const juce::MidiMessage&);

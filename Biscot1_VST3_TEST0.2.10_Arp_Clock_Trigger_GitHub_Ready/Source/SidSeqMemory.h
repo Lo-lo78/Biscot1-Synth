@@ -14,13 +14,14 @@ struct SidSeqMemory {
  int length=0,step=-1;
  double clock=0.;
  float target=0.f;
+ bool lastTick=false;
  SidHeldStack latch{}; // snapshot on every Note On; persists through release
  int latchRoot=60,releaseRoot=60;
  void clearAll() noexcept {
-  slots.fill(empty);length=0;step=-1;clock=0.;target=0.f;
+  slots.fill(empty);length=0;step=-1;clock=0.;target=0.f;lastTick=false;
   latch.clear();latchRoot=60;releaseRoot=60;
  }
- void resetClock() noexcept {step=-1;clock=0.;target=0.f;}
+ void resetClock() noexcept {step=-1;clock=0.;target=0.f;lastTick=false;}
  void snapshot(const SidHeldStack& held) noexcept {
   latch=held;
   if(latch.count>0)latchRoot=latch.notes[0];
@@ -45,12 +46,14 @@ struct SidSeqMemory {
  // Matches JSFX: 4 beat clock, first step immediately, no Note On retuning.
  // activeCount is non-Chord release latch or current chord note count.
  float process(int activeCount,int root,double rate,double tempo,double sampleRate) noexcept {
+  lastTick=false;
   if(activeCount>0 && root>=0 && length>0){
    clock+=std::max(0.125,rate)*std::max(1.,tempo)/(240.*std::max(1.,sampleRate));
    bool newStep=false;
    if(step<0){step=0;clock=0.;newStep=true;}
-   else if(clock>=1.){clock-=std::floor(clock);++step;if(step>=length)step=0;newStep=true;}
+   else if(clock>=1.-1.e-10){clock=std::max(0.,clock-1.);++step;if(step>=length)step=0;newStep=true;}
    if(newStep){
+    lastTick=true;
     if(step>=length)step=0;
     int selected=slots[(size_t)step];
     if(selected<=empty+1)selected=root;

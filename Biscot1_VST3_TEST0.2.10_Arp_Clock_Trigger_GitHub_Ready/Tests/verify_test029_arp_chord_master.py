@@ -17,7 +17,7 @@ for base in (16,31,34,37,40,43,46):
 for base in (22,25,28,49,52,55,64,67,70,73,91):
  assert f'param({base}+i)' in p, f'{base} was unexpectedly shared'
 assert 'opSharedParam(227,op)' in h
-assert 'const bool soundingAlready=wasHeld || v.pedalLatched;' in p
+assert 'const bool soundingAlready=wasHeld || v.pedalLatched || (arpOn && pedalPhrase);' in p
 assert '(!arpOn && !opLegato && v.amp.stage!=0)' in p
 assert 'const bool filterWasPedalLatched=' in p
 assert 'sustainedArp.hold(i,ch,note,order)' in p
