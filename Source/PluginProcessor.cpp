@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PitchBendRouting.h"
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -129,8 +130,11 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  }
  if(m.isPitchWheel()){
   const float bend=limit(((float)m.getPitchWheelValue()-8192.f)/8192.f,-1.f,1.f);
-  if(mode==0 && ch==1)for(auto& v:voices)v.bend=bend;
-  else if(ch>=1 && ch<=3)voices[(size_t)(ch-1)].bend=bend;
+  // Multi (default): keep the original channels 1-3 bend routing.
+  // Omni: a pitch wheel from ANY MIDI channel bends all three SID voices.
+  // Each voice still uses its own Op1/2/3 Pitch Bend range in renderOne().
+  routePitchBend(ch,bend,mode,integer(param(226)),
+                 [this](int voice,float amount){voices[(size_t)voice].bend=amount;});
   return;
  }
  if(m.isController()){

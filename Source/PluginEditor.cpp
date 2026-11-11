@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include <algorithm>
 #include <cmath>
 #if JUCE_WINDOWS
  #ifndef NOMINMAX
@@ -43,7 +44,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.3",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.4",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+arrows: value / step | type: search | Alt+E: edit | Alt+L: grid",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){l->setColour(juce::Label::textColourId,foreground);addAndMakeVisible(*l);}
@@ -73,6 +74,15 @@ void BiscotEditor::createGroups(){
   else if(juce::String(d.name).startsWith("Op2 "))g=2;
   else if(juce::String(d.name).startsWith("Op3 "))g=3;
   groups[(size_t)g].push_back(i);
+ }
+ // Native-only MIDI option lives beside MIDI Mode in the first accessible page.
+ // Its stable ID is appended (s226); no old parameter is reindexed.
+ auto& global=groups[0];
+ const auto newParam=std::find(global.begin(),global.end(),226);
+ const auto midiParam=std::find(global.begin(),global.end(),3);
+ if(newParam!=global.end() && midiParam!=global.end()){
+  global.erase(newParam);
+  global.insert(std::find(global.begin(),global.end(),3)+1,226);
  }
 }
 int BiscotEditor::currentIndex() const {return groups[(size_t)group][(size_t)selected];}

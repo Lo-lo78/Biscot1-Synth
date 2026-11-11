@@ -65,7 +65,7 @@ private:
  SidWaveCore waveCore;
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,226> parameters{};
+ std::array<std::atomic<float>*,227> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::uint64_t nextPress=0;
  std::array<std::array<int,640>,3> arpPools{};

@@ -1,0 +1,12 @@
+[
+  {
+    "index": 226,
+    "name": "Pitch Bend Mode",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "enum": ["Multi", "Omni"],
+    "description": "Multi: existing channels 1-3 routing; Omni: bend from any MIDI channel controls all three operators"
+  }
+]

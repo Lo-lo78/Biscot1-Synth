@@ -1,3 +1,25 @@
+# Biscot1 Synth VST3 — TEST0.2.4 (Pitch Bend Mode: Multi / Omni)
+
+This is a focused MIDI routing update on top of the **sound-matched TEST0.2.3**.
+No oscillator, filter, envelope, analog output-stage, LFO, or keyboard-navigation DSP changes.
+
+- New accessible **Pitch Bend Mode** choice beside **MIDI Mode** on the first editor page.
+- **Multi (default):** the existing pitch wheel routing for MIDI channels 1, 2, and 3 is unchanged; the legacy "All Operators Same Note" MIDI mode still bends all three operators from channel 1.
+- **Omni:** pitch wheel from **any MIDI channel 1–16** bends the three operators together. Each operator retains its own `Op1/2/3 Pitch Bend` semitone range.
+- This changes **pitch bend reception only**. It does NOT make MIDI notes on channel 7 audible in `MIDI Channels 1-3` mode; use a suitable note-routing MIDI mode for the input MIDI file.
+- The new VST3-specific parameter has stable ID `s226`. The original 224 JSFX-derived parameter IDs `s002`–`s225` are unchanged, and the reference JSFX remains unmodified. User presets default to Multi unless changed.
+- JUCE-independent routing tests cover all 16 channels, legacy Multi behaviour, and center/reset. Python static tests protect parameter order and editor placement.
+
+## Git command (existing local repository, do not re-initialize Git)
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.4 add Omni and Multi pitch bend modes" && git push
+```
+
+**Build:** GitHub Actions compiles on `windows-2022` and stores `Biscot1-TEST0.2.4-Windows-x64.zip` under Artifacts. Windows/REAPER runtime playback remains to be verified.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.3 (JSFX filter and wavetable migration)
 
 ## Changes compared with TEST0.2.2
