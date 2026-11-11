@@ -4,6 +4,8 @@
 #include "SidOutputStage.h"
 #include "SidFilterCore.h"
 #include "SidWaveCore.h"
+#include "SidMidiNoteState.h"
+#include "SidSeqMemory.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -59,6 +61,9 @@ private:
  };
  
  std::array<Voice,3> voices{};
+ SidMidiNoteState heldNotes;
+ std::array<SidSeqMemory,3> sidSeq{};
+ int filterKeyNote=60;
  std::array<Lfo,3> lfos{};
  Envelope filterEnvelope;
  std::array<SidFilterCore,2> filters{};
@@ -67,13 +72,15 @@ private:
  std::array<SidOutputStage,10> outputStages{};
  std::array<std::atomic<float>*,227> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
+ std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;
  std::array<std::array<int,640>,3> arpPools{};
  std::array<int,3> arpPoolCounts{};
  void rebuildArpPools();
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;
- void noteOn(int,int,int);
+ void noteOn(int,int,int,bool);
  void noteOff(int,int);
+ void triggerFilterAndLfos(int,bool);
  void onMidi(const juce::MidiMessage&);
  void renderOne(float&,float&,std::array<float,8>&);
  float processFilter(float,float,int,float);

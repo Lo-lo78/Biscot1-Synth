@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.5.1 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.7 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,13 +15,13 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.5.1"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.7"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
   EDITOR_WANTS_KEYBOARD_FOCUS TRUE
   COPY_PLUGIN_AFTER_BUILD FALSE)
-target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h)
+target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/SidMidiNoteState.h Source/SidSeqMemory.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h)
 target_compile_features(Biscot1 PRIVATE cxx_std_20)
 target_compile_definitions(Biscot1 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(Biscot1 PRIVATE juce::juce_audio_utils juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
@@ -38,3 +38,11 @@ target_compile_features(SidCoreStandaloneTest PRIVATE cxx_std_20)
 # Pitch Bend routing is isolated so all 16 MIDI channels can be tested without JUCE.
 add_executable(PitchBendRoutingTest Tests/PitchBendRoutingTest.cpp)
 target_compile_features(PitchBendRoutingTest PRIVATE cxx_std_20)
+
+# Note-stack / legato / Chord Allocate routing parity tests require no JUCE.
+add_executable(SidMidiNoteStateTest Tests/SidMidiNoteStateTest.cpp)
+target_compile_features(SidMidiNoteStateTest PRIVATE cxx_std_20)
+
+# JUCE-free regression of JSFX SID Seq's 128-position clocked memory.
+add_executable(SidSeqMemoryTest Tests/SidSeqMemoryTest.cpp)
+target_compile_features(SidSeqMemoryTest PRIVATE cxx_std_20)

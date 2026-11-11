@@ -1,3 +1,49 @@
+# Biscot1 Synth VST3 — TEST0.2.7 (MIDI held notes, legato, retrigger)
+
+**Base:** TEST0.2.5.1, whose audible DSP and NVDA Grid navigation are preserved.
+
+This is phase 1 of MIDI parity with the reference JSFX v2.38. Changes are
+limited to note-event state and its envelope/LFO trigger decisions.
+
+- Three independent **16-note, newest-note priority** held stacks: duplicated
+  Note On events are retained and newest matching Note Off is removed.
+  Releasing an overlapped higher note returns to the previous note without
+  restarting the envelope.
+- `All Operators Same Note`: all operators follow the same stack.
+- `Chord Allocate 3 Mono Ops`: first unused operator takes the incoming note,
+  otherwise Op1 stacks the new note. **Op1 Mode Trigger** controls legato on
+  Op2 and Op3 while in Chord mode, as in the JSFX.
+- `MIDI Channels 1-3`: each operator has its own stack; other MIDI channels
+  still feed the original global filter-note tracking but do not play an operator.
+- Arpeggiated voices retrigger only on the first Note On of a phrase. The
+  arpeggiator's clock/steps and SID Seq memory are scheduled for phase 2 and
+  are **not** yet claimed to match the JSFX.
+- A separate global filter held stack uses Op1 Mode Trigger to determine
+  when the filter ADSR and LFO note-trigger event fires; a note event no longer
+  resets the three LFOs once per synthesized operator.
+- Physical MIDI Note On duplicates on the same channel no longer make an
+  arpeggiator's held-note pool prematurely forget a still-held pitch after
+  one Note Off.
+- Pitch Bend Omni/Multi and all existing parameter IDs are unchanged. The
+  patch browser, saved editor position, accessible keyboard shortcuts and
+  audio oscillator/filter/output code are unchanged.
+
+Test coverage: `SidMidiNoteStateTest` is a JUCE-free C++ regression executable
+compiled and executed by GitHub Actions. Local `g++` test passed; JUCE VST3 build
+and REAPER/NVDA audio/MIDI tests still require the Windows Actions runner.
+
+To test inside REAPER: hold C4, then E4, release E4 (expect return to C4);
+try this with Legato on/off, repeat the same note twice before releasing it,
+then test 4 notes in Chord Allocate, releasing the newest Op1 note first.
+
+## Git command for this version
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.7 restore JSFX held-note stacks and legato routing" && git push
+```
+
+---
+
 # Biscot1 Synth VST3 – TEST0.2.5.1 (Grid speech fix)
 
 ## TEST0.2.5.1: NVDA Grid speech regression fix
@@ -243,3 +289,12 @@ test build.
 ## License
 
 See LICENSE.md and LICENSE_NOTE.md. The reference JSFX is preserved unchanged.
+
+
+## TEST0.2.7 – SID Seq recorder (point 2)
+
+The `SID Seq` arpeggiator mode (mode 1) no longer reuses the live-key arpeggio pool. It now uses the JSFX v2.38 clock-insertion memory, independently for each operator: 128 active positions plus mirrored shadow, per-operator position and clock, first step on the first audio sample, and timing based on the host BPM. A note enters **after the currently sounding clock step**; additional keys do not retune the oscillator immediately.
+
+`Chord Allocate` broadcasts every incoming note to each enabled SID Seq, independently from which operator was assigned the note. The per-operator note snapshot stays available throughout the envelope release in All-Operators and MIDI-Channels modes. At the end of the release it is cleared as in the JSFX. The previous DSP, accessibility editor, preset browser and normal arpeggio modes are preserved.
+
+Standalone C++ tests cover insertion, the 128-step limit, clock and release-latch persistence. The VST3 and real-time audio must still be verified in REAPER after GitHub Actions compilation.
