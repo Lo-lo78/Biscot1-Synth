@@ -53,7 +53,7 @@ void BiscotProcessor::prepareToPlay(double sr,int){
  for(int i=0;i<3;++i){voices[(size_t)i].noiseSeed^=(uint32_t)(i*0x9e3779b9u);
   voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
   voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
-  lfos[(size_t)i].seed^=(uint32_t)(i*0x51ed270bu);lfos[(size_t)i].phase=param(131+23*i);}
+  lfos[(size_t)i].reset(i);}
  filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;
 }
 // The JSFX has a separate 16-event held-note stack for each operator, plus
@@ -96,11 +96,7 @@ void BiscotProcessor::triggerFilterAndLfos(int note,bool retrigger){
  filterEnvelope.noteOn(false);
  for(int j=0;j<3;++j){
   auto& l=lfos[(size_t)j];
-  l.delayAge=0.;
-  if(param(122+j*23)>0.5f || param(129+j*23)>0.5f){
-   l.phase=param(131+j*23);l.age=0.;
-  }
-  l.active=true;
+  l.noteTrigger(param(122+j*23)>0.5f,param(129+j*23)>0.5f,param(131+j*23));
  }
 }
 void BiscotProcessor::noteOff(int channel,int note){
@@ -308,9 +304,10 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
    if(integer(param(76+i))==0 || !continuing)onlyContinuingArps=false;
   }
   const bool suppressArpKeyTrigger=anyRouted && onlyContinuingArps;
-  if(!suppressArpKeyTrigger)
-   triggerFilterAndLfos(note,event.filterRetrigger &&
-                        !(filterLegato && filterWasPedalLatched));
+  // The cutoff key-follow base tracks EVERY physical Note On, independently
+  // of whether the current arp phrase suppresses an envelope retrigger.
+  triggerFilterAndLfos(note,sidFilterLfoShouldTrigger(event.filterRetrigger,
+                        filterLegato,filterWasPedalLatched,suppressArpKeyTrigger));
   const float velocity=m.getFloatVelocity();
   for(int i=0;i<3;++i)if(event.trigger[(size_t)i]){
    voices[(size_t)i].vel=velocity;
@@ -369,34 +366,15 @@ float BiscotProcessor::saturate(float x){return x/(1.f+std::abs(x)*0.6f);}
 float BiscotProcessor::processLfo(int i,const std::array<float,3>& prev){
  auto& l=lfos[(size_t)i];const int b=122+i*23;
  double oct=0.;
- for(int k=0;k<3;++k)if(integer(param(58+k))==i+1)oct+=voices[(size_t)k].mod.level*param(61+k)*4.;
+ for(int k=0;k<3;++k)if(integer(param(58+k))==i+1)
+  oct+=voices[(size_t)k].mod.level*param(61+k)*4.;
  const int source=integer(param(220+i*2));
  if(source>0 && source<=3)oct+=prev[(size_t)(source-1)]*param(221+i*2)*4.;
- const float rate=param(b+1);
- const double hz=std::max(0.001,tempoBpm)/240. *std::max(0.125f,rate)*std::pow(2.,juce::jlimit(-8.,8.,oct));
- const double inc=std::min(0.45,hz/sampleRateHz);
- const double oldPhase=l.phase;
- if(l.active){l.phase+=inc;if(l.phase>=1.)l.phase-=std::floor(l.phase);l.age+=inc;l.delayAge+=1./sampleRateHz;}
- const int wave=integer(param(b+2));
- if(l.phase<oldPhase || ((wave==5||wave==6) && oldPhase<0.5 && l.phase>=0.5))l.hold=randomUnit(l.seed);
- float raw=0.f;const double p=l.phase;
- switch(wave){
-  case 0: raw=(float)std::sin(2*pi*p);break;
-  case 1: raw=(float)(4*std::abs(p-0.5)-1);break;
-  case 2: raw=(float)(2*p-1);break;
-  case 3: raw=(float)(1-2*p);break;
-  case 4: raw=p<0.5?1.f:-1.f;break;
-  default:raw=l.hold;break;
- }
- if(param(b+7)>0.5f && l.age>=limit(param(b+8),0.f,1.f))l.active=false;
- if(!l.active)raw=0;
- const float delay=param(b+5);
- raw*=delay<=0?1.f:limit((float)(l.delayAge/delay),0.f,1.f);
- raw*=raw>=0?(1.f-param(b+3)):(1.f-param(b+4));
- const float smooth=std::max(param(b+6),wave==6?0.12f:0.f);
- const float coeff=smooth<=0?1.f:1.f-std::exp(-1.f/(float)(sampleRateHz*(0.001+0.249*smooth*smooth)));
- l.smoothed+=(raw-l.smoothed)*coeff;
- l.output=l.smoothed;return l.output;
+ const double hz=std::max(0.001,tempoBpm)/240. *
+   std::max(0.125f,param(b+1))*std::pow(2.,juce::jlimit(-8.,8.,oct));
+ const double inc=hz/sampleRateHz;
+ return l.tick(inc,integer(param(b+2)),param(b+5),param(b+6),
+               param(b+7)>0.5f,param(b+8),param(b+3),param(b+4),sampleRateHz);
 }
 float BiscotProcessor::processFilter(float input,float registerCutoff,int channel,float resonanceMod){
  return (float)filters[(size_t)channel].process(input,registerCutoff,

@@ -7,6 +7,8 @@
 #include "SidMidiNoteState.h"
 #include "SidSeqMemory.h"
 #include "SidAmpEnvelope.h"
+#include "SidLfoCore.h"
+#include "SidFilterLfoTrigger.h"
 #include "SidArpSustain.h"
 #include "SidQuantizedArp.h"
 #include "SidArpTransport.h"
@@ -55,13 +57,7 @@ private:
   int arpStep=0;bool arpGoingUp=true;
   SidQuantizedArp quantizedArp{};
  };
- struct Lfo {
-  double phase=0,age=0,delayAge=0;
-  float output=0,previous=0,hold=0,smoothed=0;
-  uint32_t seed=0xabcdef01u;
-  bool active=true;
- };
- 
+ using Lfo = SidLfoCore;
  std::array<Voice,3> voices{};
  SidMidiNoteState heldNotes;
  std::array<SidSeqMemory,3> sidSeq{};

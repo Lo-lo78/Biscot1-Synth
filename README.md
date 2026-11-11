@@ -369,3 +369,13 @@ same release-note material used for a manual key release. Only the envelope
 passes into Release; the arpeggio continues until the envelope reaches idle.
 
 GitHub Actions runs `SidPedalReleaseContinuityTest` plus all prior regressions.
+
+## TEST0.2.14 — Point 3: Filter ADSR, Trigger / Legato and LFO fidelity
+
+- Based on TEST0.2.13. Oscillator, SID filter core, amplifier and output stages are unchanged.
+- LFO phases, 1,000,000-second initial Delay clocks, One Shot ages and deterministic S&H seeds now match the JSFX v2.38 initialization.
+- On allowed MIDI note triggers, LFO Delay restarts for all three LFOs, while Phase/age restart only for Trigger-mode or One Shot LFOs. Op1 Mode Trigger governs the shared filter/LFO gate; repeated arp notes do not retrigger filter/LFO phases.
+- LFO processing now matches JSFX ordering: waveform -> Delay fade -> Smooth -> upper/lower half-wave Squash. Smooth Random uses minimum smoothing, and S&H/Smooth Random update on both half-cycle and cycle wrap.
+- One Shot LFOs resume free-running when One Shot is disabled after reaching the end, without another MIDI note. All existing modulation-rate cross-connections remain.
+- Filter key follow updates with every incoming MIDI note, including one which joins an already-running arpeggio without resetting its envelope. The existing filter ADSR release remains latched through CC64.
+- No new slider or VST3 parameter ID. Tests include standalone C++ numerics plus static integration checks. Build/REAPER/NVDA test still required on GitHub Actions.
