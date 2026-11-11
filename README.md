@@ -1,4 +1,4 @@
-# Biscot1 Synth VST3 — TEST0.2.8 (MIDI held notes, legato, retrigger)
+# Biscot1 Synth VST3 — TEST0.2.9 (MIDI held notes, legato, retrigger)
 
 **Base:** TEST0.2.5.1, whose audible DSP and NVDA Grid navigation are preserved.
 
@@ -39,7 +39,7 @@ then test 4 notes in Chord Allocate, releasing the newest Op1 note first.
 ## Git command for this version
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2.8 restore JSFX held-note stacks and legato routing" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.9 restore JSFX held-note stacks and legato routing" && git push
 ```
 
 ---
@@ -291,7 +291,7 @@ test build.
 See LICENSE.md and LICENSE_NOTE.md. The reference JSFX is preserved unchanged.
 
 
-## TEST0.2.8 – SID Seq recorder (point 2)
+## TEST0.2.9 – SID Seq recorder (point 2)
 
 The `SID Seq` arpeggiator mode (mode 1) no longer reuses the live-key arpeggio pool. It now uses the JSFX v2.38 clock-insertion memory, independently for each operator: 128 active positions plus mirrored shadow, per-operator position and clock, first step on the first audio sample, and timing based on the host BPM. A note enters **after the currently sounding clock step**; additional keys do not retune the oscillator immediately.
 
@@ -299,6 +299,13 @@ The `SID Seq` arpeggiator mode (mode 1) no longer reuses the live-key arpeggio p
 
 Standalone C++ tests cover insertion, the 128-step limit, clock and release-latch persistence. The VST3 and real-time audio must still be verified in REAPER after GitHub Actions compilation.
 
-## TEST0.2.8: per-operator Sustain Pedal (CC64)
+## TEST0.2.9: per-operator Sustain Pedal (CC64)
 
-Op1 / Op2 / Op3 each have an independent Sustain Pedal Off/On choice next to the amp ADSR Sustain control. When On, releasing a MIDI key while CC64 is down holds the envelope until CC64 is released. Off is the backward-compatible default. Test the Op3 envelope with Op3 Level above zero. See RELEASE_NOTES_TEST0.2.8.md.
+Op1 / Op2 / Op3 each have an independent Sustain Pedal Off/On choice next to the amp ADSR Sustain control. When On, releasing a MIDI key while CC64 is down holds the envelope until CC64 is released. Off is the backward-compatible default. Test the Op3 envelope with Op3 Level above zero. See RELEASE_NOTES_TEST0.2.9.md.
+
+
+## TEST0.2.9 — CC64 arpeggios / Chord Op1 Controls
+
+In Chord Allocate, `Chord Op1 Controls` (Global/MIDI, adjacent to Pitch Bend Mode) can switch from default `Independent` to `Op1 Master`. Only Portamento, amplitude ADSR, Sustain Pedal CC64 enable, Level and PWM are shared. Wave, pitch, pan, arpeggiator, LFO and other modulation settings stay separate. This affects the *effective sound*; individual stored Op2/3 values are unchanged.
+
+All arpeggiators now retain released notes while CC64 is down if the corresponding operator has Sustain Pedal On. SID Seq adds notes to its current memory without clearing the sequence. Release of CC64 clears pedal-held notes while the arpeggiator can finish over the VCA's normal release. See `RELEASE_NOTES_TEST0.2.9.md`.

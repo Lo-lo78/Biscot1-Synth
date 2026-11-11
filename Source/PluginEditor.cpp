@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.8",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.9",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -90,14 +90,17 @@ void BiscotEditor::createGroups(){
   if(afterSustain!=operatorPage.end())operatorPage.insert(afterSustain+1,sustainId);
   else operatorPage.push_back(sustainId);
  }
- // Native-only MIDI option lives beside MIDI Mode in the first accessible page.
- // Its stable ID is appended (s226); no old parameter is reindexed.
+ // New stable s230 selector stays near s226 Pitch Bend Mode. Do not
+ // renumber the JSFX parameters, existing presets, or REAPER automation.
  auto& global=groups[0];
- const auto newParam=std::find(global.begin(),global.end(),226);
+ for(const int n : {226,230}){
+  const auto found=std::find(global.begin(),global.end(),n);
+  if(found!=global.end())global.erase(found);
+ }
  const auto midiParam=std::find(global.begin(),global.end(),3);
- if(newParam!=global.end() && midiParam!=global.end()){
-  global.erase(newParam);
-  global.insert(std::find(global.begin(),global.end(),3)+1,226);
+ if(midiParam!=global.end()){
+  const auto pos=std::find(global.begin(),global.end(),3)+1;
+  global.insert(pos,{226,230});
  }
 }
 int BiscotEditor::currentIndex() const {return groups[(size_t)group][(size_t)selected];}

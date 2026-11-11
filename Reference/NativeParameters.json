@@ -50,5 +50,18 @@
       "On"
     ],
     "description": "Enable MIDI CC64 sustain hold for operator 3 (default Off)"
+  },
+  {
+    "index": 230,
+    "name": "Chord Op1 Controls",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "enum": [
+      "Independent",
+      "Op1 Master"
+    ],
+    "description": "Only in Chord Allocate, Op1 controls the other operators ADSR, portamento, pedal CC64 enable, Level, and PWM. Default independent; waves, pitch, pan and modulation stay independent."
   }
 ]

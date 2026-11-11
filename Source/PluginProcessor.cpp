@@ -54,7 +54,7 @@ void BiscotProcessor::prepareToPlay(double sr,int){
   voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
   voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
   lfos[(size_t)i].seed^=(uint32_t)(i*0x51ed270bu);lfos[(size_t)i].phase=param(131+23*i);}
- filterEnvelope={};pedalDown.fill(false);lastPlaying=false;
+ filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;
 }
 // The JSFX has a separate 16-event held-note stack for each operator, plus
 // separate global filter and chord stacks. The caller has already updated those
@@ -64,8 +64,9 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld){
  const int mode=integer(param(3));
  const bool arpOn=integer(param(76+i))>0;
  const bool opLegato=param((mode==1)?10:10+i)>0.5f;
- const bool retrigger=sidShouldRetrigger(arpOn,wasHeld,opLegato);
- const float portamento=param(46+i);
+ const bool soundingAlready=wasHeld || v.pedalLatched;
+ const bool retrigger=sidShouldRetrigger(arpOn,soundingAlready,opLegato);
+ const float portamento=opSharedParam(46,i);
  // In ARP mode, adding a held key must not retune the oscillator immediately.
  if(!arpOn || !wasHeld){
   if(v.note<0 || portamento<=0)v.noteSmooth=note;
@@ -75,12 +76,15 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld){
  v.vel=limit(v.vel,0.f,1.f);
  v.drift=randomUnit(v.noiseSeed)*param(13+i)*0.50f;
  if(retrigger){
-  v.amp.noteOn(integer(param(4))>=2);
-  v.mod.noteOn(integer(param(4))>=2);
+  // A Trigger note on a previously sustained/held operator must produce
+  // a fresh attack even when Hard Restart is Fast. Legato never resets it.
+  const bool resetAmp=integer(param(4))>=2 || (!arpOn && !opLegato && v.amp.stage!=0);
+  v.amp.noteOn(resetAmp);
+  v.mod.noteOn(resetAmp);
   if(param(4)>=1){v.phase=0;v.oldPhase=0;}
   if(param(4)>=3){v.noiseSeed=0x12345678u ^ (uint32_t)(i*0x9e3779b9u);v.noise=0.f;}
   // JSFX restarts the arp clock only on the first key of a phrase.
-  if(!wasHeld){v.arpStep=0;v.arpPhase=0;v.arpPitch=0;sidSeq[(size_t)i].resetClock();}
+  if(!soundingAlready){v.arpStep=0;v.arpPhase=0;v.arpPitch=0;sidSeq[(size_t)i].resetClock();}
  }
 }
 void BiscotProcessor::triggerFilterAndLfos(int note,bool retrigger){
@@ -114,14 +118,16 @@ void BiscotProcessor::noteOff(int channel,int note){
    // MIDI CC64 is only active when this operator's Sustain Pedal is On.
    // The envelope continues normally while the pedal holds its last note;
    // no oscillator mute or artificial infinite/zero release is introduced.
-   const bool sustainEnabled=param(227+i)>0.5f;
-   if(sustainEnabled && pedalDown[(size_t)(channel-1)]){
+   const bool sustainEnabled=opPedalEnabled(i);
+   if(sustainEnabled && (pedalDown[(size_t)(channel-1)] || sustainedArp.any(i))){
+    // An earlier pedal-held key on another MIDI channel may still be in
+    // this mono operator's sustain pool.
     v.gate=true;v.pedalLatched=true;v.pedalChannel=channel;
    }else{
     v.gate=false;v.pedalLatched=false;
     if(sidSeq[(size_t)i].latch.count>0)
      sidSeq[(size_t)i].releaseRoot=sidSeq[(size_t)i].latchRoot;
-    v.amp.noteOff(param(43+i),sampleRateHz);
+    v.amp.noteOff(opSharedParam(43,i),sampleRateHz);
     v.mod.noteOff(param(73+i),sampleRateHz);
    }
   }
@@ -139,14 +145,16 @@ void BiscotProcessor::releasePedalLatches(){
  for(int i=0;i<3;++i){
   auto& v=voices[(size_t)i];
   if(!v.pedalLatched)continue;
-  const bool enabled=param(227+i)>0.5f;
-  if(enabled && pedalDown[(size_t)(v.pedalChannel-1)])continue;
+  const bool enabled=opPedalEnabled(i);
+  // A pedal on another MIDI channel may still be holding material for
+  // this operator. Releasing one channel must not cut the other channel.
+  if(enabled && (pedalDown[(size_t)(v.pedalChannel-1)] || sustainedArp.any(i)))continue;
   wasHolding=true;v.pedalLatched=false;
   if(heldNotes.voices[(size_t)i].empty()){
    v.gate=false;
    if(sidSeq[(size_t)i].latch.count>0)
     sidSeq[(size_t)i].releaseRoot=sidSeq[(size_t)i].latchRoot;
-   v.amp.noteOff(param(43+i),sampleRateHz);
+   v.amp.noteOff(opSharedParam(43,i),sampleRateHz);
    v.mod.noteOff(param(73+i),sampleRateHz);
   }
  }
@@ -164,7 +172,9 @@ void BiscotProcessor::rebuildArpPools(){
   for(int ch=0;ch<16;++ch){
    if(mode==2 && ch!=i)continue;
    for(int note=0;note<128;++note){
-    const auto sequence=pressed[(size_t)ch][(size_t)note];
+    const auto sequence=std::max(pressed[(size_t)ch][(size_t)note],
+      opPedalEnabled(i) && pedalDown[(size_t)ch]
+       ? sustainedArp.timestamp(i,ch+1,note) : std::uint64_t{0});
     if(sequence==0)continue;
     const int low=integer(param(85+i)),high=integer(param(82+i));
     for(int oct=low;oct<=high && count<(int)pool.size();++oct){
@@ -183,6 +193,10 @@ void BiscotProcessor::rebuildArpPools(){
   }
   for(int n=0;n<count;++n)pool[(size_t)n]=ordered[(size_t)n].second;
   arpPoolCounts[(size_t)i]=count;
+  if(count>0){
+   arpReleaseCounts[(size_t)i]=count;
+   std::copy(pool.begin(),pool.begin()+count,arpReleasePools[(size_t)i].begin());
+  }
  }
 }
 void BiscotProcessor::onMidi(const juce::MidiMessage& m){
@@ -190,11 +204,11 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  if(m.isAllNotesOff()||m.isAllSoundOff()){
   for(auto& row:pressed)row.fill(0);
   for(auto& row:pressedCounts)row.fill(0);
-  heldNotes.clear();pedalDown.fill(false);
+  heldNotes.clear();pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);
   for(auto& seq:sidSeq)seq.clearAll();
   rebuildArpPools();
   for(int i=0;i<3;++i){auto& v=voices[(size_t)i];v.gate=false;v.pedalLatched=false;
-   v.amp.noteOff(param(43+i),sampleRateHz);v.mod.noteOff(param(73+i),sampleRateHz);}
+   v.amp.noteOff(opSharedParam(43,i),sampleRateHz);v.mod.noteOff(param(73+i),sampleRateHz);}
   filterEnvelope.noteOff(param(121),sampleRateHz);return;
  }
  if(m.isPitchWheel()){
@@ -208,8 +222,11 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  }
  if(m.isController()){
   if(m.getControllerNumber()==64){
-   pedalDown[(size_t)(ch-1)]=m.getControllerValue()>=64;
+   const bool down=m.getControllerValue()>=64;
+   pedalDown[(size_t)(ch-1)]=down;
+   if(!down)sustainedArp.clearChannel(ch);
    releasePedalLatches(); // on pedal up; no action while held
+   rebuildArpPools();
   }
   if(m.getControllerNumber()==123)onMidi(juce::MidiMessage::allNotesOff(ch));
   return;
@@ -220,27 +237,37 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
   if(count<0xffffffffu)++count;
   pressed[(size_t)(ch-1)][(size_t)note]=++nextPress;
   const bool chordWasHeld=!heldNotes.chord.empty();
-  const auto event=heldNotes.noteOn(mode,ch,note,param(10)>0.5f);
+  std::array<bool,3> arpPhraseActive{};
+  for(int i=0;i<3;++i)
+   arpPhraseActive[(size_t)i]=sustainedArp.any(i) && opPedalEnabled(i);
+  const bool filterWasPedalLatched=std::any_of(voices.begin(),voices.end(),
+      [](const Voice& v){return v.pedalLatched;});
+  const bool filterLegato=param(10)>0.5f;
+  const auto event=heldNotes.noteOn(mode,ch,note,filterLegato);
   // Chord Allocate feeds every enabled SID Seq with the entire chord,
   // not just the note allocated to that operator (JSFX chord_note_on).
   if(mode==1){
    for(int i=0;i<3;++i)if(integer(param(76+i))==1){
     auto& seq=sidSeq[(size_t)i];
-    if(!chordWasHeld)seq.clearSequence(note);
-    else seq.record(note); // insert AFTER the current clock step
+    if(!chordWasHeld && !arpPhraseActive[(size_t)i]){
+     seq.clearSequence(note);seq.releaseRoot=note;
+    }else seq.record(note); // continue the held CC64 phrase
    }
   }
   // All Operators / MIDI Channels: each operator owns its SID Seq and latch.
   for(int i=0;i<3;++i)if(event.trigger[(size_t)i]){
    auto& seq=sidSeq[(size_t)i];
    seq.snapshot(heldNotes.voices[(size_t)i]);
-   if(!event.wasHeld[(size_t)i])seq.releaseRoot=seq.latchRoot;
+   if(mode!=1 && !event.wasHeld[(size_t)i] && !arpPhraseActive[(size_t)i])
+    seq.releaseRoot=seq.latchRoot;
    if(mode!=1 && integer(param(76+i))==1){
-    if(!event.wasHeld[(size_t)i])seq.clearSequence(note);
+    if(!event.wasHeld[(size_t)i] && !arpPhraseActive[(size_t)i])seq.clearSequence(note);
     else seq.record(note);
    }
   }
-  triggerFilterAndLfos(note,event.filterRetrigger);
+  // Sustain pedal counts as an uninterrupted phrase for filter/LFO Legato.
+  // Trigger mode continues retriggering on each Note On.
+  triggerFilterAndLfos(note,event.filterRetrigger && !(filterLegato && filterWasPedalLatched));
   const float velocity=m.getFloatVelocity();
   for(int i=0;i<3;++i)if(event.trigger[(size_t)i]){
    voices[(size_t)i].vel=velocity;
@@ -252,7 +279,16 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
   const int note=m.getNoteNumber();
   auto& count=pressedCounts[(size_t)(ch-1)][(size_t)note];
   if(count>0)--count;
-  if(count==0)pressed[(size_t)(ch-1)][(size_t)note]=0;
+  if(count==0){
+   const auto order=pressed[(size_t)(ch-1)][(size_t)note];
+   if(order!=0 && pedalDown[(size_t)(ch-1)]){
+    for(int i=0;i<3;++i){
+     if(midiAddressesOperator(mode,i,ch) && opPedalEnabled(i))
+      sustainedArp.hold(i,ch,note,order);
+    }
+   }
+   pressed[(size_t)(ch-1)][(size_t)note]=0;
+  }
   noteOff(ch,note);
   rebuildArpPools();return;
  }
@@ -318,12 +354,13 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
-  amp[(size_t)i]=v.amp.tick(param(34+i),param(37+i),param(40+i),sampleRateHz);
+  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz);
   mod[(size_t)i]=v.mod.tick(param(64+i),param(67+i),param(70+i),sampleRateHz);
   // JSFX retains SID Seq during Release and clears it only after the VCA
   // has completed its release tail (not immediately on Note Off).
   if(wasActive && v.amp.stage==0 && !v.gate){
    sidSeq[(size_t)i].clearAll();
+   arpReleaseCounts[(size_t)i]=0;
    v.note=-1;v.arpPitch=0.f;v.arpPhase=0.;v.arpStep=0;
   }
   v.noteSmooth=v.noteSmooth<0 && v.note>=0?v.note:v.noteSmooth;
@@ -388,15 +425,22 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    const bool chord=integer(param(3))==1;
    // JSFX reads the complete live chord for Chord Allocate. Other modes
    // read the last Note On snapshot even during Release.
-   const int count=chord?heldNotes.chord.count:seq.latch.count;
-   const int root=chord?(heldNotes.chord.count>0?heldNotes.chord.top():60):seq.latchRoot;
+   // CC64 preserves arpeggiator material after physical Note Off. The
+   // memory also keeps clocking throughout the VCA's natural Release.
+   const bool sounding=arpPoolCounts[(size_t)i]>0 || v.amp.stage!=0;
+   const int count=sounding && seq.length>0 ? 1 : 0;
+   const int root=chord && heldNotes.chord.count>0
+      ? heldNotes.chord.top() : seq.releaseRoot;
    const float target=seq.process(count,root,param(79+i),tempoBpm,sampleRateHz);
    const float glide=std::max(0.f,param(88+i));
    const float coefficient=glide>0.f?1.f/(1.f+glide*glide*2000.f):1.f;
    v.arpPitch+=(target-v.arpPitch)*coefficient;
    if(std::abs(target-v.arpPitch)<0.00001f)v.arpPitch=target;
   }else if(arpMode>1 && v.note>=0){
-   const auto& pool=arpPools[(size_t)i];const int count=arpPoolCounts[(size_t)i];
+   const bool live=arpPoolCounts[(size_t)i]>0;
+   const auto& pool=live?arpPools[(size_t)i]:arpReleasePools[(size_t)i];
+   const int count=live?arpPoolCounts[(size_t)i]:
+      (v.amp.stage!=0 ? arpReleaseCounts[(size_t)i] : 0);
    if(count>0){
     v.arpPhase+=tempoBpm/240.*std::max(0.125f,param(79+i))/sampleRateHz;
     if(v.arpPhase>=1.){
@@ -419,7 +463,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  std::array<double,3> frequencies{};
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   if(v.note<0 && v.amp.stage==0 && v.mod.stage==0){frequencies[(size_t)i]=0;continue;}
-  if(v.note>=0){const float port=param(46+i);
+  if(v.note>=0){const float port=opSharedParam(46,i);
    const double smoothing=port<=0?1.:1.-std::exp(-1./(sampleRateHz*port));
    v.noteSmooth+=(v.note-v.noteSmooth)*smoothing;
   }
@@ -446,7 +490,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
                                  frequencies[2]/sampleRateHz};
  std::array<double,3> widths{};
  for(int i=0;i<3;++i)widths[(size_t)i]=limit(
-     0.5f+param(31+i)/128.f+pwmMod[(size_t)i]+mod[(size_t)i]*param(55+i),0.f,1.f);
+     0.5f+opSharedParam(31,i)/128.f+pwmMod[(size_t)i]+mod[(size_t)i]*param(55+i),0.f,1.f);
  std::array<double,3> accumulated{};
  for(int sub=0;sub<oversample;++sub){
   std::array<bool,3> msb{};
@@ -513,7 +557,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }
   // JSFX uses oscillator * envelope as the previous-sample cross-mod source.
   v.oscPrev=(float)wave*amp[(size_t)i];
-  const float level=limit(param(16+i)*(1.f+levelMod[(size_t)i]),0.f,2.f);
+  const float level=limit(opSharedParam(16,i)*(1.f+levelMod[(size_t)i]),0.f,2.f);
   oscOut[(size_t)i]=(float)wave*amp[(size_t)i]*level;
   xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i],-1.f,1.f);
  }
@@ -566,7 +610,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
 void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi){
  juce::ScopedNoDenormals denormals;
  buffer.clear();
- releasePedalLatches(); // also honor changes to Op1/Op2/Op3 Sustain Pedal switches
+ releasePedalLatches(); // also honor changes to the Sustain Pedal switches
+ for(int i=0;i<3;++i)if(!opPedalEnabled(i))sustainedArp.clearOperator(i);
  rebuildArpPools(); // refresh octave/routing changes once per block, never per sample
  if(auto* ph=getPlayHead())if(auto position=ph->getPosition()){
   if(auto bpm=position->getBpm())tempoBpm=juce::jlimit(1.,999.,*bpm);

@@ -7,6 +7,7 @@
 #include "SidMidiNoteState.h"
 #include "SidSeqMemory.h"
 #include "SidAmpEnvelope.h"
+#include "SidArpSustain.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -61,6 +62,7 @@ private:
  std::array<Voice,3> voices{};
  SidMidiNoteState heldNotes;
  std::array<SidSeqMemory,3> sidSeq{};
+ SidArpSustain sustainedArp;
  int filterKeyNote=60;
  std::array<Lfo,3> lfos{};
  SidAmpEnvelope filterEnvelope;
@@ -69,12 +71,20 @@ private:
  SidWaveCore waveCore;
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,230> parameters{};
+ std::array<std::atomic<float>*,231> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;
  std::array<std::array<int,640>,3> arpPools{};
  std::array<int,3> arpPoolCounts{};
+ // Last live pool continues through the natural envelope release tail.
+ std::array<std::array<int,640>,3> arpReleasePools{};
+ std::array<int,3> arpReleaseCounts{};
+ // Chord Op1 Controls shares only ADSR, Portamento, Sustain Pedal,
+ // Level and PWM. Other sources (waves, pitch, pan, LFO, etc.) stay independent.
+ bool chordMaster() const noexcept {return chordMasterEnabled((int)param(3),param(230)>0.5f);}
+ float opSharedParam(int base,int op) const noexcept {return param(base+(chordMaster()?0:op));}
+ bool opPedalEnabled(int op) const noexcept {return opSharedParam(227,op)>0.5f;}
  void rebuildArpPools();
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;
  void noteOn(int,int,int,bool);
