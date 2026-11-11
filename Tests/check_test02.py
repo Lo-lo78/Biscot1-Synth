@@ -12,7 +12,7 @@ assert len(choices)>20
 assert 'std::make_unique<juce::AudioParameterChoice>' in cpp
 assert 'std::make_unique<juce::AudioParameterInt>' in cpp
 assert 'std::make_unique<juce::AudioParameterFloat>' in cpp
-assert 'grid.setSelectedId(i+1,juce::sendNotificationSync)' in ed
+assert 'grid.setSelectedId(i+1,juce::dontSendNotification)' in ed
 assert 'return owner.handleKey(k,Control::grid)' in (root/'Source/PluginEditor.h').read_text()
 assert 'return owner.handleKey(k,Control::value)' in (root/'Source/PluginEditor.h').read_text()
 for key in ['juce::KeyPress::rightKey','juce::KeyPress::leftKey','juce::KeyPress::homeKey',

@@ -16,51 +16,55 @@ constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
 }
+// Native focus events already communicate roles and labels to NVDA.
+// Do not generate a second UIA grabFocus, and do not mutate title/description
+// on focus: that caused duplicate "parameter ... Grid ..." announcements.
 void BiscotEditor::ParameterGrid::focusGained(FocusChangeType why) {
- setTitle(owner.groupNames[(size_t)owner.group]+". Grid");setDescription("Alt+L");
  juce::ComboBox::focusGained(why);
- juce::Timer::callAfterDelay(25,[safe=juce::Component::SafePointer<ParameterGrid>(this)]{
-  if(safe!=nullptr && safe->hasKeyboardFocus(true)) if(auto* a=safe->getAccessibilityHandler())a->grabFocus();
- });
- juce::Timer::callAfterDelay(240,[safe=juce::Component::SafePointer<ParameterGrid>(this)]{
-  if(safe!=nullptr && safe->hasKeyboardFocus(true)){safe->setTitle({});safe->setDescription({});}
- });
 }
 void BiscotEditor::ParameterValue::focusGained(FocusChangeType why) {
- setName("Value. "+juce::String(owner.currentDef().name));setTitle(getName());setDescription("Tab");
  juce::Slider::focusGained(why);
- juce::Timer::callAfterDelay(200,[safe=juce::Component::SafePointer<ParameterValue>(this)]{
-  if(safe!=nullptr && safe->hasKeyboardFocus(true)){safe->setName(safe->owner.currentDef().name);safe->setTitle(safe->getName());safe->setDescription({});}
- });
 }
 void BiscotEditor::NumericEdit::focusGained(FocusChangeType why) {
- setTitle("Edit. "+juce::String(owner.currentDef().name));setDescription("Alt+E");
- juce::TextEditor::focusGained(why);selectAll();
- juce::Timer::callAfterDelay(25,[safe=juce::Component::SafePointer<NumericEdit>(this)]{
-  if(safe!=nullptr && safe->hasKeyboardFocus(true)) if(auto* a=safe->getAccessibilityHandler())a->grabFocus();
- });
+ juce::TextEditor::focusGained(why);
+ selectAll();
 }
-BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),grid(*this),value(*this),edit(*this),proc(p){
+BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),grid(*this),value(*this),edit(*this),proc(p),presetManager(p){
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.4",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.5",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
- instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+arrows: value / step | type: search | Alt+E: edit | Alt+L: grid",juce::dontSendNotification);
- for(auto* l : {&title,&sectionLabel,&instructions}){l->setColour(juce::Label::textColourId,foreground);addAndMakeVisible(*l);}
- grid.setName("Parameters");grid.setWantsKeyboardFocus(true);grid.setExplicitFocusOrder(1);
+ instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
+ for(auto* l : {&title,&sectionLabel,&instructions}){
+  l->setColour(juce::Label::textColourId,foreground);
+  l->setAccessible(false); // purely visual: no long startup announcement
+  addAndMakeVisible(*l);
+ }
+ grid.setName("Grid");grid.setTitle({});grid.setDescription({});grid.setWantsKeyboardFocus(true);grid.setExplicitFocusOrder(1);
  grid.setEditableText(false);grid.setJustificationType(juce::Justification::centredLeft);
  grid.onChange=[this]{selectedFromGrid();};addAndMakeVisible(grid);
  value.setSliderStyle(juce::Slider::LinearHorizontal);
  value.setTextBoxStyle(juce::Slider::TextBoxRight,false,130,25);
- value.setWantsKeyboardFocus(true);value.setExplicitFocusOrder(2);addAndMakeVisible(value);
- edit.setMultiLine(false);edit.setWantsKeyboardFocus(true);edit.setExplicitFocusOrder(3);addAndMakeVisible(edit);
+ value.setWantsKeyboardFocus(true);value.setTitle({});value.setDescription({});value.setExplicitFocusOrder(2);addAndMakeVisible(value);
+ edit.setMultiLine(false);edit.setName("Edit");edit.setTitle({});edit.setDescription({});edit.setWantsKeyboardFocus(true);edit.setExplicitFocusOrder(3);addAndMakeVisible(edit);
+ presetBrowser=std::make_unique<PresetBrowser>(presetManager);
+ addAndMakeVisible(*presetBrowser);
+ presetBrowser->setVisible(false);
+ presetBrowser->onClose=[this]{focusBackFromPreset();};
+ presetBrowser->onPresetLoaded=[this]{refreshLabels(true);};
  setSize(940,610);
+ restoreLocation();
  populateGroup();
  startTimerHz(8);
- initialFocus();
+ // No eager focus handoff: REAPER announces its own FX window once.
+ // As soon as the editor receives keyboard focus, initialFocus() selects Grid.
 }
-BiscotEditor::~BiscotEditor(){stopTimer();attachment.reset();grid.onChange=nullptr;}
+BiscotEditor::~BiscotEditor(){
+ stopTimer();
+ if(presetBrowser){presetBrowser->onClose={};presetBrowser->onPresetLoaded={};presetBrowser->close();presetBrowser.reset();}
+ attachment.reset();grid.onChange=nullptr;
+}
 void BiscotEditor::createGroups(){
  for(const auto& d:catalog){
   int i=d.index,g=0;
@@ -115,18 +119,19 @@ void BiscotEditor::selectedFromGrid(){
  const int n=grid.getSelectedId()-1;
  if(!juce::isPositiveAndBelow(n,(int)groups[(size_t)group].size()))return;
  selected=n;lastSelected[(size_t)group]=n;
+ rememberLocation();
  attachment.reset();
  const auto& d=currentDef();
  value.setRange(d.low,d.high,d.step>0?d.step:0.001);
  value.setValue(proc.param(d.index),juce::dontSendNotification);
- value.setName(d.name);value.setTitle(d.name);
- edit.setTitle("Edit. "+juce::String(d.name));
+ value.setName("Value. "+juce::String(d.name));
+ edit.setName("Edit. "+juce::String(d.name));
  edit.setText(formatValue(d.index),juce::dontSendNotification);
  attachment=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(proc.state,BiscotProcessor::id(d.index),value);
  repaint(drawingArea);
 }
 void BiscotEditor::refreshLabels(bool force){
- if(updating)return;
+ if(updating || (presetBrowser && presetBrowser->active()))return;
  bool changed=false;
  for(int i=0;i<(int)groups[(size_t)group].size();++i){
   const auto label=labelFor(i);
@@ -137,12 +142,12 @@ void BiscotEditor::refreshLabels(bool force){
  if(changed){grid.setSelectedId(selected+1,juce::dontSendNotification);repaint(drawingArea);}
  if(!edit.hasKeyboardFocus(true))edit.setText(formatValue(currentIndex()),juce::dontSendNotification);
 }
-void BiscotEditor::timerCallback(){refreshLabels();}
+void BiscotEditor::timerCallback(){if(!presetBrowser || !presetBrowser->active())refreshLabels();}
 void BiscotEditor::select(int i){
  i=juce::jlimit(0,(int)groups[(size_t)group].size()-1,i);
  if(i==selected)return;
- grid.setTitle({});grid.setDescription({});
- grid.setSelectedId(i+1,juce::sendNotificationSync);
+ grid.setSelectedId(i+1,juce::dontSendNotification);
+ selectedFromGrid(); // avoid ComboBox's second asynchronous selection notification
 }
 void BiscotEditor::move(int rows,int cols){
  const int total=(int)groups[(size_t)group].size();
@@ -156,6 +161,7 @@ void BiscotEditor::changeGroup(int dir){
  const int next=group+dir;
  if(next<0||next>=12)return;
  group=next;parameterSearch.reset();populateGroup();
+ // One concise page announcement: no redundant value/title changes.
  announce(grid,groupNames[(size_t)group]+". "+labelFor(selected));
 }
 void BiscotEditor::setValue(double x){
@@ -165,7 +171,7 @@ void BiscotEditor::setValue(double x){
   p->beginChangeGesture();p->setValueNotifyingHost(p->convertTo0to1(val));p->endChangeGesture();
  }
  value.setValue(proc.param(d.index),juce::dontSendNotification);
- edit.setText(formatValue(d.index),juce::dontSendNotification);refreshLabels(true);
+ edit.setText(formatValue(d.index),juce::dontSendNotification);refreshLabels(false);
  announce(grid,labelFor(selected));
 }
 void BiscotEditor::adjustValue(int direction,double multiplier){
@@ -209,9 +215,7 @@ void BiscotEditor::focus(Control c,bool deferred){
  auto* destination=c==Control::grid?static_cast<juce::Component*>(&grid):c==Control::value?static_cast<juce::Component*>(&value):static_cast<juce::Component*>(&edit);
  auto action=[safe=juce::Component::SafePointer<BiscotEditor>(this),destination]{
   if(safe==nullptr)return;
-  juce::AccessibilityHandler::clearCurrentlyFocusedHandler();
   destination->grabKeyboardFocus();
-  if(auto* handler=destination->getAccessibilityHandler())handler->grabFocus();
  };
  if(deferred)juce::MessageManager::callAsync(action);else action();
 }
@@ -227,10 +231,12 @@ void BiscotEditor::initialFocus(){
 }
 void BiscotEditor::focusGained(FocusChangeType){initialFocus();}
 bool BiscotEditor::keyPressed(const juce::KeyPress& key){
+ if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(key);
  const Control c=edit.hasKeyboardFocus(true)?Control::edit:value.hasKeyboardFocus(true)?Control::value:Control::grid;
  return handleKey(key,c);
 }
 bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
+ if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(k);
  const auto m=k.getModifiers();const int code=k.getKeyCode();
  // Reuse the proven LB-303 incremental search: leading words, Shift-backward,
  // Shift+digits, repeated-key cycling, 1000ms prefix window, no value matching.
@@ -242,12 +248,14 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
   const int oldGroup=group;
   changeGroup(code==juce::KeyPress::rightKey?1:-1);
   if(c==Control::edit && group!=oldGroup)focus(Control::grid,true);
-  else if(c==Control::value && group!=oldGroup)announce(value,labelFor(selected));
+  else if(c==Control::value && group!=oldGroup){}
   return true; // never let REAPER consume page-navigation arrows
  }
  if(m.isCtrlDown() && code==juce::KeyPress::tabKey){changeGroup(m.isShiftDown()?-1:1);return true;}
  if(m.isAltDown() && !m.isCtrlDown()){
-  if(letter('l')){focus(Control::grid,c==Control::edit);return true;}
+  if(letter('b')){openPresetBrowser(false);return true;}
+  if(letter('s')){openPresetBrowser(true);return true;}
+  if(letter('l')){if(c!=Control::grid)focus(Control::grid,c==Control::edit);return true;}
   if(letter('e')){enterEdit();return true;}
   if(letter('q')){announce(grid,"Tracker Pattern and Song will arrive in a later version. Synth stays active.");return true;}
   if(code==juce::KeyPress::upKey){adjustValue(1,m.isShiftDown()?10:1);return true;}
@@ -286,8 +294,10 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
        return std::wstring(juce::String(catalog[(size_t)(entries[(size_t)n]-2)].name).trimStart().toWideCharPointer());
       });
    if(found>=0){
-    if(found!=selected)select(found);
-    announce(c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(grid),labelFor(selected));
+    if(found!=selected){
+      select(found); // ComboBox selection announces the label to NVDA
+      if(c==Control::value)announce(value,labelFor(selected));
+    } else announce(c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(grid),labelFor(selected));
    }
    return true; // prevent native ComboBox one-letter cycling
   }
@@ -315,8 +325,50 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
  // Never return unhandled arrow keys to the host: REAPER could move focus out of VST.
  return false;
 }
+// The selection is part of the host-restored state, not an extra audio parameter.
+void BiscotEditor::rememberLocation(){
+ const int index=currentIndex();
+ proc.state.state.setProperty(juce::Identifier("editorLastParameter"),index,nullptr);
+}
+void BiscotEditor::restoreLocation(){
+ const int previous=(int)proc.state.state.getProperty(juce::Identifier("editorLastParameter"),3);
+ for(int g=0;g<(int)groups.size();++g){
+  const auto& entries=groups[(size_t)g];
+  const auto found=std::find(entries.begin(),entries.end(),previous);
+  if(found!=entries.end()){
+   group=g;
+   lastSelected[(size_t)g]=(int)std::distance(entries.begin(),found);
+   selected=lastSelected[(size_t)g];
+   return;
+  }
+ }
+}
+void BiscotEditor::openPresetBrowser(bool save){
+ if(!presetBrowser)return;
+ if(presetBrowser->active()){presetBrowser->close();return;}
+ presetReturnControl=edit.hasKeyboardFocus(true)?Control::edit:(value.hasKeyboardFocus(true)?Control::value:Control::grid);
+ presetReturnGroup=group;presetReturnSelection=selected;
+ if(save)presetBrowser->saveAs();else presetBrowser->browse();
+}
+void BiscotEditor::focusBackFromPreset(){
+ if(presetBrowser && presetBrowser->active())return;
+ if(group!=presetReturnGroup){
+  group=presetReturnGroup;lastSelected[(size_t)group]=presetReturnSelection;populateGroup();
+ }else if(selected!=presetReturnSelection)select(presetReturnSelection);
+ refreshLabels(true);rememberLocation();
+ // Returning focus on the same UI message can leave ListBox as key recipient.
+ focus(presetReturnControl,true);
+ if(presetReturnControl==Control::grid){
+  juce::Timer::callAfterDelay(70,[safe=juce::Component::SafePointer<BiscotEditor>(this)]{
+   if(safe==nullptr || (safe->presetBrowser && safe->presetBrowser->active()))return;
+   if(safe->value.hasKeyboardFocus(true) || safe->edit.hasKeyboardFocus(true))return;
+   safe->grid.hidePopup();
+   safe->grid.grabKeyboardFocus();
+  });
+ }
+}
 void BiscotEditor::announce(juce::Component& source,const juce::String& text)const{
- source.setDescription(text);
+ // Do not setDescription(text): NVDA reads it AGAIN during later Tab / Alt+L.
  #if JUCE_WINDOWS
  if(!UiaClientsAreListening())return;
  if(auto* handler=source.getAccessibilityHandler()){
@@ -345,6 +397,7 @@ void BiscotEditor::resized(){
  area.removeFromBottom(14);
  grid.setBounds(area.removeFromTop(32));
  area.removeFromTop(10);drawingArea=area;
+ if(presetBrowser)presetBrowser->setBounds(getLocalBounds().reduced(12));
 }
 void BiscotEditor::paint(juce::Graphics& g){
  g.fillAll(background);

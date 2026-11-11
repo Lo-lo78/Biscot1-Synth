@@ -1,3 +1,27 @@
+# Biscot1 Synth VST3 – TEST0.2.5 (accessible editor and presets)
+
+Based on **TEST0.2.4**, retaining the exact same synthesis code from the sound-matched TEST0.2.3. **No oscillator, filter, MIDI or output-stage DSP changes.**
+
+## Accessibility changes
+
+- **Silent initial editor construction**: static title, section and instructions are visual-only (`setAccessible(false)`); removed duplicate accessibility focus-grabs and mutating titles/descriptions. REAPER may still announce its own FX window, which a plugin cannot suppress.
+- Grid/Value/Edit now have stable names without extra `Tab` or `Alt+L` descriptions. No redundant UIA descriptions are injected during normal navigation.
+- Typing letters/digits searches the **current section's parameter names** incrementally (first word or another word); repeated letter cycles; Shift reverses search. Alt+Shift+Left/Right changes section.
+- The **last selected parameter and section** are stored in the plugin's host snapshot (`editorLastParameter`) and restored when the editor is reopened and when the REAPER project is reloaded.
+- Alt+B opens a keyboard-driven preset browser; Alt+S saves the entire current patch as a `.biscot` file in `Documents/Biscot1-Synth`.
+- Browser: Up/Down preview; Enter confirms load; Escape cancels and restores the original sound. Backspace/Left parent folder, Ctrl+N new folder, F2 rename, Delete confirmation. Saves use an explicit name and overwrite confirmation. Focus returns to Grid, Value, or Edit.
+- Browser is **integrated into the same plug-in window**, reusing the LB-303 accessibility/browse workflow, without Lua, gmem, or a separate process. `Alt+Q` still reserves the future tracker.
+
+**Testing:** Static Python tests run in GitHub Actions. Full Windows JUCE build and REAPER/NVDA behavior still require user verification. Preset file format deliberately differs from LB-303: `.biscot`, not `.lb`.
+
+## Git command
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.5 add accessible preset browser and restore editor focus" && git push
+```
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.4 (Pitch Bend Mode: Multi / Omni)
 
 This is a focused MIDI routing update on top of the **sound-matched TEST0.2.3**.

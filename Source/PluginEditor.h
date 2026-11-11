@@ -3,6 +3,8 @@
 #include "PluginProcessor.h"
 #include "IncrementalParameterSearch.h"
 #include "ParameterSearchKey.h"
+#include "PresetManager.h"
+#include "PresetBrowser.h"
 #include <array>
 #include <vector>
 #include <memory>
@@ -37,6 +39,10 @@ private:
    BiscotEditor& owner;
  } edit;
  BiscotProcessor& proc;
+ PresetManager presetManager;
+ std::unique_ptr<PresetBrowser> presetBrowser;
+ Control presetReturnControl=Control::grid;
+ int presetReturnGroup=0, presetReturnSelection=0;
  juce::Label title, sectionLabel, instructions;
  std::array<juce::String,12> groupNames {{"Global / MIDI", "Operator 1", "Operator 2", "Operator 3", "Filter", "LFO 1", "LFO 2", "LFO 3", "Arpeggiators", "Ring / Sync", "OSC / ENV Cross", "LFO Cross / Rate"}};
  std::array<std::vector<int>,12> groups;
@@ -70,6 +76,10 @@ private:
  void cancelEdit();
  void focus(Control,bool deferred=false);
  void initialFocus();
+ void rememberLocation();
+ void restoreLocation();
+ void openPresetBrowser(bool save);
+ void focusBackFromPreset();
  bool handleKey(const juce::KeyPress&,Control);
  void announce(juce::Component&, const juce::String&) const;
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BiscotEditor)
