@@ -8,5 +8,5 @@ assert 'seq.releaseRoot=' not in release and 'sidSeq[(size_t)i].releaseRoot=' no
 assert 'std::copy_n(arpPools[(size_t)i].begin(),count,arpReleasePools[(size_t)i].begin())' in p
 assert 'void latchCurrentChordRootForRelease(int lastLiveRoot)' in s
 assert 'v.amp.noteOff(opSharedParam(43,i),sampleRateHz)' in release
-assert 'TEST0.2.15' in (base/'CMakeLists.txt').read_text()
+assert 'TEST0.2.16' in (base/'CMakeLists.txt').read_text()
 print('Pedal release preserves arp root and note pool; VCA follows manual release.')

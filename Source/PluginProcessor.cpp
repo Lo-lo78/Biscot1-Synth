@@ -54,7 +54,7 @@ void BiscotProcessor::prepareToPlay(double sr,int){
   voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
   voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
   lfos[(size_t)i].reset(i);}
- filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;idleSleep.reset();
+ filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;idleSleep.reset();arpPoolCache.invalidate();
 }
 // The JSFX has a separate 16-event held-note stack for each operator, plus
 // separate global filter and chord stacks. The caller has already updated those
@@ -175,26 +175,48 @@ void BiscotProcessor::releasePedalLatches(){
   if(!anyLatched)filterEnvelope.noteOff(param(121),sampleRateHz);
  }
 }
-void BiscotProcessor::rebuildArpPools(){
- const int mode=integer(param(3));
+SidArpPoolSettings BiscotProcessor::currentArpPoolSettings() const noexcept {
+ SidArpPoolSettings settings;
+ settings.midiMode=integer(param(3));
  for(int i=0;i<3;++i){
+  settings.arpMode[(size_t)i]=integer(param(76+i));
+  settings.octaveUp[(size_t)i]=integer(param(82+i));
+  settings.octaveDown[(size_t)i]=integer(param(85+i));
+  settings.pedalEnabled[(size_t)i]=opPedalEnabled(i);
+ }
+ return settings;
+}
+void BiscotProcessor::refreshArpPoolsIfNeeded(){
+ // APVTS automation of MIDI mode, octaves, arp mode and pedal enable must
+ // still take effect at the next block, without rebuilding on every block.
+ const auto settings=currentArpPoolSettings();
+ if(arpPoolCache.needsRefresh(settings))rebuildArpPools();
+}
+void BiscotProcessor::rebuildArpPools(){
+ const auto settings=currentArpPoolSettings();
+ const int mode=settings.midiMode;
+ for(int i=0;i<3;++i){
+  // SID Seq (mode 1) has its own 128-step memory. With Arp Off (mode 0)
+  // this pool is not read either. Preserve any previously latched release
+  // pool; an automated mode change will cause a fresh rebuild next block.
+  if(settings.arpMode[(size_t)i]<=1){arpPoolCounts[(size_t)i]=0;continue;}
   auto& pool=arpPools[(size_t)i];int count=0;
   std::array<std::pair<std::uint64_t,int>,640> ordered{};
   for(int ch=0;ch<16;++ch){
    if(mode==2 && ch!=i)continue;
    for(int note=0;note<128;++note){
     const auto sequence=std::max(pressed[(size_t)ch][(size_t)note],
-      opPedalEnabled(i) && pedalDown[(size_t)ch]
+      settings.pedalEnabled[(size_t)i] && pedalDown[(size_t)ch]
        ? sustainedArp.timestamp(i,ch+1,note) : std::uint64_t{0});
     if(sequence==0)continue;
-    const int low=integer(param(85+i)),high=integer(param(82+i));
+    const int low=settings.octaveDown[(size_t)i],high=settings.octaveUp[(size_t)i];
     for(int oct=low;oct<=high && count<(int)pool.size();++oct){
      const int n=note+oct*12;
      if(n>=0 && n<=127)ordered[(size_t)count++]={sequence,n};
     }
    }
   }
-  const int arpMode=integer(param(76+i));
+  const int arpMode=settings.arpMode[(size_t)i];
   if(arpMode==5 || arpMode==1){
    std::sort(ordered.begin(),ordered.begin()+count,[](const auto& a,const auto& b){
     return a.first==b.first?a.second<b.second:a.first<b.first;
@@ -209,6 +231,7 @@ void BiscotProcessor::rebuildArpPools(){
    std::copy(pool.begin(),pool.begin()+count,arpReleasePools[(size_t)i].begin());
   }
  }
+ arpPoolCache.didRefresh(settings);
 }
 void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  const int ch=m.getChannel(), mode=integer(param(3));
@@ -639,8 +662,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
 void BiscotProcessor::advanceIdleLfos(int samples) noexcept {
  for(int i=0;i<3;++i){
   const int b=122+i*23;
-  if(lfoUsedCached[(size_t)i])
-   SidIdleSleep::advanceFreeClock(lfos[(size_t)i],samples,tempoBpm,param(b+1),
+  SidIdleSleep::advanceFreeClock(lfos[(size_t)i],samples,tempoBpm,param(b+1),
        sampleRateHz,param(b)<0.5f,param(b+7)>0.5f);
  }
 }
@@ -665,10 +687,16 @@ void BiscotProcessor::enterColdIdle() noexcept {
 void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi){
  juce::ScopedNoDenormals denormals;
  buffer.clear();
- lfoUsedCached=determineUsedLfos([this](int index){return param(index);});
- releasePedalLatches(); // also honor changes to the Sustain Pedal switches
- for(int i=0;i<3;++i)if(!opPedalEnabled(i))sustainedArp.clearOperator(i);
- rebuildArpPools(); // refresh octave/routing changes once per block, never per sample
+ // The JSFX returns immediately for a cold idle block. In particular, the
+ // 16-channel arp list must not be rebuilt 3 times per block in silence.
+ // MIDI-bearing blocks still go through the original sample-offset loop.
+ const bool coldIdleNoMidi=idleSleep.asleep && midi.isEmpty();
+ if(!coldIdleNoMidi){
+  lfoUsedCached=determineUsedLfos([this](int index){return param(index);});
+  releasePedalLatches(); // also honor changes to the Sustain Pedal switches
+  for(int i=0;i<3;++i)if(!opPedalEnabled(i))sustainedArp.clearOperator(i);
+  refreshArpPoolsIfNeeded();
+ }
  if(auto* ph=getPlayHead())if(auto position=ph->getPosition()){
   if(auto bpm=position->getBpm())tempoBpm=juce::jlimit(1.,999.,*bpm);
   // JUCE 8 getIsPlaying() returns bool, not std::optional<bool>.
@@ -678,6 +706,12 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    for(int i=0;i<3;++i)if(param(122+i*23)<0.5f){lfos[(size_t)i].phase=param(131+i*23);lfos[(size_t)i].age=0;}
   }
   lastPlaying=running;
+ }
+ if(coldIdleNoMidi){
+  // Outputs are already zero, no audio-view creation, MIDI iterator, oscillator,
+  // filter, modulation, pool preparation or sample loop. Preserve Free clocks.
+  advanceIdleLfos(buffer.getNumSamples());
+  return;
  }
  // Resolve bus views once per block: never allocate/copy bus metadata in @sample.
  auto mix=getBusBuffer(buffer,false,0);

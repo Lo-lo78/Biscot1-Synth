@@ -1,3 +1,18 @@
+# Biscot1 Synth VST3 — TEST0.2.16
+
+**TEST0.2.16 CPU idle pass**: after the last audible release, silent blocks
+skip the full 16-channel arpeggiator scans, LFO usage analysis, audio bus view
+construction, and per-sample DSP. The host transport is still queried so that
+Free LFO phase and BPM restart semantics remain deterministic. During sounding,
+classical arpeggio pools are rebuilt at MIDI note/CC64 events (sample accurate),
+and only when relevant automated parameters change between blocks. All DSP
+formulas for active sound are unchanged.
+
+This is an optimization candidate, **not** a guaranteed REAPER CPU reading:
+REAPER's reported `c` includes host/plugin overhead and changes with hardware,
+buffer size and enabled output buses. Evaluate unloaded and after a full
+Release with equal host and buffer settings. See RELEASE_NOTES_TEST0.2.16.md.
+
 # Biscot1 Synth VST3 — TEST0.2.15
 
 The JSFX v2.38-based native VST3 with accessible Grid/Value/Edit, MIDI and

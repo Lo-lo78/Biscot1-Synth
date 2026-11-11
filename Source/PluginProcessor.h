@@ -10,6 +10,7 @@
 #include "SidLfoCore.h"
 #include "SidIdleSleep.h"
 #include "SidLfoUsage.h"
+#include "SidArpPoolCache.h"
 #include "SidFilterLfoTrigger.h"
 #include "SidArpSustain.h"
 #include "SidQuantizedArp.h"
@@ -80,6 +81,7 @@ private:
  std::uint64_t nextPress=0;
  std::array<std::array<int,640>,3> arpPools{};
  std::array<int,3> arpPoolCounts{};
+ SidArpPoolCache arpPoolCache{};
  // Last live pool continues through the natural envelope release tail.
  std::array<std::array<int,640>,3> arpReleasePools{};
  std::array<int,3> arpReleaseCounts{};
@@ -89,6 +91,8 @@ private:
  float opSharedParam(int base,int op) const noexcept {return param(base+(chordMaster()?0:op));}
  bool opPedalEnabled(int op) const noexcept {return opSharedParam(227,op)>0.5f;}
  void rebuildArpPools();
+ void refreshArpPoolsIfNeeded();
+ SidArpPoolSettings currentArpPoolSettings() const noexcept;
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;
  void noteOn(int,int,int,bool,bool);
  void noteOff(int,int);
