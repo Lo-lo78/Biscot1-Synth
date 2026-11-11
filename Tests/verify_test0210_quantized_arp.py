@@ -17,4 +17,4 @@ assert 'sidArpStepRetriggers(' not in p
 assert 'noteOn(i,note,ch,event.wasHeld[(size_t)i],arpPhraseActive[(size_t)i]);' in p
 assert 'SidQuantizedArpTest.exe' in w
 assert 'SidQuantizedArpTest.cpp' in (root/'CMakeLists.txt').read_text()
-print('TEST0.2.11 ARP transport-only Trigger, Legato and natural Release: OK')
+print('TEST0.2.11 ARP transport-only Trigger, Legato and active Release: OK')

@@ -1,3 +1,17 @@
+# Biscot1 Synth VST3 — TEST0.2.12 (ARP Release restoration)
+
+**Fix after TEST0.2.11:** In the original JSFX, the arpeggiator continues changing pitch throughout the natural VCA Release. The 0.2.11 test mistakenly required `gate=true` to advance an arp, freezing the pitch after the final key/pedal release. This regression is corrected in 0.2.12 for SID Seq and classical arps.
+
+- **No pedal:** final Note Off triggers the ADSR Release but the arp keeps advancing on its BPM clock using its last latched notes.
+- **With CC64:** pedal sustains the current phrase; after CC64-up the arp keeps stepping while the ADSR releases.
+- **At ADSR idle:** clear the release latch/sequence and stop the clock. There is no infinite hanging note.
+- **Trigger / Legato:** Trigger restarts the sequence on its next time step, Legato keeps running; no per-step ADSR retrigger.
+- No changes to the SID oscillator/filter/output DSP, preset interface, parameter IDs, or piano key handling.
+
+Git: `git add . && git commit -m "Biscot1 VST3 TEST0.2.12 restore arp during ADSR Release" && git push`
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.11 (ARP clock / Trigger / Legato / note release)
 
 ## TEST0.2.11 — ARP clock, Trigger, Legato, Note Off

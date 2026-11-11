@@ -454,9 +454,9 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    v.quantizedArp.reset(); // SID Seq has its own independent clock and memory
    auto& seq=sidSeq[(size_t)i];
    const bool chord=integer(param(3))==1;
-   // Advance only while a physical key or an enabled CC64 latch holds
-   // the operator. When the last key is released without CC64, freeze the
-   // current pitch; the VCA's own Release fades normally and is never cut.
+   // JSFX parity: the SID Seq keeps changing frequency through the VCA
+   // Release. The last recorded sequence/root remain latched even after
+   // final Note Off or CC64-up; the clock sleeps only after ADSR idle.
    if(sidArpClockActive(v.gate,v.amp.stage) && seq.length>0){
     const int root=chord && heldNotes.chord.count>0
        ? heldNotes.chord.top() : seq.releaseRoot;
@@ -481,7 +481,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    }
   }else if(arpMode<=0){
    v.quantizedArp.reset();v.arpPitch=0;
-  } // During Release, freeze the last arp frequency. No further steps/ADSR retriggers.
+  } // Through Release, keep the clocked frequency arp; never retrigger the ADSR.
 
  }
  std::array<double,3> frequencies{};

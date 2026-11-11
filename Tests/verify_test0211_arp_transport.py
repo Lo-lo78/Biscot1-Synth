@@ -14,6 +14,6 @@ assert 'const bool routed=(mode==1) || event.trigger[(size_t)i]' in p
 assert 'const bool triggerMode=opSharedParam(10,i)<0.5f' in p
 assert 'if(restartPending){step=0;restartPending=false;}' in q
 assert 'if(restartPending){step=0;restartPending=false;}' in s
-assert 'return gate && envelopeStage!=0;' in a
+assert 'return envelopeStage!=0;' in a
 assert 'SidArpTransport.h' in (r/'CMakeLists.txt').read_text()
-print('TEST0.2.11: no step envelope retrigger; musical Trigger/Legato; gated arp transport OK')
+print('TEST0.2.11: no step envelope retrigger; musical Trigger/Legato; release-aware arp transport OK')

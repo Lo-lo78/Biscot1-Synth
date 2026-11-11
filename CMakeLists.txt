@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.11 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.12 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.11"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.12"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -58,3 +58,8 @@ target_compile_features(SidArpSustainTest PRIVATE cxx_std_20)
 # Clock-quantized classical ARP, musical Trigger / Legato and Release regression.
 add_executable(SidQuantizedArpTest Tests/SidQuantizedArpTest.cpp)
 target_compile_features(SidQuantizedArpTest PRIVATE cxx_std_20)
+
+# Standalone natural-Release regression: classical arp and SID Seq must keep
+# ticking after final Note Off and CC64-up, then stop at ADSR idle.
+add_executable(SidArpReleaseTest Tests/SidArpReleaseTest.cpp)
+target_compile_features(SidArpReleaseTest PRIVATE cxx_std_20)

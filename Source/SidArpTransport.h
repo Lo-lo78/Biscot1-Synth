@@ -6,10 +6,13 @@ namespace biscot {
 inline bool sidArpRestartRequested(bool triggerMode,bool wasRunning,bool addressesOperator) noexcept {
  return triggerMode && wasRunning && addressesOperator;
 }
-// When no key and no CC64 latch is holding the operator, do not run its arp
-// during the natural release tail. Its current pitch remains frozen while the
-// ADSR fades, and the musical transport stops. No hard mute is performed.
-inline bool sidArpClockActive(bool gate,int envelopeStage) noexcept {
- return gate && envelopeStage!=0;
+// The original JSFX keeps the arpeggio frequency sequence moving THROUGH
+// the natural amplitude Release, even when neither a key nor CC64 is down.
+// The latch stores the last complete note material and the oscillator still
+// follows the sequencer, only with the ADSR amplitude decaying naturally.
+// Clock stops ONLY when the amp envelope reaches idle. A pedal latch keeps
+// the envelope sustained; on CC64-up the same clock continues through Release.
+inline bool sidArpClockActive(bool /*gate*/,int envelopeStage) noexcept {
+ return envelopeStage!=0;
 }
 } // namespace biscot
