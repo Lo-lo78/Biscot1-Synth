@@ -1,3 +1,15 @@
+# Biscot1 Synth VST3 — TEST0.2.17
+
+**NVDA editor-entry focus correction only.** The main `AudioProcessorEditor`
+now uses the same ignored accessibility root as the tested LB-303 reference.
+JUCE still uses that root as a keyboard focus container and transfers focus
+only after REAPER enters the plugin; NVDA should then encounter the native
+Grid ComboBox directly instead of announcing an intermediate "unknown".
+The native Grid, Value and Edit roles, announcements and keyboard shortcuts
+are unchanged. See `RELEASE_NOTES_TEST0.2.17.md`.
+
+No audio/DSP/MIDI or preset changes; TEST0.2.16's idle CPU reduction remains.
+
 # Biscot1 Synth VST3 — TEST0.2.16
 
 **TEST0.2.16 CPU idle pass**: after the last audible release, silent blocks

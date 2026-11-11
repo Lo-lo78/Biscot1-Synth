@@ -17,6 +17,7 @@ public:
  void paint(juce::Graphics&) override;
  void resized() override;
  void focusGained(FocusChangeType) override;
+ std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
  bool keyPressed(const juce::KeyPress&) override;
 private:
  enum class Control { grid, value, edit };

@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.16",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.17",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -64,6 +64,13 @@ BiscotEditor::~BiscotEditor(){
  stopTimer();
  if(presetBrowser){presetBrowser->onClose={};presetBrowser->onPresetLoaded={};presetBrowser->close();presetBrowser.reset();}
  attachment.reset();grid.onChange=nullptr;
+}
+// Match LB-303: the editor root is a keyboard focus container, not a
+// screen-reader element. REAPER can focus it temporarily while opening FX;
+// exposing this JUCE root produces NVDA's spurious "unknown" announcement.
+// Keep the native ComboBox, Slider and TextEditor accessible as before.
+std::unique_ptr<juce::AccessibilityHandler> BiscotEditor::createAccessibilityHandler(){
+ return createIgnoredAccessibilityHandler(*this);
 }
 void BiscotEditor::createGroups(){
  for(const auto& d:catalog){
@@ -261,7 +268,7 @@ void BiscotEditor::initialFocus(){
   if(safe==nullptr)return;safe->initialFocusPending=false;
   if(!safe->isShowing() || (safe->presetBrowser && safe->presetBrowser->active()))return;
   auto* focused=juce::Component::getCurrentlyFocusedComponent();
-  if(focused!=safe.getComponent())return; // never steal Value/Edit or REAPER focus
+  if(focused!=nullptr && focused!=safe.getComponent())return; // LB-303: never steal Value/Edit or REAPER focus
   auto* peer=safe->getPeer();
   auto* handler=safe->grid.getAccessibilityHandler();
   if(peer==nullptr || !peer->isFocused() || handler==nullptr ||
