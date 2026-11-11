@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.7",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.8",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -78,6 +78,17 @@ void BiscotEditor::createGroups(){
   else if(juce::String(d.name).startsWith("Op2 "))g=2;
   else if(juce::String(d.name).startsWith("Op3 "))g=3;
   groups[(size_t)g].push_back(i);
+ }
+ // Sustain Pedal is an independent CC64 enable switch per operator,
+ // placed beside that operator's ADSR controls rather than at the end.
+ for(int i=0;i<3;++i){
+  auto& operatorPage=groups[(size_t)(i+1)];
+  const int sustainId=227+i,adsrSustain=40+i;
+  const auto pedal=std::find(operatorPage.begin(),operatorPage.end(),sustainId);
+  if(pedal!=operatorPage.end())operatorPage.erase(pedal);
+  const auto afterSustain=std::find(operatorPage.begin(),operatorPage.end(),adsrSustain);
+  if(afterSustain!=operatorPage.end())operatorPage.insert(afterSustain+1,sustainId);
+  else operatorPage.push_back(sustainId);
  }
  // Native-only MIDI option lives beside MIDI Mode in the first accessible page.
  // Its stable ID is appended (s226); no old parameter is reindexed.

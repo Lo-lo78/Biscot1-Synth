@@ -1,4 +1,4 @@
-# Biscot1 Synth VST3 — TEST0.2.7 (MIDI held notes, legato, retrigger)
+# Biscot1 Synth VST3 — TEST0.2.8 (MIDI held notes, legato, retrigger)
 
 **Base:** TEST0.2.5.1, whose audible DSP and NVDA Grid navigation are preserved.
 
@@ -39,7 +39,7 @@ then test 4 notes in Chord Allocate, releasing the newest Op1 note first.
 ## Git command for this version
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2.7 restore JSFX held-note stacks and legato routing" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.8 restore JSFX held-note stacks and legato routing" && git push
 ```
 
 ---
@@ -291,10 +291,14 @@ test build.
 See LICENSE.md and LICENSE_NOTE.md. The reference JSFX is preserved unchanged.
 
 
-## TEST0.2.7 – SID Seq recorder (point 2)
+## TEST0.2.8 – SID Seq recorder (point 2)
 
 The `SID Seq` arpeggiator mode (mode 1) no longer reuses the live-key arpeggio pool. It now uses the JSFX v2.38 clock-insertion memory, independently for each operator: 128 active positions plus mirrored shadow, per-operator position and clock, first step on the first audio sample, and timing based on the host BPM. A note enters **after the currently sounding clock step**; additional keys do not retune the oscillator immediately.
 
 `Chord Allocate` broadcasts every incoming note to each enabled SID Seq, independently from which operator was assigned the note. The per-operator note snapshot stays available throughout the envelope release in All-Operators and MIDI-Channels modes. At the end of the release it is cleared as in the JSFX. The previous DSP, accessibility editor, preset browser and normal arpeggio modes are preserved.
 
 Standalone C++ tests cover insertion, the 128-step limit, clock and release-latch persistence. The VST3 and real-time audio must still be verified in REAPER after GitHub Actions compilation.
+
+## TEST0.2.8: per-operator Sustain Pedal (CC64)
+
+Op1 / Op2 / Op3 each have an independent Sustain Pedal Off/On choice next to the amp ADSR Sustain control. When On, releasing a MIDI key while CC64 is down holds the envelope until CC64 is released. Off is the backward-compatible default. Test the Op3 envelope with Op3 Level above zero. See RELEASE_NOTES_TEST0.2.8.md.

@@ -6,7 +6,49 @@
     "min": 0,
     "max": 1,
     "step": 1,
-    "enum": ["Multi", "Omni"],
+    "enum": [
+      "Multi",
+      "Omni"
+    ],
     "description": "Multi: existing channels 1-3 routing; Omni: bend from any MIDI channel controls all three operators"
+  },
+  {
+    "index": 227,
+    "name": "Op1 Sustain Pedal",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "enum": [
+      "Off",
+      "On"
+    ],
+    "description": "Enable MIDI CC64 sustain hold for operator 1 (default Off)"
+  },
+  {
+    "index": 228,
+    "name": "Op2 Sustain Pedal",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "enum": [
+      "Off",
+      "On"
+    ],
+    "description": "Enable MIDI CC64 sustain hold for operator 2 (default Off)"
+  },
+  {
+    "index": 229,
+    "name": "Op3 Sustain Pedal",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "enum": [
+      "Off",
+      "On"
+    ],
+    "description": "Enable MIDI CC64 sustain hold for operator 3 (default Off)"
   }
 ]

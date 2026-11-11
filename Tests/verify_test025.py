@@ -9,7 +9,7 @@ c=(r/'CMakeLists.txt').read_text()
 processor=(r/'Source/PluginProcessor.cpp').read_text()
 for name in ['PresetBrowser.cpp','PresetManager.cpp','ScreenReaderAnnouncer.cpp']:
  assert name in c,name
-assert 'TEST0.2.7' in ed and 'VERSION 0.2.7' in c
+assert 'TEST0.2.8' in ed and 'VERSION 0.2.8' in c
 assert 'setAccessible(false)' in ed
 assert 'void BiscotEditor::rememberLocation()' in ed
 assert 'void BiscotEditor::restoreLocation()' in ed

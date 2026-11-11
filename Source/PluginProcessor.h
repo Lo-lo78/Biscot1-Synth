@@ -6,6 +6,7 @@
 #include "SidWaveCore.h"
 #include "SidMidiNoteState.h"
 #include "SidSeqMemory.h"
+#include "SidAmpEnvelope.h"
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -24,7 +25,9 @@ public:
  bool acceptsMidi() const override {return true;}
  bool producesMidi() const override {return false;}
  bool isMidiEffect() const override {return false;}
- double getTailLengthSeconds() const override {return 5.0;}
+ // JSFX Release=5s is an exponential time constant (~46 s to -80 dB);
+ // do not let the host cut the audio tail after only five seconds.
+ double getTailLengthSeconds() const override {return 50.0;}
  int getNumPrograms() override {return 1;}
  int getCurrentProgram() override {return 0;}
  void setCurrentProgram(int) override {}
@@ -37,12 +40,6 @@ public:
  static juce::String id(int slider){return "s"+juce::String(slider).paddedLeft('0',3);}
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
- struct Envelope {
-  float level=0.f,releaseCoefficient=0.f;int stage=0;
-  void noteOn(bool reset){if(reset)level=0;stage=1;}
-  void noteOff(float sec,double sr){releaseCoefficient=1.f/(float)std::max(1.,(double)sec*sr);stage=4;}
-  float tick(float attack,float decay,float sustain,double sr);
- };
  struct Voice {
   int note=-1,channel=1;bool gate=false;
   double phase=0,oldPhase=0,noteSmooth=-1,arpPhase=0;
@@ -50,7 +47,8 @@ private:
   uint32_t noiseSeed=0x12345678u;
   uint64_t cleanNoiseSeed=1234567, sidNoiseSeed=5930003;
   double noiseClock=0;float noise=0.f;
-  Envelope amp,mod;
+  SidAmpEnvelope amp,mod;
+  bool pedalLatched=false;int pedalChannel=1;
   int arpStep=0;bool arpGoingUp=true;
  };
  struct Lfo {
@@ -65,12 +63,13 @@ private:
  std::array<SidSeqMemory,3> sidSeq{};
  int filterKeyNote=60;
  std::array<Lfo,3> lfos{};
- Envelope filterEnvelope;
+ SidAmpEnvelope filterEnvelope;
+ std::array<bool,16> pedalDown{};
  std::array<SidFilterCore,2> filters{};
  SidWaveCore waveCore;
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,227> parameters{};
+ std::array<std::atomic<float>*,230> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;
@@ -82,6 +81,7 @@ private:
  void noteOff(int,int);
  void triggerFilterAndLfos(int,bool);
  void onMidi(const juce::MidiMessage&);
+ void releasePedalLatches();
  void renderOne(float&,float&,std::array<float,8>&);
  float processFilter(float,float,int,float);
  float processLfo(int,const std::array<float,3>&);

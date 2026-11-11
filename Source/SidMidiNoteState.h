@@ -91,8 +91,7 @@ struct SidMidiNoteState {
   for(int i=0;i<3;++i){
    const bool addressesVoice=mode==0||mode==1||(mode==2&&channel==i+1);
    if(addressesVoice){
-    voices[(size_t)i].removeNewest(note);
-    result.affected[(size_t)i]=true;
+    result.affected[(size_t)i]=voices[(size_t)i].removeNewest(note);
     result.voiceTop[(size_t)i]=voices[(size_t)i].top();
    }
   }

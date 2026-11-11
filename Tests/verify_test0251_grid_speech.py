@@ -23,5 +23,5 @@ for cmd in [
 assert 'source.setDescription(text);' not in s
 assert 'handler->grabFocus();' not in s
 assert 'grid.setTitle({});grid.setDescription({});' in s
-assert 'TEST0.2.7' in s
+assert 'TEST0.2.8' in s
 print('OK: Grid speech restored once per effective selection; entry focus still quiet')
