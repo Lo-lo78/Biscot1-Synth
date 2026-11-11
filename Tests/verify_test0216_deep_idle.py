@@ -15,8 +15,8 @@ assert 'if(settings.arpMode[(size_t)i]<=1)' in p
 assert 'rebuildArpPools();return;' in p # keep event-accurate note on/off
 assert 'SidArpPoolCache arpPoolCache{};' in h
 assert 'SidDeepIdleCpuTest.exe' in w and 'verify_test0216_deep_idle.py' in w
-assert 'VERSION 0.2.17' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.17' in w
+assert 'VERSION 0.2.17.1' in (r/'CMakeLists.txt').read_text()
+assert 'TEST0.2.17.1' in w
 # Byte-for-byte regression: JSFX-derived DSP and the complete MIDI event
 # dispatch are unchanged from the audible TEST0.2.15 reference.
 dsp=p[p.index('void BiscotProcessor::renderOne('):p.index('void BiscotProcessor::advanceIdleLfos(')]

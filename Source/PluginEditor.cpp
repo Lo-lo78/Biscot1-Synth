@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.17",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.17.1",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -388,7 +388,7 @@ void BiscotEditor::rememberLocation(){
  proc.state.state.setProperty(juce::Identifier("editorLastParameter"),index,nullptr);
 }
 void BiscotEditor::restoreLocation(){
- const int previous=(int)proc.state.state.getProperty(juce::Identifier("editorLastParameter"),3);
+ const int previous=(int)proc.state.state.getProperty(juce::Identifier("editorLastParameter"),2);
  for(int g=0;g<(int)groups.size();++g){
   const auto& entries=groups[(size_t)g];
   const auto found=std::find(entries.begin(),entries.end(),previous);

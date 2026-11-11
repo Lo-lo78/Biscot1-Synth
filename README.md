@@ -1,3 +1,9 @@
+# Biscot1 Synth VST3 — TEST0.2.17.1
+
+**Initial selection hotfix:** A brand-new instance starts on **Audio Mode, Stereo** (parameter s2) instead of **MIDI Mode** (s3). The previous bug came from the fallback in `restoreLocation()`: it used index 3 even if no last selection had been saved. Saved editor locations in existing projects remain respected. NVDA root/focus behaviour from TEST0.2.17 and the DSP, MIDI, arpeggiators, CPU optimizations, browser and presets are unchanged.
+
+See `RELEASE_NOTES_TEST0.2.17.1.md` for the test instructions.
+
 # Biscot1 Synth VST3 — TEST0.2.17
 
 **NVDA editor-entry focus correction only.** The main `AudioProcessorEditor`
