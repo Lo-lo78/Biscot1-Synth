@@ -104,7 +104,13 @@ void BiscotProcessor::triggerFilterAndLfos(int note,bool retrigger){
  }
 }
 void BiscotProcessor::noteOff(int channel,int note){
- const auto result=heldNotes.noteOff(integer(param(3)),channel,note);
+ // In Chord Allocate SID Seq uses the current live chord root.  If the last
+ // physically held key is released under CC64, keep that exact root for the
+ // sustained phrase and subsequent release.  Switching back to the older
+ // per-voice latch root would cause an instantaneous pitch discontinuity.
+ const int midiMode=integer(param(3));
+ const int lastLiveChordRoot=heldNotes.chord.top();
+ const auto result=heldNotes.noteOff(midiMode,channel,note);
  if(result.filterTop>=0)filterKeyNote=result.filterTop;
  for(int i=0;i<3;++i){
   if(!result.affected[(size_t)i])continue;
@@ -133,6 +139,12 @@ void BiscotProcessor::noteOff(int channel,int note){
    }
   }
  }
+ if(midiMode==1 && heldNotes.chord.empty() && lastLiveChordRoot>=0){
+  for(int i=0;i<3;++i){
+   if(voices[(size_t)i].pedalLatched && integer(param(76+i))==1)
+    sidSeq[(size_t)i].latchCurrentChordRootForRelease(lastLiveChordRoot);
+  }
+ }
  if(result.filterReleased){
   bool pedalHolding=false;
   for(const auto& v:voices)pedalHolding|=v.pedalLatched;
@@ -153,8 +165,9 @@ void BiscotProcessor::releasePedalLatches(){
   wasHolding=true;v.pedalLatched=false;
   if(heldNotes.voices[(size_t)i].empty()){
    v.gate=false;
-   if(sidSeq[(size_t)i].latch.count>0)
-    sidSeq[(size_t)i].releaseRoot=sidSeq[(size_t)i].latchRoot;
+   // No change to SID Seq releaseRoot here. CC64-up is an ADSR gate
+   // transition, NOT a note event: re-basing the sequencer here would
+   // cause a small pitch jump/click unique to pedal release.
    v.amp.noteOff(opSharedParam(43,i),sampleRateHz);
    v.mod.noteOff(param(73+i),sampleRateHz);
   }
@@ -224,9 +237,22 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  if(m.isController()){
   if(m.getControllerNumber()==64){
    const bool down=m.getControllerValue()>=64;
+   // Preserve the exact live note pool for the Release tail before
+   // removing CC64-held notes.  The clock and current arp pitch are
+   // intentionally untouched: changing the VCA gate must be as smooth
+   // as letting go of the same notes by hand.
+   if(!down){
+    for(int i=0;i<3;++i){
+     const int count=arpPoolCounts[(size_t)i];
+     if(count>0){
+      arpReleaseCounts[(size_t)i]=count;
+      std::copy_n(arpPools[(size_t)i].begin(),count,arpReleasePools[(size_t)i].begin());
+     }
+    }
+   }
    pedalDown[(size_t)(ch-1)]=down;
    if(!down)sustainedArp.clearChannel(ch);
-   releasePedalLatches(); // on pedal up; no action while held
+   releasePedalLatches(); // same ADSR noteOff transition as a manual key release
    rebuildArpPools();
   }
   if(m.getControllerNumber()==123)onMidi(juce::MidiMessage::allNotesOff(ch));

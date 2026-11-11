@@ -356,3 +356,16 @@ Op1 / Op2 / Op3 each have an independent Sustain Pedal Off/On choice next to the
 In Chord Allocate, `Chord Op1 Controls` (Global/MIDI, adjacent to Pitch Bend Mode) can switch from default `Independent` to `Op1 Master`. Only Portamento, amplitude ADSR, Sustain Pedal CC64 enable, Level and PWM are shared. Wave, pitch, pan, arpeggiator, LFO and other modulation settings stay separate. This affects the *effective sound*; individual stored Op2/3 values are unchanged.
 
 All arpeggiators now retain released notes while CC64 is down if the corresponding operator has Sustain Pedal On. SID Seq adds notes to its current memory without clearing the sequence. Release of CC64 clears pedal-held notes while the arpeggiator can finish over the VCA's normal release. See `RELEASE_NOTES_TEST0.2.9.md`.
+
+
+## TEST0.2.13 — CC64 release without arp pitch discontinuities
+
+The TEST0.2.12 SID sound, VCA ADSR curve, accessible editor, preset browser,
+MIDI modes, arpeggiator clocks and musical Trigger/Legato modes remain unchanged.
+The CC64-up event now preserves SID Seq's live chord pitch root, rather than
+replacing it with an old per-operator latch root. Classical arpeggiators retain
+an exact snapshot of their current note pool when CC64 is lifted. This is the
+same release-note material used for a manual key release. Only the envelope
+passes into Release; the arpeggio continues until the envelope reaches idle.
+
+GitHub Actions runs `SidPedalReleaseContinuityTest` plus all prior regressions.

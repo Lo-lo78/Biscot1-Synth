@@ -28,6 +28,12 @@ struct SidSeqMemory {
   latch=held;
   if(latch.count>0)latchRoot=latch.notes[0];
  }
+ // When the final physical key is released while the pedal is DOWN,
+ // hold the current chord root through CC64-up.  Do not reset the SID
+ // sequence, its clock, or its pitch offset at the pedal transition.
+ void latchCurrentChordRootForRelease(int lastLiveRoot) noexcept {
+  if(length>0 && lastLiveRoot>=0)releaseRoot=lastLiveRoot;
+ }
  void clearSequence(int root) noexcept {
   slots.fill(empty);length=0;
   if(root>=0){slots[0]=root;slots[capacity]=root;length=1;}

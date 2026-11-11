@@ -5,7 +5,7 @@ c=(r/'Source/PluginProcessor.cpp').read_text()
 st=(r/'Source/SidMidiNoteState.h').read_text()
 assert 'SidMidiNoteState heldNotes;' in h
 assert 'heldNotes.noteOn(mode,ch,note,filterLegato)' in c
-assert 'heldNotes.noteOff(integer(param(3)),channel,note)' in c
+assert 'heldNotes.noteOff(midiMode,channel,note)' in c
 assert 'param((mode==1)?10:10+i)' in c
 assert 'filterEnvelope.noteOn(false);' in c
 assert 'pressedCounts' in c

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.12 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.13 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.12"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.13"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -63,3 +63,8 @@ target_compile_features(SidQuantizedArpTest PRIVATE cxx_std_20)
 # ticking after final Note Off and CC64-up, then stop at ADSR idle.
 add_executable(SidArpReleaseTest Tests/SidArpReleaseTest.cpp)
 target_compile_features(SidArpReleaseTest PRIVATE cxx_std_20)
+
+# CC64-up must sound like releasing the same chord by hand: no arp root
+# discontinuity, no clock reset, no alteration to the Release envelope.
+add_executable(SidPedalReleaseContinuityTest Tests/SidPedalReleaseContinuityTest.cpp)
+target_compile_features(SidPedalReleaseContinuityTest PRIVATE cxx_std_20)
