@@ -43,9 +43,12 @@ jobs:
       - name: Validate Chord master and sustained arpeggiators
         shell: pwsh
         run: python Tests/verify_test029_arp_chord_master.py
-      - name: Validate quantized ARP and step Trigger / Legato wiring
+      - name: Validate quantized arp Trigger / Legato transport and Release
         shell: pwsh
         run: python Tests/verify_test0210_quantized_arp.py
+      - name: Validate TEST0.2.11 arpeggiator transport and Release
+        shell: pwsh
+        run: python Tests/verify_test0211_arp_transport.py
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
@@ -70,7 +73,7 @@ jobs:
       - name: Test CC64 arp continuation and Chord master
         shell: pwsh
         run: .\build\Release\SidArpSustainTest.exe
-      - name: Test clock quantization and per-step Trigger / Legato
+      - name: Test clock quantization, musical Trigger and natural Release
         shell: pwsh
         run: .\build\Release\SidQuantizedArpTest.exe
       - name: Package VST3
@@ -78,9 +81,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.10-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.11-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-TEST0.2.10-Windows-x64
-          path: Biscot1-TEST0.2.10-Windows-x64.zip
+          name: Biscot1-TEST0.2.11-Windows-x64
+          path: Biscot1-TEST0.2.11-Windows-x64.zip
           if-no-files-found: error

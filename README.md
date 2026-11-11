@@ -1,36 +1,32 @@
-# Biscot1 Synth VST3 — TEST0.2.10 (clock-quantized arpeggios)
+# Biscot1 Synth VST3 — TEST0.2.11 (ARP clock / Trigger / Legato / note release)
 
-**Based on TEST0.2.9.** No filter, wavetable, analogue output-stage,
-parameter ID or accessible-editor workflow changes.
+## TEST0.2.11 — ARP clock, Trigger, Legato, Note Off
 
-- Classical ARP modes (Up / Down / Pendulum / Held Order / Random) **commit
-  their MIDI note pool only at the next arpeggiator clock step**. A new key
-  cannot immediately alter the oscillator frequency mid-step. This also
-  holds when CC64 is down and earlier notes are sustained.
-- Incoming notes in an active ARP phrase do not restart its clock or
-  interrupt the current pitch. SID Seq retains its dedicated 128-slot
-  record-and-insert memory and clock.
-- **Operator Mode Trigger:** each subsequent ARP step restarts that operator's
-  amplitude and modulation attack (ADSR). The first step is not double-
-  triggered. **Operator Mode Legato:** no per-step ADSR restart; the envelope
-  continues while the clock advances normally.
-- In Chord Allocate, Op1 Mode Trigger remains the common Trigger/Legato
-  selector. Outside Chord mode, Op1/2/3 Mode Trigger are independent.
-- On CC64 release, the existing tail may continue but the arpeggiator does
-  not re-trigger an ADSR that is already releasing.
-- When a new note is merely added to a running arpeggio, the global filter
-  envelope and LFO triggers are not restarted by that MIDI Note On.
-- No added VST3 parameters; this is a MIDI timing/voice state correction.
+- `OpN Mode Trigger = Trigger`: on a new MIDI key while a phrase is active, the arp **pattern** returns to its first step at the next beat; the underlying BPM clock is not reset. No audible pitch change happens at Note On.
+- `OpN Mode Trigger = Legato`: the arp position and phase keep running. A new note is added to the next step pool update.
+- Neither mode retriggers Attack, Decay, Sustain or Release **on individual arpeggio steps**; ARP is frequency sequencing, not repeated envelope gates.
+- When the last key is released without CC64, the arp stops advancing and holds its last pitch while the original ADSR Release fades. When CC64 is down and the Sustain Pedal parameter is On, the arp keeps running; CC64 up initiates natural Release and stops the arp.
+- In Chord Allocate, the common Op1 Trigger/Legato setting controls these transport decisions for all three operators. All other MIDI modes retain individual settings.
+- No DSP algorithm, plugin parameter ID, browser, keyboard or accessibility navigation changes.
 
-Standalone regression `SidQuantizedArpTest` validates mid-step MIDI insertion,
-clock-pulse committing, per-step Trigger vs Legato, release-tail conditions,
-and SID Seq clock reporting. Existing tests remain enabled in GitHub Actions.
-A full Windows VST3 build and NVDA/REAPER audio tests remain to be confirmed.
+
+**Migration notes from TEST0.2.10:** DSP, oscillators, filter and output amp are unchanged.
+
+- Classical ARP modes (Up, Down, Pendulum, Held Order and Random) quantize incoming notes to the existing clock.
+- Trigger restarts the arpeggio **pattern** on its next clock edge, preserving BPM phase, without reattacking the per-step ADSR.
+- Legato retains the current arp position and clock. Neither mode plays the newly pressed note immediately.
+- SID Seq keeps its independent recorded 128-position note memory and shares the same Trigger / Legato transport semantics.
+- The final Note Off without CC64 stops arp motion but allows a natural VCA Release tail. Pedal held keeps the clock running until CC64 up.
+- The first MIDI note of a phrase starts the envelope normally; pitch-only arpeggio steps never force another Attack.
+- In Chord Allocate, Op1 Trigger / Legato determines the behaviour for all three arpeggiators.
+- All pre-existing controls, preset format and accessible-editor commands remain intact.
+
+All standalone tests can be run by GitHub Actions; full Windows VST3 + NVDA/REAPER audio checks remain pending.
 
 **Git command:**
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2.10 quantize arpeggio note updates and fix Trigger Legato" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.11 correct arp Trigger Legato and final note release" && git push
 ```
 
 ---

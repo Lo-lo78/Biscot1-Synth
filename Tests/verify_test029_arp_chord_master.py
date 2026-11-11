@@ -25,7 +25,7 @@ assert 'sustainedArp.clearChannel(ch)' in p
 assert 'sustainedArp.clearOperator(i)' in p
 assert 'arpReleasePools' in h and 'arpReleaseCounts' in p
 assert 'seq.record(note); // continue the held CC64 phrase' in p
-assert 'const int count=sounding && seq.length>0 ? 1 : 0' in p
+assert 'sidArpClockActive(v.gate,v.amp.stage) && seq.length>0' in p
 assert 'SidArpSustainTest.exe' in w
 assert 'std::array<Channels,3>' in sus
 print('OK: independent defaults, scoped Chord master, Trigger and CC64 arp retention')

@@ -13,9 +13,12 @@ struct SidQuantizedArp {
  std::array<int,capacity> committed{};
  int count=0,step=0,selected=-1;
  double phase=0.;
- bool started=false;
+ bool started=false, restartPending=false;
  struct Event {bool edge=false;bool first=false;int note=-1;};
- void reset() noexcept { count=0;step=0;selected=-1;phase=0.;started=false; }
+ void reset() noexcept { count=0;step=0;selected=-1;phase=0.;started=false;restartPending=false; }
+ // Trigger requests a musical restart on the NEXT beat boundary; it must not
+ // break the BPM clock or play the newly pressed note on the Note On itself.
+ void requestRestart() noexcept { if(started)restartPending=true; }
  Event process(const std::array<int,capacity>& candidate,int candidateCount,
                int mode,double rate,double bpm,double sampleRate,
                std::uint32_t& randomSeed) noexcept {
@@ -25,7 +28,11 @@ struct SidQuantizedArp {
   if(first){started=true;step=0;phase=0.;}
   else {
    phase+=std::max(0.125,rate)*std::max(1.,bpm)/(240.*std::max(1.,sampleRate));
-   if(phase>=1.-1.e-10) {phase=std::max(0.,phase-1.);++step;edge=true;}
+   if(phase>=1.-1.e-10) {
+    phase=std::max(0.,phase-1.);
+    if(restartPending){step=0;restartPending=false;}else ++step;
+    edge=true;
+   }
   }
   if(edge){
    // The pool is frozen between clock edges; incoming MIDI cannot retune an
@@ -52,9 +59,4 @@ struct SidQuantizedArp {
   return {edge,first,selected};
  }
 };
-inline bool sidArpStepRetriggers(bool clockEdge,bool firstStep,bool legato,
-                                 bool gate,int envelopeStage) noexcept {
- return clockEdge && !firstStep && !legato && gate &&
-        envelopeStage!=0 && envelopeStage!=4;
-}
 } // namespace biscot

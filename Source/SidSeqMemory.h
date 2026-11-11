@@ -14,14 +14,16 @@ struct SidSeqMemory {
  int length=0,step=-1;
  double clock=0.;
  float target=0.f;
- bool lastTick=false;
+ bool lastTick=false, restartPending=false;
  SidHeldStack latch{}; // snapshot on every Note On; persists through release
  int latchRoot=60,releaseRoot=60;
  void clearAll() noexcept {
-  slots.fill(empty);length=0;step=-1;clock=0.;target=0.f;lastTick=false;
+  slots.fill(empty);length=0;step=-1;clock=0.;target=0.f;lastTick=false;restartPending=false;
   latch.clear();latchRoot=60;releaseRoot=60;
  }
- void resetClock() noexcept {step=-1;clock=0.;target=0.f;lastTick=false;}
+ void resetClock() noexcept {step=-1;clock=0.;target=0.f;lastTick=false;restartPending=false;}
+ // Restart the SID Seq address at its NEXT scheduled clock edge, not on Note On.
+ void requestRestart() noexcept { if(step>=0)restartPending=true; }
  void snapshot(const SidHeldStack& held) noexcept {
   latch=held;
   if(latch.count>0)latchRoot=latch.notes[0];
@@ -51,7 +53,12 @@ struct SidSeqMemory {
    clock+=std::max(0.125,rate)*std::max(1.,tempo)/(240.*std::max(1.,sampleRate));
    bool newStep=false;
    if(step<0){step=0;clock=0.;newStep=true;}
-   else if(clock>=1.-1.e-10){clock=std::max(0.,clock-1.);++step;if(step>=length)step=0;newStep=true;}
+   else if(clock>=1.-1.e-10){
+    clock=std::max(0.,clock-1.);
+    if(restartPending){step=0;restartPending=false;}else ++step;
+    if(step>=length)step=0;
+    newStep=true;
+   }
    if(newStep){
     lastTick=true;
     if(step>=length)step=0;

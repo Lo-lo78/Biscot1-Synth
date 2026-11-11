@@ -76,8 +76,8 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
  v.vel=limit(v.vel,0.f,1.f);
  if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed)*param(13+i)*0.50f;
  if(retrigger){
-  // A Trigger note on a previously sustained/held operator must produce
-  // a fresh attack even when Hard Restart is Fast. Legato never resets it.
+  // First note of an arpeggio starts the ADSR once. Subsequent Trigger
+  // notes restart only the arp SEQUENCE (scheduled at the next clock edge).
   const bool resetAmp=integer(param(4))>=2 || (!arpOn && !opLegato && v.amp.stage!=0);
   v.amp.noteOn(resetAmp);
   v.mod.noteOn(resetAmp);
@@ -238,6 +238,12 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
   if(count<0xffffffffu)++count;
   pressed[(size_t)(ch-1)][(size_t)note]=++nextPress;
   const bool chordWasHeld=!heldNotes.chord.empty();
+  std::array<bool,3> clockRunningBefore{};
+  for(int i=0;i<3;++i){
+   const auto& v=voices[(size_t)i];
+   clockRunningBefore[(size_t)i]=v.gate &&
+      (integer(param(76+i))==1 ? sidSeq[(size_t)i].step>=0 : v.quantizedArp.started);
+  }
   std::array<bool,3> arpPhraseActive{};
   for(int i=0;i<3;++i)
    arpPhraseActive[(size_t)i]=sustainedArp.any(i) && opPedalEnabled(i);
@@ -267,7 +273,7 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
    }
   }
   // Sustain pedal counts as an uninterrupted phrase for filter/LFO Legato.
-  // Trigger mode continues retriggering on each Note On.
+  // Arpeggio Trigger is musical transport only: no VCA reattack per step.
   bool onlyContinuingArps=true,anyRouted=false;
   for(int i=0;i<3;++i)if(event.trigger[(size_t)i]){
    anyRouted=true;
@@ -283,6 +289,19 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
   for(int i=0;i<3;++i)if(event.trigger[(size_t)i]){
    voices[(size_t)i].vel=velocity;
    noteOn(i,note,ch,event.wasHeld[(size_t)i],arpPhraseActive[(size_t)i]);
+  }
+  // In Chord Allocate all enabled arpeggiators use the common chord material,
+  // even when this Note On was assigned to only one of three oscillators.
+  // Trigger starts its pattern at step 0 on the NEXT grid edge. Legato
+  // preserves the existing step. Neither mode reattacks the envelope.
+  for(int i=0;i<3;++i){
+   const bool routed=(mode==1) || event.trigger[(size_t)i];
+   const bool triggerMode=opSharedParam(10,i)<0.5f;
+   if(integer(param(76+i))>0 &&
+      sidArpRestartRequested(triggerMode,clockRunningBefore[(size_t)i],routed)){
+    if(integer(param(76+i))==1)sidSeq[(size_t)i].requestRestart();
+    else voices[(size_t)i].quantizedArp.requestRestart();
+   }
   }
   rebuildArpPools();return;
  }
@@ -431,41 +450,38 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  // arpeggio modes retain their existing routing and playback implementation.
  for(int i=0;i<3;++i){
   auto& v=voices[(size_t)i];const int arpMode=integer(param(76+i));
-  const bool legato=param(integer(param(3))==1?10:10+i)>0.5f;
   if(arpMode==1){
    v.quantizedArp.reset(); // SID Seq has its own independent clock and memory
    auto& seq=sidSeq[(size_t)i];
    const bool chord=integer(param(3))==1;
-   // Keep the original sequence timing, including inserted notes and pedal release.
-   const bool sounding=arpPoolCounts[(size_t)i]>0 || v.amp.stage!=0;
-   const int count=sounding && seq.length>0 ? 1 : 0;
-   const int root=chord && heldNotes.chord.count>0
-      ? heldNotes.chord.top() : seq.releaseRoot;
-   const bool previouslyRunning=seq.step>=0;
-   const float target=seq.process(count,root,param(79+i),tempoBpm,sampleRateHz);
-   if(sidArpStepRetriggers(seq.lastTick,!previouslyRunning,legato,v.gate,v.amp.stage)){
-    v.amp.noteOn(true);v.mod.noteOn(true);
-   }
+   // Advance only while a physical key or an enabled CC64 latch holds
+   // the operator. When the last key is released without CC64, freeze the
+   // current pitch; the VCA's own Release fades normally and is never cut.
+   if(sidArpClockActive(v.gate,v.amp.stage) && seq.length>0){
+    const int root=chord && heldNotes.chord.count>0
+       ? heldNotes.chord.top() : seq.releaseRoot;
+    seq.process(1,root,param(79+i),tempoBpm,sampleRateHz);
+   }else seq.lastTick=false;
+   const float target=seq.target;
    const float glide=std::max(0.f,param(88+i));
    const float coefficient=glide>0.f?1.f/(1.f+glide*glide*2000.f):1.f;
    v.arpPitch+=(target-v.arpPitch)*coefficient;
    if(std::abs(target-v.arpPitch)<0.00001f)v.arpPitch=target;
-  }else if(arpMode>1 && v.note>=0){
+  }else if(arpMode>1 && v.note>=0 && sidArpClockActive(v.gate,v.amp.stage)){
    const bool live=arpPoolCounts[(size_t)i]>0;
    const auto& pool=live?arpPools[(size_t)i]:arpReleasePools[(size_t)i];
    const int count=live?arpPoolCounts[(size_t)i]:
       (v.amp.stage!=0 ? arpReleaseCounts[(size_t)i] : 0);
    const auto event=v.quantizedArp.process(pool,count,arpMode,param(79+i),
                                            tempoBpm,sampleRateHz,v.noiseSeed);
-   if(sidArpStepRetriggers(event.edge,event.first,legato,v.gate,v.amp.stage)){
-    v.amp.noteOn(true);v.mod.noteOn(true);
-   }
    if(event.note>=0){
     const float destination=(float)event.note-(float)v.note;
     const float glide=param(88+i);
     v.arpPitch+=(destination-v.arpPitch)*(glide<=0.f?1.f:limit(1.f/(float)(sampleRateHz*(0.002+glide*0.3)),0.0001f,1.f));
    }
-  }else{v.quantizedArp.reset();v.arpPitch=0;}
+  }else if(arpMode<=0){
+   v.quantizedArp.reset();v.arpPitch=0;
+  } // During Release, freeze the last arp frequency. No further steps/ADSR retriggers.
 
  }
  std::array<double,3> frequencies{};

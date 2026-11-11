@@ -9,6 +9,7 @@
 #include "SidAmpEnvelope.h"
 #include "SidArpSustain.h"
 #include "SidQuantizedArp.h"
+#include "SidArpTransport.h"
 #include <array>
 #include <atomic>
 #include <cstdint>

@@ -8,8 +8,8 @@ assert 'std::array<SidSeqMemory,3> sidSeq' in h
 assert 'if(!chordWasHeld && !arpPhraseActive[(size_t)i])' in c
 assert 'else seq.record(note)' in c
 assert 'seq.snapshot(heldNotes.voices[(size_t)i])' in c
-assert 'const int count=sounding && seq.length>0 ? 1 : 0' in c
-assert 'const float target=seq.process(' in c
+assert 'sidArpClockActive(v.gate,v.amp.stage) && seq.length>0' in c
+assert 'seq.process(1,root,param(79+i),tempoBpm,sampleRateHz)' in c
 assert 'sidSeq[(size_t)i].clearAll();' in c
 assert 'sidSeq[(size_t)i].releaseRoot' in c
 assert 'std::array<int,capacity*2>' in s
