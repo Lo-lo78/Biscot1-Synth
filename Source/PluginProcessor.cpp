@@ -54,12 +54,13 @@ void BiscotProcessor::prepareToPlay(double sr,int){
   voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
   voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
   lfos[(size_t)i].reset(i);}
- filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;
+ filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;idleSleep.reset();
 }
 // The JSFX has a separate 16-event held-note stack for each operator, plus
 // separate global filter and chord stacks. The caller has already updated those
 // stacks so wasHeld reflects physical MIDI gates, not the envelope release tail.
 void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalPhrase){
+ idleSleep.wake();
  auto& v=voices[(size_t)i];
  const int mode=integer(param(3));
  const bool arpOn=integer(param(76+i))>0;
@@ -374,7 +375,7 @@ float BiscotProcessor::processLfo(int i,const std::array<float,3>& prev){
    std::max(0.125f,param(b+1))*std::pow(2.,juce::jlimit(-8.,8.,oct));
  const double inc=hz/sampleRateHz;
  return l.tick(inc,integer(param(b+2)),param(b+5),param(b+6),
-               param(b+7)>0.5f,param(b+8),param(b+3),param(b+4),sampleRateHz);
+               param(b+7)>0.5f,param(b+8),param(b+3),param(b+4),sampleRateHz,param(231+i));
 }
 float BiscotProcessor::processFilter(float input,float registerCutoff,int channel,float resonanceMod){
  return (float)filters[(size_t)channel].process(input,registerCutoff,
@@ -400,8 +401,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   v.noteSmooth=v.noteSmooth<0 && v.note>=0?v.note:v.noteSmooth;
  }
  const float filterEnv=filterEnvelope.tick(param(118),param(119),param(120),sampleRateHz);
- for(int i=0;i<3;++i)previous[(size_t)i]=lfos[(size_t)i].previous;
- for(int i=0;i<3;++i)lfo[(size_t)i]=processLfo(i,previous);
+ for(int i=0;i<3;++i)previous[(size_t)i]=lfoUsedCached[(size_t)i]?lfos[(size_t)i].previous:0.f;
+ for(int i=0;i<3;++i)lfo[(size_t)i]=lfoUsedCached[(size_t)i]?processLfo(i,previous):0.f;
  for(int i=0;i<3;++i)lfos[(size_t)i].previous=lfo[(size_t)i];
  for(int j=0;j<3;++j){const int base=122+j*23;
   cutoffMod+=lfo[(size_t)j]*param(base+10)*2047.f;
@@ -635,9 +636,36 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }
  }
 }
+void BiscotProcessor::advanceIdleLfos(int samples) noexcept {
+ for(int i=0;i<3;++i){
+  const int b=122+i*23;
+  if(lfoUsedCached[(size_t)i])
+   SidIdleSleep::advanceFreeClock(lfos[(size_t)i],samples,tempoBpm,param(b+1),
+       sampleRateHz,param(b)<0.5f,param(b+7)>0.5f);
+ }
+}
+void BiscotProcessor::enterColdIdle() noexcept {
+ // A transition occurs ONLY after the last VCA is idle and the output is
+ // already below -100 dBFS. Clear histories once, never during the Release.
+ for(auto& f:filters)f.reset();
+ for(auto& stage:outputStages)stage.reset();
+ for(int i=0;i<3;++i){
+  auto& v=voices[(size_t)i];
+  v.note=-1;v.noteSmooth=-1;v.phase=v.oldPhase=0.;
+  v.noiseClock=0.;v.noise=0.f;v.oscPrev=0.f;v.arpPitch=0.f;
+  v.arpPhase=0.;v.arpStep=0;v.gate=false;v.pedalLatched=false;
+  v.amp={};v.mod={};v.quantizedArp.reset();
+  sidSeq[(size_t)i].clearAll();
+ }
+ filterEnvelope={};
+ arpReleaseCounts.fill(0);
+ // Never zero free LFO phases: restarting one would desynchronize BPM-based
+ // modulations whenever a song inserts a rest.
+}
 void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBuffer& midi){
  juce::ScopedNoDenormals denormals;
  buffer.clear();
+ lfoUsedCached=determineUsedLfos([this](int index){return param(index);});
  releasePedalLatches(); // also honor changes to the Sustain Pedal switches
  for(int i=0;i<3;++i)if(!opPedalEnabled(i))sustainedArp.clearOperator(i);
  rebuildArpPools(); // refresh octave/routing changes once per block, never per sample
@@ -658,13 +686,23 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
  auto op3=getBusBuffer(buffer,false,3);
  auto filterOut=getBusBuffer(buffer,false,4);
  juce::MidiBuffer::Iterator it(midi);juce::MidiMessage message;int offset=0;bool more=it.getNextEvent(message,offset);
- for(int sample=0;sample<buffer.getNumSamples();++sample){
+ const bool multichannel=param(2)>0.5f;
+ // Zero-work idle: the output buffer was already cleared, so skip whole
+ // silent spans rather than executing the SID DSP or writing zero samples.
+ // MIDI is consumed at its exact sample offset, including inside these spans.
+ for(int sample=0;sample<buffer.getNumSamples();){
   while(more && offset<=sample){onMidi(message);more=it.getNextEvent(message,offset);}
+  if(idleSleep.asleep){
+   const int next=more?juce::jlimit(sample+1,buffer.getNumSamples(),offset):buffer.getNumSamples();
+   advanceIdleLfos(next-sample);
+   sample=next;
+   continue;
+  }
   float left=0,right=0;std::array<float,8> stems{};
   renderOne(left,right,stems);
   if(mix.getNumChannels()>0)mix.setSample(0,sample,left);
   if(mix.getNumChannels()>1)mix.setSample(1,sample,right);
-  if(param(2)>0.5f){
+  if(multichannel){
    auto put=[sample](juce::AudioBuffer<float>& out,float l,float r){
     if(out.getNumChannels()>0)out.setSample(0,sample,l);
     if(out.getNumChannels()>1)out.setSample(1,sample,r);
@@ -672,6 +710,16 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    put(op1,stems[0],stems[1]);put(op2,stems[2],stems[3]);
    put(op3,stems[4],stems[5]);put(filterOut,stems[6],stems[7]);
   }
+  float peak=std::max(std::abs(left),std::abs(right));
+  if(multichannel)for(const float x:stems)peak=std::max(peak,std::abs(x));
+  bool noGate=heldNotes.filter.empty();
+  bool vcaIdle=true;
+  for(const auto& v:voices){
+   noGate=noGate && !v.gate && !v.pedalLatched;
+   vcaIdle=vcaIdle && v.amp.stage==0 && v.amp.level<=0.0001f;
+  }
+  if(idleSleep.observe(noGate,vcaIdle,peak))enterColdIdle();
+  ++sample;
  }
 }
 void BiscotProcessor::getStateInformation(juce::MemoryBlock& out){if(auto xml=state.copyState().createXml())copyXmlToBinary(*xml,out);}

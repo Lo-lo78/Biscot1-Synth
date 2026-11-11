@@ -4,7 +4,7 @@ h=(p/'Source/PluginProcessor.h').read_text()
 c=(p/'Source/PluginProcessor.cpp').read_text()
 cat=(p/'Source/ParameterCatalog.h').read_text()
 ed=(p/'Source/PluginEditor.cpp').read_text()
-assert 'std::array<std::atomic<float>*,231>' in h
+assert 'std::array<std::atomic<float>*,234>' in h
 assert 'return 50.0;' in h
 for i in range(3):
  for prefix,ix in [('Attack',34),('Decay',37),('Release',43)]:

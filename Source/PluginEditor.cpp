@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.14",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.15",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -79,6 +79,17 @@ void BiscotEditor::createGroups(){
   else if(juce::String(d.name).startsWith("Op3 "))g=3;
   groups[(size_t)g].push_back(i);
  }
+ // Append-only LFO Square PWM parameters belong beside each LFO Wave,
+ // not at the end of the Global page. Existing IDs and presets stay stable.
+ for(int i=0;i<3;++i){
+  auto& lfoPage=groups[(size_t)(5+i)];
+  const int pwm=231+i, wave=124+i*23;
+  const auto existing=std::find(lfoPage.begin(),lfoPage.end(),pwm);
+  if(existing!=lfoPage.end())lfoPage.erase(existing);
+  const auto at=std::find(lfoPage.begin(),lfoPage.end(),wave);
+  if(at!=lfoPage.end())lfoPage.insert(at+1,pwm);
+  else lfoPage.push_back(pwm);
+ }
  // Sustain Pedal is an independent CC64 enable switch per operator,
  // placed beside that operator's ADSR controls rather than at the end.
  for(int i=0;i<3;++i){
@@ -112,6 +123,7 @@ juce::String BiscotEditor::formatValue(int i) const{
   const int index=juce::jlimit(0,a.size()-1,juce::roundToInt(v));
   if(index<a.size())return a[index];
  }
+ if(d.index>=231 && d.index<=233)return juce::String(v,4);
  if(d.step>=1.f)return juce::String(juce::roundToInt(v));
  return juce::String(v,d.step>=0.1f?1:(d.step>=0.01f?2:3));
 }
@@ -137,6 +149,10 @@ void BiscotEditor::selectedFromGrid(){
  attachment.reset();
  const auto& d=currentDef();
  value.setRange(d.low,d.high,d.step>0?d.step:0.001);
+ // Native Value announces the same four-decimal duty cycle as Grid.
+ if(d.index>=231 && d.index<=233)
+  value.textFromValueFunction=[](double v){return juce::String(v,4);};
+ else value.textFromValueFunction={};
  value.setValue(proc.param(d.index),juce::dontSendNotification);
  value.setName("Value. "+juce::String(d.name));
  edit.setName("Edit. "+juce::String(d.name));
@@ -239,11 +255,26 @@ void BiscotEditor::focus(Control c,bool deferred){
 void BiscotEditor::initialFocus(){
  if(initialFocusPending)return;
  initialFocusPending=true;
- juce::Timer::callAfterDelay(70,[safe=juce::Component::SafePointer<BiscotEditor>(this)]{
+ // LB-303 pattern: do not hand off focus until the native UIA child exists.
+ // A host often focuses the unnamed editor root first (NVDA: "unknown").
+ juce::Timer::callAfterDelay(110,[safe=juce::Component::SafePointer<BiscotEditor>(this)]{
   if(safe==nullptr)return;safe->initialFocusPending=false;
-  if(auto* peer=safe->getPeer();peer!=nullptr && peer->isFocused()){
-   safe->focus(Control::grid);safe->focusRetries=0;
-  }else if(++safe->focusRetries<8)safe->initialFocus();
+  if(!safe->isShowing() || (safe->presetBrowser && safe->presetBrowser->active()))return;
+  auto* focused=juce::Component::getCurrentlyFocusedComponent();
+  if(focused!=safe.getComponent())return; // never steal Value/Edit or REAPER focus
+  auto* peer=safe->getPeer();
+  auto* handler=safe->grid.getAccessibilityHandler();
+  if(peer==nullptr || !peer->isFocused() || handler==nullptr ||
+     handler->getNativeImplementation()==nullptr){
+   if(++safe->focusRetries<8)safe->initialFocus();
+   return;
+  }
+  safe->focusRetries=0;
+  safe->grid.hidePopup();
+  juce::AccessibilityHandler::clearCurrentlyFocusedHandler();
+  safe->grid.grabKeyboardFocus();
+  if(safe->grid.hasKeyboardFocus(false))handler->grabFocus();
+  else if(++safe->focusRetries<8)safe->initialFocus();
  });
 }
 void BiscotEditor::focusGained(FocusChangeType){initialFocus();}

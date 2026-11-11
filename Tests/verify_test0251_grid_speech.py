@@ -21,7 +21,8 @@ for cmd in [
     assert cmd in s,cmd
 # Do not regress the previous focus/no-duplicate fix.
 assert 'source.setDescription(text);' not in s
-assert 'handler->grabFocus();' not in s
+assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in s
+assert 'if(focused!=safe.getComponent())return;' in s
 assert 'grid.setTitle({});grid.setDescription({});' in s
-assert 'TEST0.2.14' in s
+assert 'TEST0.2.15' in s
 print('OK: Grid speech restored once per effective selection; entry focus still quiet')

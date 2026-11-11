@@ -1,3 +1,10 @@
+# Biscot1 Synth VST3 — TEST0.2.15
+
+The JSFX v2.38-based native VST3 with accessible Grid/Value/Edit, MIDI and
+clocked arpeggiators. **Current work: point 4, CPU idle efficiency, LFO Square
+PWM and editor-entry focus.** See `RELEASE_NOTES_TEST0.2.15.md` for implementation
+and validation scope. Point 5 is the full audio/MIDI comparison before Alt+Q.
+
 # Biscot1 Synth VST3 — TEST0.2.12 (ARP Release restoration)
 
 **Fix after TEST0.2.11:** In the original JSFX, the arpeggiator continues changing pitch throughout the natural VCA Release. The 0.2.11 test mistakenly required `gate=true` to advance an arp, freezing the pitch after the final key/pedal release. This regression is corrected in 0.2.12 for SID Seq and classical arps.

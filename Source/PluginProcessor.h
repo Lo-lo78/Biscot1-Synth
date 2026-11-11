@@ -8,6 +8,8 @@
 #include "SidSeqMemory.h"
 #include "SidAmpEnvelope.h"
 #include "SidLfoCore.h"
+#include "SidIdleSleep.h"
+#include "SidLfoUsage.h"
 #include "SidFilterLfoTrigger.h"
 #include "SidArpSustain.h"
 #include "SidQuantizedArp.h"
@@ -68,9 +70,11 @@ private:
  std::array<bool,16> pedalDown{};
  std::array<SidFilterCore,2> filters{};
  SidWaveCore waveCore;
+ SidIdleSleep idleSleep{};
+ std::array<bool,3> lfoUsedCached{};
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,231> parameters{};
+ std::array<std::atomic<float>*,234> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;
@@ -92,6 +96,8 @@ private:
  void onMidi(const juce::MidiMessage&);
  void releasePedalLatches();
  void renderOne(float&,float&,std::array<float,8>&);
+ void advanceIdleLfos(int samples) noexcept;
+ void enterColdIdle() noexcept;
  float processFilter(float,float,int,float);
  float processLfo(int,const std::array<float,3>&);
  float pulse(double,float,double) const;

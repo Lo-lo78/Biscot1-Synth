@@ -3,7 +3,7 @@
 #include <cstdint>
 namespace biscot {
 struct ParameterDef {int index; const char* name; float low, high, step, initial; const char* choices;};
-inline constexpr std::array<ParameterDef,229> catalog {{
+inline constexpr std::array<ParameterDef,232> catalog {{
   {2, "Audio Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Stereo|Multichannel"},
   {3, "MIDI Mode", 0.0f, 2.0f, 1.0f, 0.0f, "All Operators Same Note|Chord Allocate 3 Mono Ops|MIDI Channels 1-3"},
   {4, "Hard Restart", 0.0f, 3.0f, 1.0f, 1.0f, "Off|Fast|Env Reset|Full Reset"},
@@ -233,5 +233,8 @@ inline constexpr std::array<ParameterDef,229> catalog {{
   {228, "Op2 Sustain Pedal", 0.0f, 1.0f, 1.0f, 0.0f, "Off|On"},
   {229, "Op3 Sustain Pedal", 0.0f, 1.0f, 1.0f, 0.0f, "Off|On"},
   {230, "Chord Op1 Controls", 0.0f, 1.0f, 1.0f, 0.0f, "Independent|Op1 Master"},
+  {231, "LFO1 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
+  {232, "LFO2 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
+  {233, "LFO3 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
 }};
 }
