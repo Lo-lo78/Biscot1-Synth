@@ -1,4 +1,23 @@
-# Biscot1 Synth VST3 – TEST0.2.5 (accessible editor and presets)
+# Biscot1 Synth VST3 – TEST0.2.5.1 (Grid speech fix)
+
+## TEST0.2.5.1: NVDA Grid speech regression fix
+
+The TEST0.2.5 Grid keyboard navigation accidentally became silent when
+`select()` changed the ComboBox ID with `dontSendNotification` without
+replacing the suppressed screen reader announcement. This release sends one
+concise UI Automation notification containing **parameter name and current
+value** after an actual selection change. Applies to Up/Down, Left/Right,
+Home/End, Page Up/Down, Ctrl+Home/End and incremental search. Silent borders
+remain silent, and repeated search on the same entry is still announced.
+
+No title/description mutation, no redundant accessibility focus requests,
+and no extra speech on initial plugin open. The preset browser, parameter
+persistence and DSP are unchanged from TEST0.2.5.
+
+**Not yet verified inside REAPER/NVDA:** static tests cannot guarantee how a
+particular NVDA/Windows UIA configuration speaks the result. The next build
+needs an explicit keyboard navigation test on Windows.
+
 
 Based on **TEST0.2.4**, retaining the exact same synthesis code from the sound-matched TEST0.2.3. **No oscillator, filter, MIDI or output-stage DSP changes.**
 
@@ -17,7 +36,7 @@ Based on **TEST0.2.4**, retaining the exact same synthesis code from the sound-m
 ## Git command
 
 ```cmd
-git add . && git commit -m "Biscot1 VST3 TEST0.2.5 add accessible preset browser and restore editor focus" && git push
+git add . && git commit -m "Biscot1 VST3 TEST0.2.5.1 restore NVDA Grid navigation speech" && git push
 ```
 
 ---

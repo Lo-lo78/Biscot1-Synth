@@ -19,7 +19,7 @@ assert '{226, "Pitch Bend Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Multi|Omni"}' in cat
 assert 'std::array<std::atomic<float>*,227> parameters' in header
 assert 'routePitchBend(ch,bend,mode,integer(param(226))' in processor
 assert 'std::find(global.begin(),global.end(),3)+1,226' in editor
-assert 'TEST0.2.5' in editor
+assert 'TEST0.2.5.1' in editor
 assert 'LFO3 Rate Mod Depth' in cat
 assert native[0]['index']==226 and native[0]['enum']==['Multi','Omni']
 print('OK: 224 original JSFX parameters + one append-only native Pitch Bend Mode, accessible next to MIDI Mode')

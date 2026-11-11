@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth — VST3 TEST0.2.5",juce::dontSendNotification);
+ title.setText("Biscot1 Synth — VST3 TEST0.2.5.1",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -145,9 +145,12 @@ void BiscotEditor::refreshLabels(bool force){
 void BiscotEditor::timerCallback(){if(!presetBrowser || !presetBrowser->active())refreshLabels();}
 void BiscotEditor::select(int i){
  i=juce::jlimit(0,(int)groups[(size_t)group].size()-1,i);
- if(i==selected)return;
+ if(i==selected)return; // silent boundaries: no selection change, no speech
+ // Native ComboBox selection remains silent to avoid duplicate screen reader
+ // announcements. We explicitly announce only the NEW parameter and value.
  grid.setSelectedId(i+1,juce::dontSendNotification);
- selectedFromGrid(); // avoid ComboBox's second asynchronous selection notification
+ selectedFromGrid();
+ announce(grid,labelFor(selected));
 }
 void BiscotEditor::move(int rows,int cols){
  const int total=(int)groups[(size_t)group].size();
@@ -295,9 +298,11 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
       });
    if(found>=0){
     if(found!=selected){
-      select(found); // ComboBox selection announces the label to NVDA
-      if(c==Control::value)announce(value,labelFor(selected));
-    } else announce(c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(grid),labelFor(selected));
+      select(found); // select() makes the ONE concise navigation announcement
+    }else{
+      // Repeated search on the current parameter remains audible.
+      announce(c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(grid),labelFor(selected));
+    }
    }
    return true; // prevent native ComboBox one-letter cycling
   }
