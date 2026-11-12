@@ -10,8 +10,8 @@
 #include <vector>
 
 namespace biscot {
-// F2 Song: second native editing milestone. Playback and independent Song
-// exports are intentionally left for the following phases.
+// F2 Song: native three-lane editing and first audible playback milestone.
+// Standalone Song exports and advanced Song effects remain separate phases.
 class TrackerSongPanel final:public juce::Component {
 public:
  explicit TrackerSongPanel(BiscotProcessor&);

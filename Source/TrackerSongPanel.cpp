@@ -50,6 +50,7 @@ void TrackerSongPanel::resized(){
 }
 void TrackerSongPanel::announce(const juce::String& t){announceToActiveScreenReader(navigator,t);}
 void TrackerSongPanel::open(){
+ processor.commitSongState();
  picker=false;search.reset();clearSelection();numeric.setVisible(false);refresh(false);setVisible(true);toFront(false);
  juce::Component::SafePointer<TrackerSongPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr&&safe->isShowing())safe->navigator.grabKeyboardFocus();});
@@ -458,12 +459,25 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  }
  if(code==juce::KeyPress::escapeKey){
   if(picker){picker=false;search.reset();refresh(true);return true;}
-  if(onExit)onExit();return true;
+  processor.requestSongStop();if(onExit)onExit();return true;
  }
- if(m.isAltDown()&&letter('q')){if(onExit)onExit();return true;}
- if(code==juce::KeyPress::F1Key){if(onPattern)onPattern();return true;}
+ if(m.isAltDown()&&letter('q')){processor.requestSongStop();if(onExit)onExit();return true;}
+ if(code==juce::KeyPress::F1Key){processor.requestSongStop();if(onPattern)onPattern();return true;}
  if(code==juce::KeyPress::F2Key){announce(positionText(true));return true;}
- if(code==32){announce("Song playback will be added after the editor and routing are tested");return true;}
+ if(code==32){
+  if(m.isCtrlDown()){
+   if(processor.songPlaybackStatus.load(std::memory_order_relaxed)==1){
+    processor.requestSongPause();
+    if(lane<3){const int audible=processor.songAudibleRows[(size_t)lane].load(std::memory_order_relaxed);
+     if(audible>=0){row=juce::jlimit(0,length()-1,audible);lastStep[(size_t)lane]=row;cell=logicalCell=0;}}
+    refresh();announce("Song paused. "+positionText());
+   }else announce("Song is not playing");
+  }else{
+   if(processor.songPlaybackStatus.load(std::memory_order_relaxed)==1){processor.requestSongStop();announce("Song stopped");}
+   else{processor.commitSongState();processor.requestSongStart(lane<3&&realStep()?row:0);
+    announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));}
+  }return true;
+ }
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isCtrlDown()&&!m.isAltDown()&&letter('s')){

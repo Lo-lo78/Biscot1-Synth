@@ -1,16 +1,14 @@
-# Biscot1 Synth VST3 — TEST0.2.22 (first native F2 Song milestone)
+# Biscot1 Synth VST3 — TEST0.2.24 (Song F2, first audible three-operator transport)
 
-This version starts the Song migration from `Biscot1 TrackerControl` Lua 0.166.
-**F2** opens a separate native Song editor with three independent operator lanes;
-all 100 Song slots and Song data are stored with the complete preset in `.biscot`
-and the REAPER host state. Enter opens the 17-parameter Song picker.
-
-**Song playback and standalone Song Ctrl+S are not implemented yet.**
-F1 Pattern, DSP, MIDI/arp release, the Pattern library and audio playback remain
-as in TEST0.2.21.4. Read `RELEASE_NOTES_TEST0.2.22.md` for F2 keyboard controls
-and `SONG_MIGRATION_PLAN.md` for the four phases, including portable Song packages.
+Alt+Q F2 Song can now play three operator lanes at once. **Space** starts/stops,
+**Ctrl+Space** pauses at the actual Song row. Separate Pattern references,
+repeat/speed/transpose, note routing, Song mixer and MIDI Song triggers are
+wired into the original SID DSP. The Lua Song migration is **not yet complete**:
+Sidechain/Delay, Song End links and the independent Song export still need work.
+See `RELEASE_NOTES_TEST0.2.24.md` and `SONG_MIGRATION_PLAN.md`.
 
 ---
+
 
 # Biscot1 Synth VST3 — TEST0.2.20
 

@@ -15,13 +15,14 @@ assert 'if(settings.arpMode[(size_t)i]<=1)' in p
 assert 'rebuildArpPools();return;' in p # keep event-accurate note on/off
 assert 'SidArpPoolCache arpPoolCache{};' in h
 assert 'SidDeepIdleCpuTest.exe' in w and 'verify_test0216_deep_idle.py' in w
-assert 'VERSION 0.2.23' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.23' in w
+assert 'VERSION 0.2.24' in (r/'CMakeLists.txt').read_text()
+assert 'TEST0.2.24' in w
 # Byte-for-byte regression: JSFX-derived DSP and the complete MIDI event
 # dispatch are unchanged from the audible TEST0.2.15 reference.
 dsp=p[p.index('void BiscotProcessor::renderOne('):p.index('void BiscotProcessor::advanceIdleLfos(')]
 midi=p[p.index('void BiscotProcessor::onMidi('):p.index('float BiscotProcessor::polyBlep(')]
-assert hashlib.sha256(dsp.encode()).hexdigest()=='d6e631be7980f9840d4c44e30b3dd6bd02c632f8cb5ea6df40297c0aa6e27914'
+assert 'if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];' in dsp
+assert hashlib.sha256(dsp.replace('  if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];\n','').encode()).hexdigest()=='d6e631be7980f9840d4c44e30b3dd6bd02c632f8cb5ea6df40297c0aa6e27914'
 assert 'rebuildArpPools(true);return;' in midi and 'noteOff(ch,note);' in midi
 assert 'if(!down)sustainedArp.clearChannel(ch);' in midi
 assert 'm.isAllNotesOff()' in midi and 'm.isPitchWheel()' in midi

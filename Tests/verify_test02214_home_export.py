@@ -1,4 +1,4 @@
-"""TEST0.2.23: local F1 Home/End, region Ctrl+Home/End and portable Pattern export."""
+"""TEST0.2.24: local F1 Home/End, region Ctrl+Home/End and portable Pattern export."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 ui=(root/'Source/TrackerPatternPanel.cpp').read_text()
@@ -7,7 +7,7 @@ codec=(root/'Source/TrackerPatternText.h').read_text()
 panel_h=(root/'Source/TrackerPatternPanel.h').read_text()
 cmake=(root/'CMakeLists.txt').read_text()
 workflow=(root/'.github/workflows/build-windows.yml').read_text()
-assert 'VERSION 0.2.23' in cmake
+assert 'VERSION 0.2.24' in cmake
 assert 'trackerF1AreaEdge(row,cell,pat.length,pat.repeat,' in ui
 assert 'm.isCtrlDown() && !m.isAltDown() && !m.isShiftDown()' in ui
 assert 'trackerF1HomeTarget(row,pat.length,lastRealStep)' in ui
@@ -26,5 +26,5 @@ assert 'std::map<int,juce::File> patternExportFiles;' in panel_h
 assert 'BISCOT1_TRACKER_PATTERN_V1' in codec
 assert 'deserializeTrackerPattern(' in codec
 assert 'TrackerPatternTextTest' in cmake and 'TrackerPatternTextTest.exe' in workflow
-assert 'TEST0.2.23' in workflow
-print('OK TEST0.2.23 F1 navigation regions, Ctrl+S Pattern library and validated codec')
+assert 'TEST0.2.24' in workflow
+print('OK TEST0.2.24 F1 navigation regions, Ctrl+S Pattern library and validated codec')

@@ -115,18 +115,24 @@ jobs:
       - name: Verify TEST0.2.21.4 F1 area navigation and Pattern library export
         shell: pwsh
         run: python Tests/verify_test02214_home_export.py
-      - name: Validate TEST0.2.23 Song F2 state and keyboard integration
+      - name: Validate TEST0.2.24 Song F2 state and keyboard integration
         shell: pwsh
         run: python Tests/verify_test0222_song_editor.py
-      - name: Validate TEST0.2.23 Song F2 edit commands and safe serialization
+      - name: Validate TEST0.2.24 Song F2 edit commands and safe serialization
         shell: pwsh
         run: python Tests/verify_test0223_song_editing.py
+      - name: Verify Song sample-clock playback, three-lane MIDI and accessible transport
+        shell: pwsh
+        run: python Tests/verify_test0224_song_playback.py
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
       - name: Build
         shell: pwsh
         run: cmake --build build --config Release --parallel 4
+      - name: Test three independent Song lanes and window/repeat timing in Release
+        shell: pwsh
+        run: .\build\Release\TrackerSongPlaybackTest.exe
       - name: Test Song F2 clipboard, reorder and per-Song Undo Redo in Release
         shell: pwsh
         run: .\build\Release\TrackerSongEditingTest.exe
@@ -216,9 +222,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.23-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.24-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-TEST0.2.23-Windows-x64
-          path: Biscot1-TEST0.2.23-Windows-x64.zip
+          name: Biscot1-TEST0.2.24-Windows-x64
+          path: Biscot1-TEST0.2.24-Windows-x64.zip
           if-no-files-found: error

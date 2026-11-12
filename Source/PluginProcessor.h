@@ -4,6 +4,7 @@
 #include "TrackerPatternBank.h"
 #include "TrackerSongBank.h"
 #include "TrackerPatternPlayback.h"
+#include "TrackerSongPlayback.h"
 #include <memory>
 #include "SidOutputStage.h"
 #include "SidFilterCore.h"
@@ -55,7 +56,12 @@ public:
  std::atomic<bool> trackerStepRecording{false};
  bool popTrackerRecordedMidi(TrackerRecordedMidiEvent& e) noexcept {return trackerMidiQueue.pop(e);}
  void commitTrackerState(); // UI thread: serialize and publish an immutable Pattern snapshot
- void commitSongState(); // UI thread: Song data only, never read by audio thread yet
+ void commitSongState(); // UI thread: publish immutable Song and Pattern snapshots
+ void requestSongStart(int row) noexcept;
+ void requestSongPause() noexcept;
+ void requestSongStop() noexcept;
+ std::array<std::atomic<int>,3> songAudibleRows{};
+ std::atomic<int> songPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused
  void requestTrackerStart(int step,bool audition=false) noexcept;
  void requestTrackerPause() noexcept;
  void requestTrackerStop() noexcept;
@@ -86,6 +92,25 @@ private:
  using Lfo = SidLfoCore;
  std::array<Voice,3> voices{};
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
+ std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPlayable{};
+ std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
+ int songMidiTriggerNote=-1;
+ std::shared_ptr<const TrackerPlayableSong> songPlaybackSnapshot;
+ std::atomic<int> songRequested{0}; // positive start row+1, -1 stop, -2 pause
+ TrackerSongTransport songTransport{};
+ bool songMixActive=false;
+ std::array<float,3> songMixer{{1.f,1.f,1.f}};
+ int songFilterOwner=1;
+ std::array<int,3> songLfoOwners{{1,1,1}};
+ std::array<int,3> songActiveNotes{{-1,-1,-1}};
+ std::array<std::array<int,15>,3> songActiveSubs{};
+ std::array<int,3> songActiveSubCount{};
+ std::array<std::array<int,128>,3> songCurveNext{};
+ void songReleaseLane(int lane) noexcept;
+ void songApplyStep(int lane,const TrackerSongLaneTick& event) noexcept;
+ void songRunCurves(int lane,const TrackerSongClip& clip,int step) noexcept;
+ int songMapSlider(int synthIndex,int lane,const TrackerSongClip& clip) const noexcept;
+ void songStopAudio(bool pause) noexcept;
  std::atomic<std::shared_ptr<const TrackerMidiMap>> trackerMidiMap{};
  TrackerMidiInputQueue trackerMidiQueue{};
  int trackerMidiTriggerNote=-1;
@@ -140,7 +165,7 @@ private:
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;
  void noteOn(int,int,int,bool,bool);
  void noteOff(int,int);
- void triggerFilterAndLfos(int,bool);
+ void triggerFilterAndLfos(int,bool,int);
  void onMidi(const juce::MidiMessage&);
  void releasePedalLatches();
  void renderOne(float&,float&,std::array<float,8>&);

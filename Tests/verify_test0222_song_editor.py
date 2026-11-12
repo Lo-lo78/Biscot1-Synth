@@ -24,12 +24,12 @@ assert 'changeLane(code-\'1\')' in song
 assert 'openNumeric(EditPurpose::songNumber' in song
 assert 'if(realStep()){picker=true;' in song
 assert 'processor.commitSongState();' in song
-assert 'Song playback will be added after the editor' in song
+assert 'processor.requestSongStart(' in song
 assert 'Song export will be added with the standalone Song package' in song
 assert 'onOpenSong()' in pattern
 assert 'songPanel->open();' in editor
 assert 'songPanel->restoreAfterPreset()' in editor
 assert 'Source/TrackerSongPanel.cpp' in cmake
 assert 'TrackerSongBankTest.exe' in workflow
-assert 'Biscot1-TEST0.2.23-Windows-x64' in workflow
+assert 'Biscot1-TEST0.2.24-Windows-x64' in workflow
 print('OK: Song F2 sparse bank, UI routing, independent preset persistence, honest playback status')
