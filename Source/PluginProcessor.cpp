@@ -43,6 +43,7 @@ BiscotProcessor::BiscotProcessor():AudioProcessor(BusesProperties().withOutput("
  trackerMidiMap.store(std::make_shared<const TrackerMidiMap>(compileTrackerMidiMap(trackerPatterns)));
  songPlayable.store(std::make_shared<const TrackerPlayableSong>(compileTrackerSong(trackerSongs.at(0),0,trackerPatterns)));
  songMidiMap.store(std::make_shared<const TrackerSongMidiMap>(compileTrackerSongMidiMap(trackerSongs,trackerPatterns)));
+ songChainMap.store(std::make_shared<const TrackerSongChainMap>(compileTrackerSongChainMap(trackerSongs,trackerPatterns)));
 }
 bool BiscotProcessor::isBusesLayoutSupported(const BusesLayout& l)const{
  if(l.outputBuses.size()!=5 || !l.inputBuses.isEmpty())return false;
@@ -53,7 +54,7 @@ bool BiscotProcessor::isBusesLayoutSupported(const BusesLayout& l)const{
  return true;
 }
 void BiscotProcessor::prepareToPlay(double sr,int){
- sampleRateHz=sr>0?sr:44100.;voices={};lfos={};filters={};pressed={};pressedCounts={};arpPoolCounts={};nextPress=0;heldNotes.clear();filterKeyNote=60;
+ sampleRateHz=sr>0?sr:44100.;for(auto& fx:songFx)fx.prepare(sampleRateHz);songFxModeActive=false;voices={};lfos={};filters={};pressed={};pressedCounts={};arpPoolCounts={};nextPress=0;heldNotes.clear();filterKeyNote=60;
  for(auto& seq:sidSeq)seq.clearAll();
  for(auto& s:outputStages)s.prepare(sampleRateHz);
  waveCore.prepare();
@@ -65,8 +66,8 @@ void BiscotProcessor::prepareToPlay(double sr,int){
  trackerTransport.stop();trackerPlaybackSnapshot.reset();trackerAudibleStep.store(-1);trackerPlaybackStatus.store(0);
  trackerRequested.store(0);trackerClearOverrides();
  trackerReleaseArpActive=false;trackerMidiTriggerNote=-1;
- songTransport.stop();songPlaybackSnapshot.reset();songRequested.store(0);songPlaybackStatus.store(0);songMidiTriggerNote=-1;
- songMixActive=false; songMixer={1.f,1.f,1.f};songFilterOwner=1;songLfoOwners={1,1,1};songActiveNotes.fill(-1);songActiveSubCount.fill(0);
+ songTransport.stop();songPlaybackSnapshot.reset();songChainSnapshot.reset();songPlayingNumber.store(-1);songRequested.store(0);songPlaybackStatus.store(0);songMidiTriggerNote=-1;
+ songMixActive=false; songMixer={1.f,1.f,1.f};songFilterOwner=1;songFilterPreference=1;songFilterMask=7;songLfoOwners={1,1,1};songLfoPreferences={1,1,1};songActiveNotes.fill(-1);songActiveSubCount.fill(0);
  for(auto& x:songAudibleRows)x.store(-1);
 }
 // The JSFX has a separate 16-event held-note stack for each operator, plus
@@ -616,6 +617,10 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   const float level=limit(opSharedParam(16,i)*(1.f+levelMod[(size_t)i]),0.f,2.f);
   oscOut[(size_t)i]=(float)wave*amp[(size_t)i]*level;
   if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];
+  if(songFxModeActive && songFx[(size_t)i].sidechainSource>0){
+   const int src=songFx[(size_t)i].sidechainSource-1;
+   oscOut[(size_t)i]*=songFx[(size_t)i].duckGain(amp[(size_t)src]);
+  }
   xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i],-1.f,1.f);
  }
  float filterInput[2]{},dry[2]{};
@@ -625,8 +630,9 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   // JSFX center pan is unity in BOTH channels. Previous equal-power pan
   // attenuated every centered voice by -3dB and changed the filter drive.
   const float pan=xfade[(size_t)i];
-  const float l=x*(1.f-std::max(0.f,pan));
-  const float r=x*(1.f+std::min(0.f,pan));
+  float l=x*(1.f-std::max(0.f,pan));
+  float r=x*(1.f+std::min(0.f,pan));
+  if(songFxModeActive)songFx[(size_t)i].process(l,r,l,r,tempoBpm);
   if(param(114+i)>0.5f){filterInput[0]+=l*filterInputGain;filterInput[1]+=r*filterInputGain;}
   else if(i!=2 || param(103)<0.5f){
    dry[0]+=l;dry[1]+=r;
@@ -751,13 +757,10 @@ bool BiscotProcessor::handleTrackerExternalMidi(const juce::MidiMessage& m) noex
   trackerPlaybackStatus.store(0,std::memory_order_relaxed);
   songStopAudio(false);
   trackerClearOverrides();
-  songPlaybackSnapshot=songMap->atNote[(size_t)note];
-  songTransport.start(0,*songPlaybackSnapshot);
-  songMixer=songPlaybackSnapshot->mixer;songMixActive=true;
-  songFilterOwner=songPlaybackSnapshot->filterOwner;songLfoOwners=songPlaybackSnapshot->lfoOwners;
-  songPlaybackStatus.store(1,std::memory_order_relaxed);
-  songMidiTriggerNote=note;idleSleep.wake();
-  for(auto& audible:songAudibleRows)audible.store(-1,std::memory_order_relaxed);
+  songChainSnapshot=songChainMap.load(std::memory_order_acquire);
+  for(auto& fx:songFx)fx.resetSidechain();
+  songBegin(songMap->atNote[(size_t)note],0);
+  songMidiTriggerNote=note;
   return true;
  }
  if(m.isNoteOff()){
@@ -834,6 +837,64 @@ void BiscotProcessor::requestSongStart(int row) noexcept {
 }
 void BiscotProcessor::requestSongPause() noexcept {songRequested.store(-2,std::memory_order_release);}
 void BiscotProcessor::requestSongStop() noexcept {songRequested.store(-1,std::memory_order_release);}
+void BiscotProcessor::songBegin(const std::shared_ptr<const TrackerPlayableSong>& playable,int startRow) noexcept {
+ if(!playable)return;
+ songPlaybackSnapshot=playable;
+ songTransport.start(startRow,*playable);
+ songMixer=playable->mixer;songMixActive=true;
+ songMixerLastRevision=songMixerRevision.load(std::memory_order_acquire);
+ songFilterPreference=playable->filterOwner;
+ songLfoPreferences=playable->lfoOwners;
+ songFilterOwner=songFilterPreference;songLfoOwners=songLfoPreferences;
+ songFilterMask=playable->filterMask;
+ for(int op=0;op<3;++op)trackerSetOverride(114+op,(songFilterMask&(1<<op))?1.f:0.f);
+ songFxModeActive=true;
+ songPlayingNumber.store(playable->songNumber,std::memory_order_relaxed);
+ songPlaybackStatus.store(1,std::memory_order_relaxed);
+ for(auto& x:songAudibleRows)x.store(-1,std::memory_order_relaxed);
+ idleSleep.wake();
+}
+bool BiscotProcessor::songChainNext() noexcept {
+ if(!songPlaybackSnapshot || !songChainSnapshot)return false;
+ const int next=songPlaybackSnapshot->songEnd;
+ if(next<0||next>=100)return false;
+ const auto& target=songChainSnapshot->byNumber[(size_t)next];
+ if(!target)return false;
+ // End -> next Song is a timeline transition, not a full DSP reset.
+ // Keep oscillator/filter/LFO state and any running delay tails.
+ for(int lane=0;lane<3;++lane)songReleaseLane(lane);
+ songBegin(target,0);
+ return true;
+}
+void BiscotProcessor::songApplyRowFx(int lane,const TrackerSongRowFx& fx) noexcept {
+ const auto apply=[&](int id)->bool{return fx.present[(size_t)id];};
+ if(apply(10))songFilterPreference=std::clamp((int)std::lround(fx.value[10]),1,3);
+ if(apply(11))songFilterMask=std::clamp((int)std::lround(fx.value[11]),0,7);
+ for(int j=0;j<3;++j)if(apply(12+j))
+  songLfoPreferences[(size_t)j]=std::clamp((int)std::lround(fx.value[(size_t)(12+j)]),1,3);
+ if(apply(11))for(int op=0;op<3;++op)
+  trackerSetOverride(114+op,(songFilterMask&(1<<op))?1.f:0.f);
+ // Sidechain and Delay are independent of the presence of a Pattern in the row.
+ // Each explicitly written control updates that lane's persistent FX state.
+ songFx[(size_t)lane].setRow(fx);
+}
+void BiscotProcessor::songResolveResources(const TrackerSongTick& tick) noexcept {
+ std::array<int,4> claimantMask{};
+ for(int lane=0;lane<3;++lane){
+  const TrackerSongClip* clip=tick.lanes[(size_t)lane].clip;
+  const auto& transport=songTransport.lanes[(size_t)lane];
+  if(!clip && !transport.done && transport.currentPatternStep>=0 &&
+      transport.audibleClipIndex>=0 && songPlaybackSnapshot &&
+      transport.audibleClipIndex<(int)songPlaybackSnapshot->clips[(size_t)lane].size())
+   clip=&songPlaybackSnapshot->clips[(size_t)lane][(size_t)transport.audibleClipIndex];
+  if(!clip)continue;
+  for(int resource=0;resource<4;++resource)
+   if(clip->resourceFlags&(1<<resource))claimantMask[(size_t)resource]|=1<<lane;
+ }
+ songFilterOwner=trackerSongResolveOwner(claimantMask[0],songFilterPreference);
+ for(int j=0;j<3;++j)
+  songLfoOwners[(size_t)j]=trackerSongResolveOwner(claimantMask[(size_t)(j+1)],songLfoPreferences[(size_t)j]);
+}
 void BiscotProcessor::songReleaseLane(int lane) noexcept {
  const int channel=lane+1;
  for(int i=songActiveSubCount[(size_t)lane]-1;i>=0;--i)
@@ -850,51 +911,45 @@ void BiscotProcessor::songStopAudio(bool pause) noexcept {
  // Keep Song mixer and timbre throughout the natural VCA release tail.
  // Clearing either here creates an audible gain or filter discontinuity.
  songPlaybackStatus.store(pause?2:0,std::memory_order_relaxed);
+ songPlayingNumber.store(-1,std::memory_order_relaxed);
 }
-int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip& clip) const noexcept {
+int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) const noexcept {
  if(idx<0||idx>=234)return -1;
- // The source Pattern describes generic Op1; route each OP group to its own voice.
- if(idx>=10&&idx<=100 && (idx-10)%3==0)return idx+lane;
- // OP oscillator level, modulation, pan, ADSR, arp and per-op switches.
- if(idx>=10&&idx<=102){
-  for(int base=10;base<=100;base+=3)if(idx==base)return base+lane;
- }
- // Filter is shared. Only the designated lane may overwrite its state.
- if(idx==6||idx==7||(idx>=108&&idx<=121))
-  return lane+1==(clip.filterOwner>0?clip.filterOwner:songPlaybackSnapshot->filterOwner)?idx:-1;
- // LFO families are shared, with individually selectable owning lanes.
- if(idx>=122&&idx<=190){
-  const int lfo=idx<145?0:idx<168?1:2;
-  const int owner=clip.lfoOwners[(size_t)lfo]>0?clip.lfoOwners[(size_t)lfo]:songPlaybackSnapshot->lfoOwners[(size_t)lfo];
-  if(owner!=lane+1)return -1;
-  const int base=122+23*lfo;
+ // Song Patterns use the generic Op1 columns, never the stored live MIDI mode.
+ if(idx>=10&&idx<=102){return ((idx-10)%3)==0?idx+lane:-1;}
+ // Routing is controlled exclusively by Song Filter Operators, not the Pattern.
+ if(idx>=114&&idx<=116)return -1;
+ if(idx==6||idx==7||(idx>=108&&idx<=121))return songFilterOwner==lane+1?idx:-1;
+ // The three LFO wave generators are shared; depths belong to individual OPs.
+ for(int j=0;j<3;++j){
+  const int base=122+j*23;
+  if(idx>=base&&idx<=base+10)return songLfoOwners[(size_t)j]==lane+1?idx:-1;
   if(idx>=base+11&&idx<=base+22){
-   const int group=(idx-(base+11))/3;
-   return base+11+group*3+lane;
+   const int offset=idx-(base+11);
+   return offset%3==0?idx+lane:-1;
   }
-  return idx;
  }
- if(idx>=231&&idx<=233){const int owner=songPlaybackSnapshot->lfoOwners[(size_t)(idx-231)];return owner==lane+1?idx:-1;}
+ if(idx>=231&&idx<=233)return songLfoOwners[(size_t)(idx-231)]==lane+1?idx:-1;
  return idx;
 }
 void BiscotProcessor::songApplyStep(int lane,const TrackerSongLaneTick& e) noexcept {
  if(!e.clip||e.patternStep<0)return;
  const auto& clip=*e.clip;
  const auto& row=clip.pattern->rows[(size_t)e.patternStep];
+ if(e.clipStarted){
+  for(const auto& [index,value]:clip.initialParams){
+   const int mapped=songMapSlider(index,lane,clip);
+   if(mapped>=0)trackerSetOverride(mapped,value);
+  }
+ }
  songAudibleRows[(size_t)lane].store(e.songRow,std::memory_order_relaxed);
  trackerSetOverride(3,2.f); // MIDI channel 1/2/3 routes exactly to Op1/2/3
  trackerSetOverride(230,0.f); // independent OP controls even if preset uses chord master
  trackerSetOverride(10+lane,clip.legato?1.f:0.f);
- if(clip.filterOwner>0)songFilterOwner=clip.filterOwner;
- for(int j=0;j<3;++j)if(clip.lfoOwners[(size_t)j]>0)songLfoOwners[(size_t)j]=clip.lfoOwners[(size_t)j];
  for(const auto& a:row.automation){
   const int slider=songMapSlider(a.synthIndex,lane,clip);
   if(slider>=0)trackerSetOverride(slider,(float)trackerCurveAt(a,e.patternStep,0.));
  }
- if(clip.filterMask>=0)for(int op=0;op<3;++op)
-  trackerSetOverride(114+op,(clip.filterMask&(1<<op))?1.f:0.f);
- else if(songPlaybackSnapshot)for(int op=0;op<3;++op)
-  trackerSetOverride(114+op,(songPlaybackSnapshot->filterMask&(1<<op))?1.f:0.f);
  if(row.pause){songReleaseLane(lane);return;}
  if(row.note>=0){
   const int note=juce::jlimit(0,127,row.note+e.transpose);
@@ -961,6 +1016,8 @@ void BiscotProcessor::enterColdIdle() noexcept {
  arpReleaseCounts.fill(0);
  if(!trackerTransport.running&&!songTransport.running){
   trackerClearOverrides();songMixActive=false;
+  songFxModeActive=false;
+  for(auto& fx:songFx)fx.clearDelay();
  }
  // Never zero free LFO phases: restarting one would desynchronize BPM-based
  // modulations whenever a song inserts a rest.
@@ -969,6 +1026,13 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
  juce::ScopedNoDenormals denormals;
  buffer.clear();
  // UI -> audio command only; no locks and no reading the editable bank.
+ // Apply F2 mixer edits without rebuilding the running Song or touching maps.
+ const auto liveRevision=songMixerRevision.load(std::memory_order_acquire);
+ if(liveRevision!=songMixerLastRevision){
+  songMixerLastRevision=liveRevision;
+  if(songTransport.running && songPlayingNumber.load(std::memory_order_relaxed)==songPendingMixerSong.load(std::memory_order_relaxed))
+   for(int i=0;i<3;++i)songMixer[(size_t)i]=songPendingMixer[(size_t)i].load(std::memory_order_relaxed);
+ }
  const int songCommand=songRequested.exchange(0,std::memory_order_acq_rel);
  if(songCommand!=0){
   const int patternStopped=trackerRequested.exchange(0,std::memory_order_acq_rel);
@@ -979,15 +1043,9 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   if(songCommand>0){
    trackerClearOverrides();
    songMidiTriggerNote=-1;
-   songPlaybackSnapshot=songPlayable.load(std::memory_order_acquire);
-   if(songPlaybackSnapshot){
-    songTransport.start(songCommand-1,*songPlaybackSnapshot);
-    songMixer=songPlaybackSnapshot->mixer;songMixActive=true;
-  songFilterOwner=songPlaybackSnapshot->filterOwner;songLfoOwners=songPlaybackSnapshot->lfoOwners;
-    songPlaybackStatus.store(1,std::memory_order_relaxed);
-    for(auto& x:songAudibleRows)x.store(-1,std::memory_order_relaxed);
-    idleSleep.wake();
-   }
+   songChainSnapshot=songChainMap.load(std::memory_order_acquire);
+   for(auto& fx:songFx)fx.resetSidechain();
+   songBegin(songPlayable.load(std::memory_order_acquire),songCommand-1);
   }
  }
  const int trackerCommand=trackerRequested.exchange(0,std::memory_order_acq_rel);
@@ -1064,6 +1122,16 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   }
   if(songTransport.running && songPlaybackSnapshot){
    const auto events=songTransport.tick(*songPlaybackSnapshot,sampleRateHz,tempoBpm);
+   // Evaluate all three Song row control columns before any note-on.
+   // This also processes effects on blank Song rows.
+   for(int lane=0;lane<3;++lane)
+    if(events.lanes[(size_t)lane].rowFx)
+     songApplyRowFx(lane,*events.lanes[(size_t)lane].rowFx);
+   bool resourceBoundary=false;
+   for(const auto& laneEvent:events.lanes)
+    if(laneEvent.rowStarted||laneEvent.clip||laneEvent.finished)
+     {resourceBoundary=true;break;}
+   if(resourceBoundary)songResolveResources(events);
    for(int lane=0;lane<3;++lane){
     const auto& e=events.lanes[(size_t)lane];
     if(e.release)songReleaseLane(lane);
@@ -1077,9 +1145,7 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
       songRunCurves(lane,c,current.currentPatternStep);
     }
    }
-   if(events.finished){
-    songStopAudio(false);
-   }
+   if(events.finished && !songChainNext())songStopAudio(false);
   }
   if(playback && trackerTransport.running){
    const auto event=trackerTransport.tick(*playback,sampleRateHz,tempoBpm);
@@ -1149,7 +1215,9 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    noGate=noGate && !v.gate && !v.pedalLatched;
    vcaIdle=vcaIdle && v.amp.stage==0 && v.amp.level<=0.0001f;
   }
-  if(idleSleep.observe(noGate,vcaIdle,peak))enterColdIdle();
+  bool fxTail=false;
+  if(songFxModeActive)for(const auto& fx:songFx)fxTail=fxTail||fx.hasTail();
+  if(idleSleep.observe(noGate&&!fxTail,vcaIdle&&!fxTail,peak))enterColdIdle();
   ++sample;
  }
 }
@@ -1331,6 +1399,18 @@ bool readSongBank(const juce::String& text,TrackerSongBank& result){
 }
 }
 void BiscotProcessor::commitSongState(){
+ // Song F2 Mute/Solo/Volume edits affect a currently playing Song next block.
+ if(songPlayingNumber.load(std::memory_order_acquire)==trackerSongs.activeSong){
+  if(const auto* live=trackerSongs.find(trackerSongs.activeSong)){
+   for(int i=0;i<3;++i){
+    const bool mute=(live->mixerMuteMask&(1<<i))!=0 || (live->mixerSoloLane>0&&live->mixerSoloLane!=i+1);
+    songPendingMixer[(size_t)i].store(mute?0.f:(float)std::clamp(live->mixerVolumes[(size_t)i]/100.,0.,1.),std::memory_order_relaxed);
+   }
+   songPendingMixerSong.store(trackerSongs.activeSong,std::memory_order_relaxed);
+   songMixerRevision.fetch_add(1,std::memory_order_release);
+  }
+ }
+ songChainMap.store(std::make_shared<const TrackerSongChainMap>(compileTrackerSongChainMap(trackerSongs,trackerPatterns)),std::memory_order_release);
  songMidiMap.store(std::make_shared<const TrackerSongMidiMap>(compileTrackerSongMidiMap(trackerSongs,trackerPatterns)),std::memory_order_release);
  if(const auto* song=trackerSongs.find(trackerSongs.activeSong))
   songPlayable.store(std::make_shared<const TrackerPlayableSong>(compileTrackerSong(*song,trackerSongs.activeSong,trackerPatterns)),std::memory_order_release);
@@ -1338,6 +1418,7 @@ void BiscotProcessor::commitSongState(){
  state.state.setProperty(trackerSongStateKey,stream.getMemoryBlock().toBase64Encoding(),nullptr);
 }
 void BiscotProcessor::commitTrackerState(){
+ songChainMap.store(std::make_shared<const TrackerSongChainMap>(compileTrackerSongChainMap(trackerSongs,trackerPatterns)),std::memory_order_release);
  songMidiMap.store(std::make_shared<const TrackerSongMidiMap>(compileTrackerSongMidiMap(trackerSongs,trackerPatterns)),std::memory_order_release);
  if(const auto* song=trackerSongs.find(trackerSongs.activeSong))
   songPlayable.store(std::make_shared<const TrackerPlayableSong>(compileTrackerSong(*song,trackerSongs.activeSong,trackerPatterns)),std::memory_order_release);
@@ -1363,7 +1444,8 @@ void BiscotProcessor::setStateInformation(const void* ptr,int length){
   if(const auto* pat=trackerPatterns.find(trackerPatterns.activePattern))
    trackerPlayable.store(std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(*pat)),
                          std::memory_order_release);
-  songMidiMap.store(std::make_shared<const TrackerSongMidiMap>(compileTrackerSongMidiMap(trackerSongs,trackerPatterns)),std::memory_order_release);
+  songChainMap.store(std::make_shared<const TrackerSongChainMap>(compileTrackerSongChainMap(trackerSongs,trackerPatterns)),std::memory_order_release);
+ songMidiMap.store(std::make_shared<const TrackerSongMidiMap>(compileTrackerSongMidiMap(trackerSongs,trackerPatterns)),std::memory_order_release);
   if(const auto* song=trackerSongs.find(trackerSongs.activeSong))
    songPlayable.store(std::make_shared<const TrackerPlayableSong>(compileTrackerSong(*song,trackerSongs.activeSong,trackerPatterns)),std::memory_order_release);
   requestSongStop();requestTrackerStop();

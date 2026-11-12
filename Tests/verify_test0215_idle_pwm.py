@@ -19,14 +19,14 @@ assert 'if(idleSleep.asleep)' in proc
 assert 'lfoUsedCached=determineUsedLfos' in proc
 assert 'lfoUsedCached[(size_t)i]?processLfo(i,previous):0.f' in proc
 assert 'advanceIdleLfos(next-sample)' in proc
-assert 'if(idleSleep.observe(noGate,vcaIdle,peak))enterColdIdle();' in proc
+assert 'if(idleSleep.observe(noGate&&!fxTail,vcaIdle&&!fxTail,peak))enterColdIdle();' in proc
 assert 'if(multichannel)for(const float x:stems)' in proc
 assert 'for(auto& stage:outputStages)stage.reset();' in proc
 assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in editor
 assert 'handler->getNativeImplementation()==nullptr' in editor
 assert 'SidIdleAndSquarePwmTest.exe' in workflow
-assert 'TEST0.2.24' in editor
-assert 'VERSION 0.2.24' in (r/'CMakeLists.txt').read_text()
+assert 'TEST0.2.25' in editor
+assert 'VERSION 0.2.25' in (r/'CMakeLists.txt').read_text()
 assert len(json.loads((r/'Reference/ParameterCatalog.json').read_text()))==224
 native=json.loads((r/'Reference/NativeParameters.json').read_text())
 assert [x['index'] for x in native[-3:]]==[231,232,233]

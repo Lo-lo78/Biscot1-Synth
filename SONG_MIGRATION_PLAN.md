@@ -32,3 +32,12 @@ Original Lua: F3 Song + F4 Song parameter list. Native VST3 maps Song to **F2**,
 - Implement accessible browser + preview, importing individual Patterns from another `.biscot` without replacing its synth sound; remap colliding Pattern IDs when importing Song packages.
 
 Phase 3 is staged: TEST0.2.24 plays three operator lanes, but more advanced original JSFX effects and Song chaining must still be ported and verified. Phase 4 covers portable Song packages.
+
+
+## TEST0.2.25: advanced Song engine
+
+- Song End chain/repeat, immutable multi-Song bank and Pattern Start state priming implemented.
+- Pattern-first shared Filter/LFO ownership implemented, including sparse FX-only Song rows.
+- Native Sidechain and Delay DSP, plus live F2 mixer update implemented for REAPER testing.
+- Phase 4 remains: per-Song Ctrl+S, dependent Pattern folder export/import, collision-safe Song package management.
+- Exact legacy JSFX effect response and advanced continuous pause/resume remain subject to listening tests.

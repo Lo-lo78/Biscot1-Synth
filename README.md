@@ -1,11 +1,11 @@
-# Biscot1 Synth VST3 — TEST0.2.24 (Song F2, first audible three-operator transport)
+# Biscot1 Synth VST3 — TEST0.2.25 (Song End, resource arbitration and native Song effects)
 
 Alt+Q F2 Song can now play three operator lanes at once. **Space** starts/stops,
 **Ctrl+Space** pauses at the actual Song row. Separate Pattern references,
 repeat/speed/transpose, note routing, Song mixer and MIDI Song triggers are
 wired into the original SID DSP. The Lua Song migration is **not yet complete**:
 Sidechain/Delay, Song End links and the independent Song export still need work.
-See `RELEASE_NOTES_TEST0.2.24.md` and `SONG_MIGRATION_PLAN.md`.
+See `RELEASE_NOTES_TEST0.2.25.md` for the Song End, automatic Filter/LFO ownership, Sidechain and Delay additions. The detailed migration plan is in `SONG_MIGRATION_PLAN.md`.
 
 ---
 

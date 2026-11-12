@@ -5,6 +5,7 @@
 #include "TrackerSongBank.h"
 #include "TrackerPatternPlayback.h"
 #include "TrackerSongPlayback.h"
+#include "TrackerSongFxCore.h"
 #include <memory>
 #include "SidOutputStage.h"
 #include "SidFilterCore.h"
@@ -93,20 +94,37 @@ private:
  std::array<Voice,3> voices{};
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPlayable{};
+ std::atomic<std::shared_ptr<const TrackerSongChainMap>> songChainMap{};
  std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
  int songMidiTriggerNote=-1;
  std::shared_ptr<const TrackerPlayableSong> songPlaybackSnapshot;
+ std::shared_ptr<const TrackerSongChainMap> songChainSnapshot;
+ std::atomic<int> songPlayingNumber{-1};
  std::atomic<int> songRequested{0}; // positive start row+1, -1 stop, -2 pause
  TrackerSongTransport songTransport{};
  bool songMixActive=false;
+ bool songFxModeActive=false;
+ std::array<TrackerSongFxCore,3> songFx{};
  std::array<float,3> songMixer{{1.f,1.f,1.f}};
- int songFilterOwner=1;
+ // UI -> audio mixer changes: one acquire/release handoff per audio block,
+ // never access editable SongBank from renderOne().
+ std::array<std::atomic<float>,3> songPendingMixer{};
+ std::atomic<int> songPendingMixerSong{-1};
+ std::atomic<unsigned int> songMixerRevision{0};
+ unsigned int songMixerLastRevision=0;
+ int songFilterOwner=1, songFilterPreference=1;
+ std::array<int,3> songLfoPreferences{{1,1,1}};
+ int songFilterMask=7;
  std::array<int,3> songLfoOwners{{1,1,1}};
  std::array<int,3> songActiveNotes{{-1,-1,-1}};
  std::array<std::array<int,15>,3> songActiveSubs{};
  std::array<int,3> songActiveSubCount{};
  std::array<std::array<int,128>,3> songCurveNext{};
  void songReleaseLane(int lane) noexcept;
+ void songApplyRowFx(int lane,const TrackerSongRowFx& fx) noexcept;
+ void songResolveResources(const TrackerSongTick& tick) noexcept;
+ void songBegin(const std::shared_ptr<const TrackerPlayableSong>& playable,int startRow) noexcept;
+ bool songChainNext() noexcept;
  void songApplyStep(int lane,const TrackerSongLaneTick& event) noexcept;
  void songRunCurves(int lane,const TrackerSongClip& clip,int step) noexcept;
  int songMapSlider(int synthIndex,int lane,const TrackerSongClip& clip) const noexcept;

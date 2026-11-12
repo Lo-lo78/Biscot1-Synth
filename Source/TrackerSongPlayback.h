@@ -15,28 +15,66 @@ struct TrackerSongClip {
  int repeat=1, transpose=0, startOffset=0;
  double speed=1.; bool legato=false;
  int filterOwner=0, filterMask=-1;
+ int resourceFlags=0; // Filter=1, shared LFO 1/2/3 = 2/4/8
+ std::vector<std::pair<int,float>> initialParams; // immutable priming through Pattern Start
  std::array<int,3> lfoOwners{};
  std::shared_ptr<const TrackerPlayablePattern> pattern;
 };
+// Only explicitly present Song controls are replayed. An empty Song row may
+// still contain FX events, including Sidechain Off or Delay Speed Off.
+struct TrackerSongRowFx {
+ int songRow=-1;
+ std::array<bool,23> present{};
+ std::array<double,23> value{};
+ bool any() const noexcept {
+  for(int i=10;i<=20;++i)if(present[(size_t)i])return true;
+  return false;
+ }
+};
+inline int trackerSongResourceFlags(const TrackerPlayablePattern& pat)noexcept {
+ int flags=0;
+ for(const auto& row:pat.rows)for(const auto& a:row.automation){
+  const int sid=a.synthIndex;
+  if(sid==6||sid==7||(sid>=108&&sid<=121&&!(sid>=114&&sid<=116)))flags|=1;
+  if(sid>=122&&sid<=144)flags|=2;
+  if(sid>=145&&sid<=167)flags|=4;
+  if(sid>=168&&sid<=190)flags|=8;
+ }
+ return flags;
+}
+// Single claimant wins automatically; preferred owner only resolves a genuine
+// conflict between multiple simultaneous Patterns, following Lua 0.166.
+inline int trackerSongResolveOwner(int claimantMask,int preferred)noexcept {
+ const int p=std::clamp(preferred,1,3);
+ if(claimantMask==0)return p;
+ if(claimantMask==1)return 1;
+ if(claimantMask==2)return 2;
+ if(claimantMask==4)return 3;
+ if(claimantMask&(1<<(p-1)))return p;
+ return (claimantMask&1)?1:((claimantMask&2)?2:3);
+}
 struct TrackerPlayableSong {
  int songNumber=0;
  std::array<int,3> lengths{16,16,16}, repeats{1,1,1};
  std::array<std::vector<double>,3> laneSpeeds;
  std::array<std::vector<TrackerSongClip>,3> clips;
+ std::array<std::map<int,TrackerSongRowFx>,3> fxRows;
  std::array<float,3> mixer{{1,1,1}};
  int filterOwner=1,filterMask=7;
  std::array<int,3> lfoOwners{1,1,1};
  int midiNote=-1, songEnd=-1, loopTarget=-1;
  bool chainLoop=false;
 };
-inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNumber,const TrackerPatternBank& patterns){
+inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNumber,const TrackerPatternBank& patterns,
+ std::map<int,std::shared_ptr<const TrackerPlayablePattern>>* globalCache=nullptr){
  TrackerPlayableSong result;result.songNumber=songNumber;
  result.lengths=song.laneLengths;result.repeats=song.laneRepeats;
  result.laneSpeeds=song.laneSpeeds;result.filterOwner=song.filterOwner;
  result.filterMask=song.filterMask;result.lfoOwners=song.lfoOwners;
  result.midiNote=song.midiNote;result.songEnd=song.songEnd;
  result.loopTarget=song.loopTarget;result.chainLoop=song.chainLoop;
- std::map<int,std::shared_ptr<const TrackerPlayablePattern>> cache;
+ std::map<int,std::shared_ptr<const TrackerPlayablePattern>> localCache;
+ auto& cache=globalCache?*globalCache:localCache;
  for(int lane=0;lane<3;++lane){
   const bool solo=song.mixerSoloLane!=0;
   const bool silenced=(song.mixerMuteMask&(1<<lane))!=0 || (solo && song.mixerSoloLane!=lane+1);
@@ -44,6 +82,13 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
   result.lengths[(size_t)lane]=std::clamp(result.lengths[(size_t)lane],1,4096);
   result.repeats[(size_t)lane]=std::clamp(result.repeats[(size_t)lane],1,1000);
   for(const auto& [position,step]:song.lanes[(size_t)lane]){
+   if(position>=0&&position<result.lengths[(size_t)lane]){
+    TrackerSongRowFx fx;fx.songRow=position;
+    for(const int id:step.order)if(id>=10&&id<=20){
+     fx.present[(size_t)id]=true;fx.value[(size_t)id]=step.values[(size_t)id];
+    }
+    if(fx.any())result.fxRows[(size_t)lane].emplace(position,std::move(fx));
+   }
    if(position>=result.lengths[(size_t)lane]||position<0||!step.contains(1))continue;
    const int id=(int)std::lround(step.values[1]);
    if(id<0||id>=TrackerPatternBank::maxPatterns)continue;
@@ -52,6 +97,7 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
    if(!compiled)compiled=std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(*source));
    TrackerSongClip clip;
    clip.songRow=position;clip.patternId=id;clip.pattern=compiled;
+   clip.resourceFlags=trackerSongResourceFlags(*compiled);
    clip.patternStart=std::clamp((int)std::lround(step.values[5]),0,compiled->length-1);
    clip.playLength=std::clamp((int)std::lround(step.values[6]),1,compiled->length-clip.patternStart);
    clip.repeat=std::clamp((int)std::lround(step.values[4]),1,16);
@@ -59,6 +105,18 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
    clip.speed=std::clamp(step.values[2],0.25,16.);
    clip.startOffset=std::clamp((int)std::lround(step.values[22]),0,31);
    clip.legato=step.values[9]>=0.5;
+   // Pattern Start must restore persistent Wave, ADSR, Filter and LFO state
+   // from earlier rows. Prepare an efficient immutable summary on UI thread.
+   if(clip.patternStart>0){
+    std::map<int,float> seen;
+    for(int st=0;st<=clip.patternStart;++st)
+     for(const auto& aut:compiled->rows[(size_t)st].automation){
+      const int idx=aut.synthIndex;
+      if(idx>=0&&idx<234)
+       seen[idx]=(float)trackerCurveAt(aut,clip.patternStart,0.);
+     }
+    for(const auto& [idx,value]:seen)clip.initialParams.emplace_back(idx,value);
+   }
    if(step.contains(10))clip.filterOwner=std::clamp((int)step.values[10],1,3);
    if(step.contains(11))clip.filterMask=std::clamp((int)step.values[11],0,7);
    for(int i=0;i<3;++i)if(step.contains(12+i))clip.lfoOwners[(size_t)i]=std::clamp((int)step.values[(size_t)(12+i)],1,3);
@@ -67,6 +125,18 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
  }
  return result;
 }
+// Immutable reference graph for chained Song End. Repeated Song numbers share
+// a compiled snapshot; audio never accesses the mutable Song/Pattern banks.
+struct TrackerSongChainMap {
+ std::array<std::shared_ptr<const TrackerPlayableSong>,100> byNumber{};
+};
+inline TrackerSongChainMap compileTrackerSongChainMap(const TrackerSongBank& songs,const TrackerPatternBank& patterns){
+ TrackerSongChainMap map;
+ std::map<int,std::shared_ptr<const TrackerPlayablePattern>> cache;
+ for(const auto& [id,song]:songs.songs)
+  if(id>=0&&id<100)map.byNumber[(size_t)id]=std::make_shared<const TrackerPlayableSong>(compileTrackerSong(song,id,patterns,&cache));
+ return map;
+}
 struct TrackerSongMidiMap {
  std::array<std::shared_ptr<const TrackerPlayableSong>,128> atNote{};
  std::array<int,128> songIndex{};
@@ -74,12 +144,13 @@ struct TrackerSongMidiMap {
 };
 inline TrackerSongMidiMap compileTrackerSongMidiMap(const TrackerSongBank& songs,const TrackerPatternBank& patterns){
  TrackerSongMidiMap result;
+ std::map<int,std::shared_ptr<const TrackerPlayablePattern>> cache;
  for(const auto& [slot,song]:songs.songs){
   if(song.midiNote>=0&&song.midiNote<128){
    const int note=song.midiNote;
    if(result.songIndex[(size_t)note]<0||slot==songs.activeSong){
     result.songIndex[(size_t)note]=slot;
-    result.atNote[(size_t)note]=std::make_shared<const TrackerPlayableSong>(compileTrackerSong(song,slot,patterns));
+    result.atNote[(size_t)note]=std::make_shared<const TrackerPlayableSong>(compileTrackerSong(song,slot,patterns,&cache));
    }
   }
  }
@@ -89,7 +160,8 @@ struct TrackerSongLaneTick {
  const TrackerSongClip* clip=nullptr;
  int patternStep=-1, songRow=-1, transpose=0;
  double duration=0.;
- bool release=false, finished=false;
+ const TrackerSongRowFx* rowFx=nullptr;
+ bool release=false, finished=false, rowStarted=false, clipStarted=false;
 };
 struct TrackerSongTick {
  std::array<TrackerSongLaneTick,3> lanes{};
@@ -134,6 +206,7 @@ public:
     const auto& c=clips[(size_t)l.clipIndex];const auto& p=*c.pattern;
     const int step=c.patternStart+l.patternStep;
     e.clip=&c;e.patternStep=step;e.songRow=l.row;
+    e.clipStarted=(l.patternStep==0&&l.patternRepeat==0&&l.entryRepeat==0);
     const double repeatSpeed=l.patternRepeat<(int)p.repeatSpeeds.size()?p.repeatSpeeds[(size_t)l.patternRepeat]:1.;
     e.transpose=c.transpose+(l.patternRepeat<(int)p.repeatTransposes.size()?p.repeatTransposes[(size_t)l.patternRepeat]:0);
     e.duration=gridSamples(sr,bpm,laneSpeed()*c.speed*repeatSpeed);
@@ -153,6 +226,11 @@ public:
     if(l.cycle>=song.repeats[(size_t)i]){l.done=true;e.finished=true;continue;}
     l.row=0;l.clipIndex=0;
    }
+   // Row effects are chronological even for an empty Song row. They execute
+   // before the Pattern's first event, not on every repeated Pattern step.
+   e.rowStarted=true;
+   const auto fx=song.fxRows[(size_t)i].find(l.row);
+   if(fx!=song.fxRows[(size_t)i].end())e.rowFx=&fx->second;
    if(l.clipIndex<(int)clips.size() && clips[(size_t)l.clipIndex].songRow==l.row){
     const auto& c=clips[(size_t)l.clipIndex];
     l.playingClip=true;l.patternStep=l.patternRepeat=l.entryRepeat=0;
@@ -161,6 +239,7 @@ public:
     else {
      const auto& p=*c.pattern;
      e.clip=&c;e.patternStep=c.patternStart;e.songRow=l.row;
+     e.clipStarted=true;
      e.transpose=c.transpose+(!p.repeatTransposes.empty()?p.repeatTransposes[0]:0);
      const double ps=!p.repeatSpeeds.empty()?p.repeatSpeeds[0]:1.;
      e.duration=gridSamples(sr,bpm,laneSpeed()*c.speed*ps);

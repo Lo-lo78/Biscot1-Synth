@@ -30,8 +30,8 @@ assert 'resetWholePattern()' in panel
 assert 'jumpSizes{1,5,10,15,20}' in hdr
 assert 'TrackerShortcutTest.exe' in (root/'.github/workflows/build-windows.yml').read_text()
 assert 'Source/TrackerShortcutKey.h' in (root/'CMakeLists.txt').read_text()
-assert 'TEST0.2.24' in (root/'Source/PluginEditor.cpp').read_text()
-assert 'VERSION 0.2.24' in (root/'CMakeLists.txt').read_text()
+assert 'TEST0.2.25' in (root/'Source/PluginEditor.cpp').read_text()
+assert 'VERSION 0.2.25' in (root/'CMakeLists.txt').read_text()
 # no changes whatsoever to active DSP/MIDI and persistence since 0.2.18.3
 # The main invariant is the same processor byte checksum baked into this release audit.
 actual=hashlib.sha256((root/'Source/PluginProcessor.cpp').read_bytes()).hexdigest()

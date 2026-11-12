@@ -1,3 +1,4 @@
+from audio_reference import without_native_song_fx
 """TEST0.2.21: first native F1/F2 tracker; preserve trusted synth/audio code."""
 from pathlib import Path
 import hashlib,re
@@ -8,7 +9,7 @@ header=(root/'Source/PluginProcessor.h').read_text()
 panel=(root/'Source/TrackerPatternPanel.cpp').read_text()
 model=(root/'Source/TrackerPatternBank.h').read_text()
 workflow=(root/'.github/workflows/build-windows.yml').read_text()
-assert 'TEST0.2.24' in editor and 'TEST0.2.24' in workflow
+assert 'TEST0.2.25' in editor and 'TEST0.2.25' in workflow
 assert 'if(letter(\'q\')){openTracker();return true;}' in editor
 assert 'trackerPanel->open();' in editor
 assert 'Alt+Q' in (root/'Source/PluginEditor.cpp').read_text()
@@ -36,6 +37,6 @@ for begin,end,expected in [
 ]:
  fragment=source[source.index(begin):source.index(end)]
  assert 'if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];' in fragment
- assert hashlib.sha256(fragment.replace('  if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];\n','').encode()).hexdigest()==expected
+ assert hashlib.sha256(without_native_song_fx(fragment).encode()).hexdigest()==expected
 assert 'sidLatchArpReleasePool(' in source and 'rebuildArpPools(true);return;' in source
 print('OK: native tracker F1/F2, persistent Pattern data, original MIDI and DSP preserved')
