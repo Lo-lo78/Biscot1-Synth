@@ -5,6 +5,7 @@
 #include "ParameterSearchKey.h"
 #include "PresetManager.h"
 #include "PresetBrowser.h"
+#include "TrackerPatternPanel.h"
 #include <array>
 #include <vector>
 #include <memory>
@@ -42,6 +43,8 @@ private:
  BiscotProcessor& proc;
  PresetManager presetManager;
  std::unique_ptr<PresetBrowser> presetBrowser;
+ std::unique_ptr<TrackerPatternPanel> trackerPanel;
+ bool trackerBrowserReturn=false;
  Control presetReturnControl=Control::grid;
  int presetReturnGroup=0, presetReturnSelection=0;
  juce::Label title, sectionLabel, instructions;
@@ -80,6 +83,8 @@ private:
  void rememberLocation();
  void restoreLocation();
  void openPresetBrowser(bool save);
+ void openTracker();
+ void showSynthWidgets(bool showing);
  void focusBackFromPreset();
  bool handleKey(const juce::KeyPress&,Control);
  void announce(juce::Component&, const juce::String&) const;

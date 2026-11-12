@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ParameterCatalog.h"
+#include "TrackerPatternBank.h"
 #include "SidOutputStage.h"
 #include "SidFilterCore.h"
 #include "SidWaveCore.h"
@@ -44,6 +45,8 @@ public:
  void getStateInformation(juce::MemoryBlock&) override;
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState state;
+ TrackerPatternBank trackerPatterns;
+ void commitTrackerState(); // UI thread: serialize after each Pattern edit
  float param(int i) const noexcept {return i>=0 && i<(int)parameters.size() && parameters[(size_t)i] ? parameters[(size_t)i]->load(std::memory_order_relaxed) : 0.f;}
  static juce::String id(int slider){return "s"+juce::String(slider).paddedLeft('0',3);}
 private:

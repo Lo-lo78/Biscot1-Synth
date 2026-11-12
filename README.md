@@ -1,4 +1,4 @@
-# Biscot1 Synth VST3 — TEST0.2.17.1
+# Biscot1 Synth VST3 — TEST0.2.18
 
 **Initial selection hotfix:** A brand-new instance starts on **Audio Mode, Stereo** (parameter s2) instead of **MIDI Mode** (s3). The previous bug came from the fallback in `restoreLocation()`: it used index 3 even if no last selection had been saved. Saved editor locations in existing projects remain respected. NVDA root/focus behaviour from TEST0.2.17 and the DSP, MIDI, arpeggiators, CPU optimizations, browser and presets are unchanged.
 
@@ -419,3 +419,42 @@ GitHub Actions runs `SidPedalReleaseContinuityTest` plus all prior regressions.
 - One Shot LFOs resume free-running when One Shot is disabled after reaching the end, without another MIDI note. All existing modulation-rate cross-connections remain.
 - Filter key follow updates with every incoming MIDI note, including one which joins an already-running arpeggio without resetting its envelope. The existing filter ADSR release remains latched through CC64.
 - No new slider or VST3 parameter ID. Tests include standalone C++ numerics plus static integration checks. Build/REAPER/NVDA test still required on GitHub Actions.
+
+
+## Native Tracker TEST0.2.18 (first stage: editor and persistent Pattern bank)
+
+The original Biscot1 Tracker 0.166 Lua, JSFX and project Startup Loader are retained
+under `Reference/LegacyTracker/` as the exact behavioural references.
+The native tracker has no need for `gmem` or a Lua startup loader to retain Pattern data.
+
+### Keyboard in Alt+Q
+
+- `Alt+Q`: open the tracker from the synth; inside tracker, return to synth.
+- `Esc`: return to synth without discarding edits.
+- `F1`: Pattern Editor; `F2`: parameter picker on an actual Pattern step.
+- In F1, `1`, `2`, `3`: OP, Filter, LFO section; `Up/Down`: step;
+  `Left/Right`: parameter cell; `PageUp/PageDown`: five steps.
+- `Ctrl+Up/Down`: previous/next Pattern (0–999), `Ctrl+Left/Right`: move a
+  parameter one cell chronologically within its section.
+- `Alt+Up/Down`: change value; `Alt+PageUp/PageDown`: change by ten steps;
+  `Alt+E`: exact numeric entry, Enter to accept, Esc to cancel.
+- `Delete`: remove selected cell; `Ctrl+C` and `Ctrl+V`: copy/paste one cell;
+  `Ctrl+Z` / `Ctrl+Shift+Z`: Pattern undo/redo.
+- In F2, arrows move through the parameter picker; `Ctrl+Tab` cycles OP,
+  Filter and LFO; `Enter` inserts and returns to F1; `Ctrl+Enter` inserts
+  and remains in F2. `Ctrl+Left/Right` changes the picker column height.
+- `Alt+S` and `Alt+B` retain the existing preset save/browser behaviour;
+  `.biscot` and REAPER host state now also include all edited Patterns.
+
+The Pattern bank supports up to 1000 Patterns, 1024 steps and 128 ordered cells
+per step, with dynamic (sparse) storage. Pattern values are independent from
+live synth parameters until the future native tracker playback engine is added.
+Original JSFX and plugin MIDI/DSP paths have not been modified by this stage.
+The F2 picker also includes VST3-native Sustain Pedal, Pitch Bend Mode,
+Chord Op1 Controls and Square PWM with append-only logical tracker IDs.
+
+**Not yet implemented in TEST0.2.18**: playing Patterns or Songs, F3–F6,
+step selection/recording, import/export to the agreed library directories,
+Ctrl+S standalone Pattern/Song export, Song editor and all Song routing.
+Those are subsequent stages; this build is intended to validate the native
+F1/F2 UI and project/preset persistence first.

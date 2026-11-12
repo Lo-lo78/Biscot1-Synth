@@ -756,9 +756,91 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   ++sample;
  }
 }
+// TEST0.2.18: the Pattern bank lives in the VST3 state. This makes the bank
+// self-contained in REAPER .RPP projects and in existing Alt+S .biscot presets.
+// Nothing in this serializer is called from processBlock() or renderOne().
+namespace {
+constexpr juce::Identifier trackerStateKey{"trackerPatternsV1"};
+constexpr int trackerMagic=0x42545031; // BTP1
+void writeTrackerBank(const TrackerPatternBank& b,juce::MemoryOutputStream& o){
+ o.writeInt(trackerMagic);o.writeInt(b.activePattern);o.writeInt((int)b.patterns.size());
+ for(const auto& [slot,p]:b.patterns){
+  o.writeInt(slot);o.writeString(juce::String::fromUTF8(p.name.c_str()));
+  o.writeInt(p.length);o.writeInt(p.midiNote);o.writeInt(p.repeat);o.writeInt(p.releaseArp?1:0);
+  for(int i=0;i<p.repeat;++i){
+   o.writeDouble(i<(int)p.repeatSpeeds.size()?p.repeatSpeeds[(size_t)i]:1.0);
+   o.writeInt(i<(int)p.repeatTransposes.size()?p.repeatTransposes[(size_t)i]:0);
+  }
+  int nonempty=0;for(const auto& [st,row]:p.steps){
+   if(st<0||st>=TrackerPatternBank::maxSteps)continue;
+   for(const auto& a:row.tabs)if(!a.empty()){++nonempty;break;}
+  }
+  o.writeInt(nonempty);
+  for(const auto& [st,row]:p.steps){
+   if(st<0||st>=TrackerPatternBank::maxSteps)continue;
+   bool any=false;for(const auto& a:row.tabs)if(!a.empty())any=true;
+   if(!any)continue;
+   o.writeInt(st);
+   for(const auto& a:row.tabs){
+    o.writeInt((int)a.size());for(const auto& c:a){o.writeInt(c.id);o.writeDouble(c.value);}
+   }
+  }
+ }
+}
+bool readTrackerBank(const juce::String& text,TrackerPatternBank& result){
+ juce::MemoryBlock binary;
+ if(text.isEmpty()||!binary.fromBase64Encoding(text)||binary.getSize()>16*1024*1024)return false;
+ juce::MemoryInputStream in(binary,false);
+ if(in.readInt()!=trackerMagic)return false;
+ TrackerPatternBank fresh;fresh.patterns.clear();
+ const int current=in.readInt(),count=in.readInt();
+ if(current<0||current>=1000||count<0||count>1000)return false;
+ for(int x=0;x<count;++x){
+  if(in.isExhausted())return false;
+  const int slot=in.readInt();const auto name=in.readString();
+  const int length=in.readInt(),midi=in.readInt(),repeats=in.readInt(),release=in.readInt();
+  if(slot<0||slot>=1000||length<1||length>1024||midi< -1||midi>127||repeats<1||repeats>1000)return false;
+  TrackerPattern pat(false);pat.name=name.toStdString();pat.length=length;pat.midiNote=midi;pat.repeat=repeats;pat.releaseArp=release!=0;
+  pat.repeatSpeeds.clear();pat.repeatTransposes.clear();
+  for(int y=0;y<repeats;++y){
+   const double speed=in.readDouble();const int transpose=in.readInt();
+   if(!std::isfinite(speed)||speed<0.25||speed>16||transpose< -96||transpose>96)return false;
+   pat.repeatSpeeds.push_back(speed);pat.repeatTransposes.push_back(transpose);
+  }
+  const int rows=in.readInt();if(rows<0||rows>1024)return false;
+  for(int y=0;y<rows;++y){
+   const int step=in.readInt();if(step<0||step>=1024)return false;
+   int total=0;
+   for(int tab=0;tab<3;++tab){
+    const int n=in.readInt();total+=n;if(n<0||total>128)return false;
+    auto& a=pat.steps[step].tabs[(size_t)tab];
+    for(int z=0;z<n;++z){
+     const int id=in.readInt();const double value=in.readDouble();
+     if(id<0||id>10000||!std::isfinite(value))return false;
+     a.push_back({id,value});
+    }
+   }
+  }
+  if(!fresh.patterns.emplace(slot,std::move(pat)).second)return false;
+ }
+ fresh.activePattern=current;
+ if(fresh.patterns.find(current)==fresh.patterns.end())fresh.patterns.try_emplace(current);
+ result=std::move(fresh);return true;
+}
+}
+void BiscotProcessor::commitTrackerState(){
+ juce::MemoryOutputStream stream;writeTrackerBank(trackerPatterns,stream);
+ state.state.setProperty(trackerStateKey,stream.getMemoryBlock().toBase64Encoding(),nullptr);
+}
 void BiscotProcessor::getStateInformation(juce::MemoryBlock& out){if(auto xml=state.copyState().createXml())copyXmlToBinary(*xml,out);}
 void BiscotProcessor::setStateInformation(const void* ptr,int length){
- if(auto xml=getXmlFromBinary(ptr,length);xml && xml->hasTagName(state.state.getType()))state.replaceState(juce::ValueTree::fromXml(*xml));
+ if(auto xml=getXmlFromBinary(ptr,length);xml && xml->hasTagName(state.state.getType())){
+  auto tree=juce::ValueTree::fromXml(*xml);
+  TrackerPatternBank restored;
+  if(!readTrackerBank(tree.getProperty(trackerStateKey).toString(),restored))restored.reset();
+  state.replaceState(tree);
+  trackerPatterns=std::move(restored);
+ }
 }
 juce::AudioProcessorEditor* BiscotProcessor::createEditor(){return new BiscotEditor(*this);}
 }

@@ -1,0 +1,1899 @@
+// Biscot1 Tracker 0.166 authoritative sidechain release
+// Biscot1 Tracker 0.165 chronological per-operator FIFO insertion
+// Biscot1 Tracker 0.164 F6 per-operator diagnostic telemetry
+// Biscot1 Tracker 0.163 synchronized Startup Loader handshake
+// Biscot1 Tracker 0.162 non-overlapping Song bank/event queues
+// Biscot1 Tracker 0.160 operator-owned Song LFO trigger and target-time ownership
+// Biscot1 Tracker 0.157 synchronized with legacy Song Gate two-step cutoff repair
+// Biscot1 Tracker 0.155 defer Song lane finish until audio clock reaches final event
+// Biscot1 Tracker 0.152 Pattern-first shared Filter/LFO ownership
+// Biscot1 Tracker 0.149 final Song rows and bidirectional controller navigation
+// Biscot1 Tracker 0.135 persistent sidechain state and automatic initial LFO owner
+// Biscot1 Tracker 0.093 single global pre-roll reset for three lanes
+desc:Biscot1 Tracker 0.166
+options:gmem=Biscot1TrackerBridge
+options:maxmem=30000000
+
+slider1:1<0,1,1{Off,On}>Tracker Enabled
+slider2:0<0,1,1{Stop,Pattern}>Run Mode
+slider3:4<0,10,1{4,6,8,12,16,24,32,48,64,96,128}>Pattern Division
+slider4:1<0.25,16,0.25>Pattern Speed
+slider5:1<1,3,1{Op1,Op2,Op3}>Preview Operator
+slider6:0<0,100,1>Song Trigger
+
+@init
+ext_noinit = 1;
+MAGIC = 20261013;
+CORE_BASE = 0;
+// Event queues must begin after the complete 100-Song bank, which ends at
+// 25,147,600. The old 23,000,000 base overlapped Song slots 85..99 and could
+// corrupt Op1/Op2 events while Op3 remained apparently independent.
+QUEUE_BASE = 26000000;
+QUEUE_CAPACITY = 262144;
+QUEUE_STRIDE = 5;
+QUEUE_LANE_STRIDE = QUEUE_CAPACITY * QUEUE_STRIDE;
+QUEUE_WRITE_STATE_BASE = 19000;
+// F6 diagnostic telemetry. This low GMEM area is independent from Pattern,
+// Song, live FX and the three large event queues.
+DIAG_MAGIC = 20260725;
+DIAG_VERSION = 2;
+DIAG_BASE = 40000;
+DIAG_SIZE = 256;
+DIAG_OP_BASE = DIAG_BASE + 32;
+DIAG_OP_STRIDE = 48;
+EVT_NOTE_ON = 1;
+EVT_NOTE_OFF = 2;
+EVT_ALL_OFF = 3;
+EVT_PARAM = 4;
+EVT_NOTE_LEGATO = 5;
+EVT_SIDECHAIN = 6;
+EVT_DELAY = 7;
+EVT_DELAY_VOLUME = 8;
+EVT_DELAY_PINGPONG = 9;
+EVT_OP_RESET = 10;
+EVT_GATE_OFF = 11; // force Release for one GMEM operator only
+MIDI_Q_BASE = 50000;
+MIDI_Q_CAPACITY = 8192;
+MIDI_Q_STRIDE = 4; // target sample, event type, channel/operator, note
+midi_q_write = 0;
+midi_q_read = 0;
+LUA_MAGIC = 20261101;
+LUA_BASE = 10000;
+PLAY_STATUS = LUA_BASE + 1500;
+PATTERN_START_STEP = LUA_BASE + 1501;
+SONG_MIDI_MAP_BASE = LUA_BASE + 1728;
+MIDI_PATTERN_BASE = 100000;
+MIDI_PATTERN_HEADER = 1008;
+BANK_MAGIC = 20260713;
+BANK_RELEASE_ARP_BASE = 96000;
+BANK_CTRL_BASE = 98000;
+BANK_DIR_BASE = 100000;
+BANK_DATA_BASE = 110000;
+SONG_MAGIC = 20260714;
+SONG_BASE = 9900000;
+SONG_HEADER_SIZE = 3020;
+SONG_MAX_STEPS = 4096;
+SONG_STEP_STRIDE = 12;
+SONG_START_OFFSET_DIVISIONS = 32;
+SONG_START_PACK_BASE = SONG_START_OFFSET_DIVISIONS + 1;
+DELAY_LIVE_BASE = 19700;
+DELAY_LIVE_STRIDE = 5;
+SIDECHAIN_LIVE_BASE = 19720;
+SIDECHAIN_LIVE_STRIDE = 3;
+SONG_MIXER_LIVE_BASE = 19740; // Vol1, Vol2, Vol3, mute mask, solo lane, serial, valid magic, Song-active
+SONG_MIXER_MAGIC = 20260722;
+SONG_MIXER_HEADER_MAGIC = 202607220;
+gmem[SONG_MIXER_LIVE_BASE+7]=0;
+SONG_LANE_STRIDE = SONG_MAX_STEPS * SONG_STEP_STRIDE;
+SONG_BANK_BASE = 10100000;
+SONG_BANK_STRIDE = SONG_HEADER_SIZE + 3 * SONG_LANE_STRIDE;
+SONG_VISITED_BASE = 69000;
+song_data_base = SONG_BASE;
+selected_song = -1;
+last_song_select = 0;
+song_slider_active = 0;
+song_slider_waiting = 0;
+song_paused = 0;
+REPEAT_TRANSPOSE_BASE = 13000;
+RELEASE_ARP_CURRENT = 19500;
+PATTERN_BASE = 9600000;
+MAX_STEPS = 1024;
+MAX_CELLS = 128;
+CELL_SIZE = 2;
+STEP_STRIDE = 1 + MAX_CELLS * CELL_SIZE;
+MIDI_SLOT_STRIDE = MIDI_PATTERN_HEADER + MAX_STEPS * STEP_STRIDE;
+P_NOTE = 1;
+P_GATE = 2;
+P_STEP_CONTROL = 3;
+P_CURVE = 4;
+P_CURVE_DOWN_LEGACY = 5;
+P_PAUSE = 6;
+P_SUB_NOTE = 7;
+P_CURVE_RESOLUTION = 8;
+P_CURVE_RATIO = 9;
+ACTIVE_SUB_COUNT_BASE = 19400;
+ACTIVE_SUB_NOTE_BASE = 19416;
+ACTIVE_SUB_STRIDE = 64;
+STEP_SUB_NOTE_BASE = 19800;
+PARAM_STATE_BASE = 12000;
+PARAM_KNOWN_BASE = 14000;
+CURVE_SEGMENTS = 32;
+CURVE_PID_BASE = 16000;
+CURVE_CURRENT_BASE = 16512;
+CURVE_NEXT_BASE = 17024;
+CURVE_AMOUNT_BASE = 17536;
+CURVE_SOURCE_STEP_BASE = 18048;
+CURVE_TARGET_STEP_BASE = 18560;
+CURVE_RESOLUTION_BASE = 21000;
+CURVE_RATIO_BASE = 21512;
+// Scratch flags used while collecting parameters for one step.  This must stay
+// outside ACTIVE_SUB_COUNT/ACTIVE_SUB_NOTE: the old hard-coded 19072 range
+// overlapped those note-pool cells and could erase musical state while a curve
+// was being prepared.
+SEEN_PARAM_BASE = 22024;
+P_PATTERN_LENGTH = 100;
+P_PATTERN_REPEAT = 101;
+P_SLIDER_BASE = 1000;
+last_lua_serial = -1;
+play_active = 0;
+current_step = 0;
+next_step_time = 0;
+pattern_length = 16;
+pattern_repeat = 1;
+repeat_index = 0;
+repeat_speed = 1;
+repeat_transpose = 0;
+song_speed_mult = 1;
+song_context = 0;
+song_lane = 1;
+song_length = 16;
+song_mode = 0;
+song_cycle = 1;
+song_filter_owner = 1;
+song_filter_mask = 7;
+song_lfo1_owner = 1;
+song_lfo2_owner = 1;
+song_lfo3_owner = 1;
+song_gate_deadline = -1;
+song_entry_legato = 0;
+song_window_start = 0;
+song_window_end = 0;
+song_row_repeat_index = 0;
+song_row_repeat_count = 1;
+song_owner_eval_time = -1;
+LANE_STATE_BASE = 30000;
+LANE_STATE_STRIDE = 24;
+mem[QUEUE_WRITE_STATE_BASE+1] = 0;
+mem[QUEUE_WRITE_STATE_BASE+2] = 0;
+mem[QUEUE_WRITE_STATE_BASE+3] = 0;
+queue_read_cache = 0;
+active_note = -1;
+active_op = 1;
+active_pattern_base = PATTERN_BASE;
+active_midi_header_base = MIDI_PATTERN_BASE;
+midi_trigger_note = -1;
+midi_mode = 0;
+bank_mode = 0;
+active_step_dir_rel = 0;
+status_stop_pending = 0;
+status_stop_time = 0;
+release_arp_enabled = 0;
+last_transport_playing = (play_state & 1) ? 1 : 0;
+
+// Protocol 20261013 relocates the FIFO. Clear only the shared read/write
+// indices when an older Core is still present; the Core performs the same
+// handshake from its side, so FX initialization order cannot retain pointers
+// into the former 23,000,000 queue region.
+(gmem[CORE_BASE] != MAGIC) ? (
+  gmem[CORE_BASE+4]=0; gmem[CORE_BASE+5]=0; gmem[CORE_BASE+6]=0;
+  gmem[CORE_BASE+8]=0; gmem[CORE_BASE+9]=0; gmem[CORE_BASE+10]=0;
+);
+
+function clampi(v, lo, hi) local(x) (
+  x = floor(v + 0.5);
+  x < lo ? lo : x > hi ? hi : x;
+);
+function diag_op_base(op) (
+  DIAG_OP_BASE + (clampi(op,1,3)-1)*DIAG_OP_STRIDE;
+);
+function diag_reset(reason) local(i,serial,op,db) (
+  serial=floor(gmem[DIAG_BASE+2]+0.5)+1;
+  i=0; while(i<DIAG_SIZE) ( gmem[DIAG_BASE+i]=0; i+=1; );
+  gmem[DIAG_BASE+0]=DIAG_MAGIC;
+  gmem[DIAG_BASE+1]=DIAG_VERSION;
+  gmem[DIAG_BASE+2]=serial;
+  gmem[DIAG_BASE+3]=floor(gmem[CORE_BASE+1]+0.5);
+  gmem[DIAG_BASE+4]=selected_song;
+  gmem[DIAG_BASE+5]=(reason==1 || reason==2)?2:1;
+  gmem[DIAG_BASE+6]=1;
+  gmem[DIAG_BASE+11]=reason;
+  op=1;
+  while(op<=3) (
+    db=diag_op_base(op);
+    gmem[db+10]=-1; gmem[db+11]=-1;
+    gmem[db+12]=-1; gmem[db+13]=-1; gmem[db+14]=-1; gmem[db+15]=-1;
+    gmem[db+18]=0; gmem[db+19]=-1;
+    gmem[db+32]=-1; gmem[db+34]=-1; gmem[db+37]=-1; gmem[db+41]=-1; gmem[db+46]=-1; gmem[db+47]=-1;
+    op+=1;
+  );
+);
+function diag_track_success(target,typ,lane,a,b) local(db,relevant,core_clock,ls) (
+  gmem[DIAG_BASE]==DIAG_MAGIC ? (
+    db=diag_op_base(lane);
+    core_clock=floor(gmem[CORE_BASE+1]+0.5);
+    target<core_clock ? gmem[db+7]+=1;
+    relevant=(typ==EVT_NOTE_ON || typ==EVT_NOTE_OFF || typ==EVT_NOTE_LEGATO || typ==EVT_GATE_OFF || typ==EVT_ALL_OFF || typ==EVT_OP_RESET);
+    relevant ? (
+      typ==EVT_NOTE_ON ? gmem[db+0]+=1 :
+      typ==EVT_NOTE_OFF ? gmem[db+1]+=1 :
+      typ==EVT_NOTE_LEGATO ? gmem[db+2]+=1 :
+      typ==EVT_GATE_OFF ? gmem[db+3]+=1 :
+      typ==EVT_ALL_OFF ? gmem[db+4]+=1 :
+      typ==EVT_OP_RESET ? gmem[db+5]+=1;
+      gmem[db+8]=typ; gmem[db+9]=a; gmem[db+10]=target; gmem[db+44]=b;
+      (typ==EVT_NOTE_ON || typ==EVT_NOTE_LEGATO) ? (
+        gmem[db+11]=target;
+        gmem[db+46]=a;
+        gmem[db+12]=bank_mode ? clampi(gmem[active_pattern_base+1],0,999) : -1;
+        gmem[db+13]=current_step;
+        gmem[db+14]=song_context ? selected_song : -1;
+        ls=LANE_STATE_BASE+(lane-1)*LANE_STATE_STRIDE;
+        gmem[db+15]=song_context ? mem[ls+0] : -1;
+        gmem[db+16]=repeat_index;
+        gmem[db+17]=song_context ? song_row_repeat_index : 0;
+      );
+    );
+  );
+);
+function diag_track_drop(target,typ,lane) local(db) (
+  gmem[DIAG_BASE]==DIAG_MAGIC ? (
+    db=diag_op_base(lane);
+    gmem[db+6]+=1;
+    gmem[db+18]=typ;
+    gmem[db+19]=target;
+  );
+);
+
+function speed_mult(v) (
+  max(0.25, min(16, v));
+);
+function division_value(idx) (
+  idx == 0 ? 4 : idx == 1 ? 6 : idx == 2 ? 8 : idx == 3 ? 12 : idx == 4 ? 16 :
+  idx == 5 ? 24 : idx == 6 ? 32 : idx == 7 ? 48 : idx == 8 ? 64 : idx == 9 ? 96 : 128;
+);
+function samples_per_step() local(hz) (
+  hz = (tempo / 60) * (division_value(slider3) / 4) * speed_mult(repeat_speed) * max(0.25, song_speed_mult);
+  hz <= 0 ? hz = 1;
+  srate / hz;
+);
+function step_base(st) local(rel) (
+  bank_mode ? (
+    rel = floor(gmem[active_pattern_base + active_step_dir_rel + clampi(st,0,MAX_STEPS-1)] + 0.5);
+    active_pattern_base + rel;
+  ) : active_pattern_base + (clampi(st, 0, MAX_STEPS - 1) * STEP_STRIDE);
+);
+function read_step_control(st) local(sb,count,i,cb,pid,val,control) (
+  control = 0;
+  st >= 0 && st < pattern_length ? (
+    sb = step_base(st);
+    count = clampi(gmem[sb], 0, MAX_CELLS);
+    i = 0;
+    while (i < count) (
+      cb = sb + 1 + i * CELL_SIZE;
+      pid = floor(gmem[cb] + 0.5);
+      val = gmem[cb + 1];
+      pid == P_STEP_CONTROL && clampi(val,1,2) == 1 ? control = 1;
+      i += 1;
+    );
+  );
+  control;
+);
+function queue_free(op) local(r,w,lane) (
+  lane = clampi(op,1,3);
+  r = floor(gmem[CORE_BASE + 7 + lane] + 0.5);
+  w = floor(mem[QUEUE_WRITE_STATE_BASE + lane] + 0.5);
+  w >= r ? QUEUE_CAPACITY - (w - r) - 1 : r - w - 1;
+);
+function midi_queue_free() local(r,w) (
+  r=midi_q_read; w=midi_q_write;
+  w>=r ? MIDI_Q_CAPACITY-(w-r)-1 : r-w-1;
+);
+function midi_queue_event(target, typ, op, note) local(qb) (
+  midi_queue_free()>0 ? (
+    qb=MIDI_Q_BASE+midi_q_write*MIDI_Q_STRIDE;
+    mem[qb]=target; mem[qb+1]=typ; mem[qb+2]=op; mem[qb+3]=note;
+    midi_q_write+=1; midi_q_write>=MIDI_Q_CAPACITY ? midi_q_write=0;
+  );
+);
+function queue_event_one(target, typ, op, a, b)
+local(qb,lane,w,r,free_slots,insert_pos,prev_pos,src,dst,k,prev_target,last_target,backward,sorting) (
+  lane = clampi(op,1,3);
+  free_slots=queue_free(lane);
+  free_slots > 0 ? (
+    r = floor(gmem[CORE_BASE + 7 + lane] + 0.5);
+    w = floor(mem[QUEUE_WRITE_STATE_BASE + lane] + 0.5);
+    insert_pos = w;
+    last_target = target;
+    w != r ? (
+      prev_pos=w-1; prev_pos<0?prev_pos=QUEUE_CAPACITY-1;
+      src=QUEUE_BASE+(lane-1)*QUEUE_LANE_STRIDE+prev_pos*QUEUE_STRIDE;
+      last_target=gmem[src+0];
+    );
+
+    // A lane FIFO must always be chronological. Song repeats, linked-song
+    // transitions, empty rows and shared Filter/LFO control can discover an
+    // event whose target is earlier than an event already queued. Appending it
+    // blindly lets the future head block that earlier event; when the head is
+    // finally due, the hidden event is consumed one or more complete steps late.
+    // Insert the exceptional event into the unread ring in timestamp order.
+    // Normal chronological appends take the original constant-time path.
+    sorting=1;
+    while (sorting && insert_pos != r) (
+      prev_pos = insert_pos - 1; prev_pos < 0 ? prev_pos = QUEUE_CAPACITY - 1;
+      src = QUEUE_BASE + (lane-1)*QUEUE_LANE_STRIDE + prev_pos*QUEUE_STRIDE;
+      prev_target = gmem[src+0];
+      prev_target <= target ? sorting=0 : (
+        dst = QUEUE_BASE + (lane-1)*QUEUE_LANE_STRIDE + insert_pos*QUEUE_STRIDE;
+        k=0; while(k<QUEUE_STRIDE) ( gmem[dst+k]=gmem[src+k]; k+=1; );
+        insert_pos = prev_pos;
+      );
+    );
+
+    qb = QUEUE_BASE + (lane-1)*QUEUE_LANE_STRIDE + insert_pos*QUEUE_STRIDE;
+    gmem[qb+0]=target; gmem[qb+1]=typ; gmem[qb+2]=lane; gmem[qb+3]=a; gmem[qb+4]=b;
+
+    // Record how often the safety insertion was needed and how far backward
+    // the event belonged. These counters are shown on F6 in diagnostic v2.
+    insert_pos != w ? (
+      backward=max(0,last_target-target);
+      gmem[DIAG_BASE+16+(lane-1)]+=1;
+      gmem[DIAG_BASE+20+(lane-1)]=max(gmem[DIAG_BASE+20+(lane-1)],backward);
+      gmem[DIAG_BASE+24+(lane-1)]=backward;
+    );
+
+    w += 1; w >= QUEUE_CAPACITY ? w = 0;
+    mem[QUEUE_WRITE_STATE_BASE + lane] = w;
+    gmem[CORE_BASE + 3 + lane] = w;
+    diag_track_success(target,typ,lane,a,b);
+  ) : diag_track_drop(target,typ,lane);
+);
+function queue_event(target, typ, op, a, b) (
+  typ == EVT_ALL_OFF ? (
+    queue_event_one(target,typ,1,a,b);
+    queue_event_one(target,typ,2,a,b);
+    queue_event_one(target,typ,3,a,b);
+  ) : queue_event_one(target,typ,clampi(op,1,3),a,b);
+);
+function send_song_midi_for_block(block_start, block_end) local(qb,target,typ,op,note,offs,status,msg,keep_sending) (
+  keep_sending=1;
+  while(keep_sending && midi_q_read!=midi_q_write) (
+    qb=MIDI_Q_BASE+midi_q_read*MIDI_Q_STRIDE;
+    target=mem[qb];
+    target<block_end ? (
+      typ=mem[qb+1]; op=clampi(mem[qb+2],1,3); note=clampi(mem[qb+3],0,127);
+      offs=clampi(target-block_start,0,max(0,samplesblock-1));
+      typ==EVT_NOTE_OFF ? (status=128+(op-1); msg=note;) : (status=144+(op-1); msg=note+127*256;);
+      midisend(offs,status,msg);
+      midi_q_read+=1; midi_q_read>=MIDI_Q_CAPACITY ? midi_q_read=0;
+    ) : keep_sending=0;
+  );
+);
+function stop_pattern_at(target) (
+  // Manual Stop invalidates the performance immediately. The Core sees
+  // PLAY_STATUS=0 before consuming any old future event after REAPER resumes.
+  mem[QUEUE_WRITE_STATE_BASE+1]=clampi(gmem[CORE_BASE+8],0,QUEUE_CAPACITY-1);
+  mem[QUEUE_WRITE_STATE_BASE+2]=clampi(gmem[CORE_BASE+9],0,QUEUE_CAPACITY-1);
+  mem[QUEUE_WRITE_STATE_BASE+3]=clampi(gmem[CORE_BASE+10],0,QUEUE_CAPACITY-1);
+  gmem[CORE_BASE+4]=mem[QUEUE_WRITE_STATE_BASE+1];
+  gmem[CORE_BASE+5]=mem[QUEUE_WRITE_STATE_BASE+2];
+  gmem[CORE_BASE+6]=mem[QUEUE_WRITE_STATE_BASE+3];
+  midi_q_read=midi_q_write;
+  gmem[PLAY_STATUS]=0;
+  queue_event(target, EVT_ALL_OFF, 1, 0, 0);
+  play_active = 0;
+  song_context = 0;
+  selected_song = -1;
+  midi_trigger_note = -1;
+  current_step = 0;
+  repeat_index = 0;
+  status_stop_pending = 0;
+  status_stop_time = target;
+  slider2 = 0;
+  sliderchange(slider2);
+  song_paused = 0;
+  active_note = -1;
+);
+function natural_release_tail_samples() local(r,oprel,frel) (
+  // Keep the Core alive after the last Note Off so the final ADSR release can
+  // decay naturally. PARAM_STATE already contains values applied by the last
+  // scheduled step, including a Release written on that same step.
+  oprel = 0;
+  slider5 == 1 ? oprel = mem[PARAM_KNOWN_BASE+43] ? max(0,mem[PARAM_STATE_BASE+43]) : slider43 :
+  slider5 == 2 ? oprel = mem[PARAM_KNOWN_BASE+44] ? max(0,mem[PARAM_STATE_BASE+44]) : slider44 :
+                 oprel = mem[PARAM_KNOWN_BASE+45] ? max(0,mem[PARAM_STATE_BASE+45]) : slider45;
+  frel = mem[PARAM_KNOWN_BASE+121] ? max(0,mem[PARAM_STATE_BASE+121]) : slider121;
+  r = max(oprel,frel);
+  max(1,floor(r*srate)+samplesblock);
+);
+function release_arp_step_note(st, fallback) local(sb,count,i,cb,pid,val) (
+  sb=step_base(st);
+  count=clampi(gmem[sb],0,MAX_CELLS);
+  i=0;
+  while(i<count) (
+    cb=sb+1+i*CELL_SIZE;
+    pid=floor(gmem[cb]+0.5);
+    val=gmem[cb+1];
+    pid==P_NOTE ? fallback=clampi(val+repeat_transpose,0,127);
+    i+=1;
+  );
+  fallback;
+);
+function schedule_release_arpeggio(start_target, stop_target, op) local(t,st,sps,n,lastn) (
+  release_arp_enabled>0.5 && pattern_length>0 ? (
+    sps=samples_per_step();
+    sps=max(1,sps);
+    // Repeat the written Pattern note sequence as pitch-only legato events.
+    // The ADSR remains in Release: no Note On and no envelope retrigger occurs.
+    lastn=active_note;
+    st=0;
+    t=start_target;
+    while(t<stop_target) (
+      n=release_arp_step_note(st,lastn);
+      n>=0 && n!=lastn ? queue_event(t,EVT_NOTE_LEGATO,op,n,0);
+      n>=0 ? lastn=n;
+      st+=1; st>=pattern_length ? st=0;
+      t+=sps;
+    );
+  );
+);
+function finish_pattern_at(target) local(stop_target) (
+  // Natural end: the Gate Note Off starts the release. Do not turn the Tracker
+  // status off at the pattern boundary, because the Core interprets that as an
+  // immediate release reset. Stop only after the longest active release tail.
+  stop_target = target + natural_release_tail_samples();
+  schedule_release_arpeggio(target,stop_target,slider5);
+  queue_event(stop_target, EVT_ALL_OFF, 0, 0, 0);
+  play_active = 0;
+  status_stop_pending = 1;
+  status_stop_time = stop_target;
+  slider2 = 0;
+  sliderchange(slider2);
+  active_note = -1;
+);
+function previous_step_param_value(st, wanted_pid, fallback) local(ps,sb,count,i,cb,pid,val,marker_seen,param_found,param_after_marker,done) (
+  // Resolve the effective value, not merely the raw value stored one row back.
+  // If the same parameter is after Previous value in the preceding row, keep
+  // walking backward until a real source value is found.
+  ps = st - 1;
+  done = 0;
+  while (ps >= 0 && !done) (
+    sb = step_base(ps);
+    count = clampi(gmem[sb], 0, MAX_CELLS);
+    marker_seen = 0;
+    param_found = 0;
+    param_after_marker = 0;
+    i = 0;
+    while (i < count) (
+      cb = sb + 1 + i * CELL_SIZE;
+      pid = floor(gmem[cb] + 0.5);
+      val = gmem[cb + 1];
+      pid == P_STEP_CONTROL && clampi(val,1,2) == 1 ? marker_seen = 1;
+      pid == wanted_pid ? (
+        param_found = 1;
+        param_after_marker = marker_seen;
+        fallback = val;
+      );
+      i += 1;
+    );
+    param_found ? (
+      param_after_marker ? ps -= 1 : done = 1;
+    ) : (
+      ps -= 1;
+    );
+  );
+  fallback;
+);
+
+function find_next_real_param(st, wanted_pid) local(ns,nsb,ncount,ni,ncb,npid,nval,marker_seen,found) (
+  // Find the next explicit value, skipping rows where the parameter is placed
+  // after Previous value because those rows only inherit the old value.
+  lookahead_step = -1;
+  lookahead_value = 0;
+  ns = st + 1;
+  found = 0;
+  while (ns < pattern_length && !found) (
+    nsb = step_base(ns);
+    ncount = clampi(gmem[nsb],0,MAX_CELLS);
+    marker_seen = 0;
+    ni = 0;
+    while (ni < ncount && !found) (
+      ncb = nsb + 1 + ni*CELL_SIZE;
+      npid = floor(gmem[ncb]+0.5);
+      nval = gmem[ncb+1];
+      npid == P_STEP_CONTROL && clampi(nval,1,2) == 1 ? marker_seen = 1;
+      npid == wanted_pid && !marker_seen ? (
+        lookahead_step = ns;
+        lookahead_value = nval;
+        found = 1;
+      );
+      ni += 1;
+    );
+    ns += 1;
+  );
+  found;
+);
+
+function curve_progress(t, amount) local(span,x,start_t) (
+  // Bipolar smoothing position inside the current step.
+  // Positive values smooth from the START of the step.
+  // Negative values smooth in the FINAL part of the step, immediately before
+  // the corner with the next step.  The magnitude is the percentage of step:
+  // +25 = first quarter, -25 = last quarter, +/-100 = whole step.
+  abs(amount) < 0.000000001 ? 0 : (
+    span = max(0.0001, min(1, abs(amount) / 100));
+    amount > 0 ? (
+      x = min(1, max(0, t / span));
+    ) : (
+      start_t = 1 - span;
+      x = min(1, max(0, (t - start_t) / span));
+    );
+    x*x*(3-2*x);
+  );
+);
+
+function song_active_resource_owner(resource_bit, preferred_owner) local(lane,ls,mask,bit,state,audio_clock) (
+  // A Pattern is authoritative for every shared resource it actually uses.
+  // With one claimant, that Pattern owns the resource automatically. The Song
+  // Owner is consulted only when two or three Patterns claim it.
+  //
+  // The scheduler works several audio blocks ahead. State 1 means that a lane
+  // has queued its final event but the Core has not reached that event yet. It
+  // must remain a resource claimant until the real audio clock reaches ls+13;
+  // otherwise Filter/LFO ownership can change before the last Note On is heard.
+  mask=0;
+  // Ownership must be evaluated at the timestamp being scheduled, not at the
+  // current Core clock. The Tracker works several blocks ahead; using the live
+  // clock kept a bass lane as LFO owner for roughly the final two melody rows.
+  audio_clock=song_owner_eval_time>=0 ? floor(song_owner_eval_time+0.5) : floor(gmem[CORE_BASE+1]+0.5);
+  lane=1;
+  while(lane<=3) (
+    ls=LANE_STATE_BASE+(lane-1)*LANE_STATE_STRIDE;
+    bit=lane==1?1:lane==2?2:4;
+    state=mem[ls+1];
+    (state<0.5 || (state<1.5 && audio_clock<mem[ls+13])) && (floor(mem[ls+22]+0.5)&resource_bit) ? mask=mask|bit;
+    lane+=1;
+  );
+  mask==0 ? clampi(preferred_owner,1,3) :
+  mask==1 ? 1 : mask==2 ? 2 : mask==4 ? 3 : (
+    bit=clampi(preferred_owner,1,3)==1?1:clampi(preferred_owner,1,3)==2?2:4;
+    (mask&bit) ? clampi(preferred_owner,1,3) : ((mask&1)?1:(mask&2)?2:3);
+  );
+);
+
+function song_map_slider(sid) local(owner) (
+  // MIDI Mode belongs only to live MIDI input. Direct GMEM Pattern/Song lanes
+  // are already addressed to Op1/Op2/Op3 and must never change voice ownership.
+  sid == 3 ? -1 :
+  !song_context ? sid : (
+    // Generic operator strips are stored as the first member of each group of three.
+    sid >= 10 && sid <= 102 ? (
+      ((sid-10)%3)==0 ? sid + song_lane - 1 : -1;
+    ) :
+    // Filter routing is owned by the Song mask, not by any Pattern.
+    sid >= 114 && sid <= 116 ? -1 :
+    // A lone Pattern carrying Filter data owns the Filter automatically.
+    // Filter Owner resolves only a real conflict between active Patterns.
+    (sid==6 || sid==7 || (sid>=108 && sid<=121)) ? (
+      owner=song_active_resource_owner(1,song_filter_owner);
+      song_lane==owner ? sid : -1;
+    ) :
+    // Shared LFO source strips use the same Pattern-first rule. Per-operator
+    // depths remain independent and are always redirected to the Song lane.
+    (sid>=122 && sid<=132) ? (
+      owner=song_active_resource_owner(2,song_lfo1_owner);
+      song_lane==owner ? sid : -1;
+    ) :
+    (sid>=133 && sid<=144) ? (((sid-133)%3)==0 ? sid+song_lane-1 : -1) :
+    (sid>=145 && sid<=155) ? (
+      owner=song_active_resource_owner(4,song_lfo2_owner);
+      song_lane==owner ? sid : -1;
+    ) :
+    (sid>=156 && sid<=167) ? (((sid-156)%3)==0 ? sid+song_lane-1 : -1) :
+    (sid>=168 && sid<=178) ? (
+      owner=song_active_resource_owner(8,song_lfo3_owner);
+      song_lane==owner ? sid : -1;
+    ) :
+    (sid>=179 && sid<=190) ? (((sid-179)%3)==0 ? sid+song_lane-1 : -1) : sid;
+  );
+);
+
+function song_note_lfo_trigger_mask(op,target) local(mask,previous_eval) (
+  // Each of the three LFO generators is shared, but its Song owner is not.
+  // Put the resolved ownership directly on the root Note On event so a bass
+  // note can never restart an LFO owned by the melody operator.
+  previous_eval=song_owner_eval_time;
+  song_owner_eval_time=target;
+  mask=0;
+  song_active_resource_owner(2,song_lfo1_owner)==op ? mask=mask|1;
+  song_active_resource_owner(4,song_lfo2_owner)==op ? mask=mask|2;
+  song_active_resource_owner(8,song_lfo3_owner)==op ? mask=mask|4;
+  song_owner_eval_time=previous_eval;
+  mask;
+);
+
+function curve_ratio_is_curved(seg, mode) local(pos,cycle,straight) (
+  mode = clampi(mode,0,8);
+  mode == 0 ? (
+    -1; // no override
+  ) : (
+    mode == 1 ? (straight=1; cycle=2;) :
+    mode == 2 ? (straight=2; cycle=3;) :
+    mode == 3 ? (straight=3; cycle=4;) :
+    mode == 4 ? (straight=4; cycle=5;) :
+    mode == 5 ? (straight=1; cycle=3;) :
+    mode == 6 ? (straight=1; cycle=4;) :
+    mode == 7 ? (straight=1; cycle=5;) :
+                 (straight=2; cycle=4;);
+    pos = (seg-1) % cycle;
+    pos >= straight;
+  );
+);
+
+function schedule_step(st, target) local(sb,count,i,cb,pid,val,note,gate,gate_present,control,op,sps,next_st,next_control,hold_into_next,inherit_after,curve_after,curve_resolution_after,curve_ratio_after,param_curve,param_resolution,param_ratio,sid,currentv,nextv,param_count,seg,t,local_t,global_t,prog,event_time,v,noteoff_time,noteoff_queued,held_note,source_st,target_st,ps,psb,pcount,pi,pcb,ppid,pval,pcurve,presolution,pratio,pinherit,seen_key,span_steps,total_segments,max_curve_segments,effective_segments,ratio_curved,sub_count,sub_base,active_sub_count,active_sub_base,j,sub_note,arp_seen,lfo_trigger_mask,previous_owner_eval) (
+  sb = step_base(st);
+  count = clampi(gmem[sb], 0, MAX_CELLS);
+  note = -1;
+  gate = 0.92;
+  gate_present = 0;
+  control = 0;
+  pause_present = 0;
+  sub_count = 0;
+  arp_seen = 0;
+  op = song_context ? clampi(song_lane, 1, 3) : clampi(slider5, 1, 3);
+  sub_base = ACTIVE_SUB_NOTE_BASE + (op-1)*ACTIVE_SUB_STRIDE;
+  active_sub_base = sub_base;
+  active_sub_count = clampi(mem[ACTIVE_SUB_COUNT_BASE+op-1],0,ACTIVE_SUB_STRIDE);
+  inherit_after = 0;
+  curve_after = 0;
+  curve_resolution_after = 0;
+  curve_ratio_after = 0;
+  sps = samples_per_step();
+  previous_owner_eval=song_owner_eval_time;
+  song_context ? song_owner_eval_time=target;
+
+  // First pass: step-wide controls.
+  i = 0;
+  while (i < count) (
+    cb = sb + 1 + i * CELL_SIZE;
+    pid = floor(gmem[cb] + 0.5);
+    val = gmem[cb + 1];
+    pid == P_NOTE ? note = clampi(val, 0, 127) :
+    pid == P_SLIDER_BASE+76 ? arp_seen = val > 0.5 :
+    pid == P_SUB_NOTE ? (
+      arp_seen && sub_count < ACTIVE_SUB_STRIDE ? (
+        mem[STEP_SUB_NOTE_BASE+sub_count] = clampi(val,0,127);
+        sub_count += 1;
+      );
+    ) :
+    pid == P_GATE ? (gate = max(0.01, min(1, val)); gate_present = 1;) :
+    pid == P_STEP_CONTROL ? (clampi(val,1,2) == 1 ? control = 1 : pause_present = 1) :
+    pid == P_PAUSE ? pause_present = 1;
+    i += 1;
+  );
+
+  note >= 0 ? note = clampi(note + repeat_transpose, 0, 127);
+  j=0;
+  while (j<sub_count) (
+    mem[STEP_SUB_NOTE_BASE+j]=clampi(mem[STEP_SUB_NOTE_BASE+j]+repeat_transpose,0,127);
+    j+=1;
+  );
+
+  // Mark all slider IDs as unseen for this row.
+  i = 0;
+  while (i < 512) ( mem[SEEN_PARAM_BASE+i] = 0; i += 1; );
+
+  // Explicit parameters in the current step. A Curve searches forward through
+  // any number of empty rows until the next real value of that parameter.
+  param_count = 0;
+  inherit_after = 0;
+  curve_after = 0;
+  curve_resolution_after = 0;
+  curve_ratio_after = 0;
+  max_curve_segments = CURVE_SEGMENTS;
+  i = 0;
+  while (i < count) (
+    cb = sb + 1 + i * CELL_SIZE;
+    pid = floor(gmem[cb] + 0.5);
+    val = gmem[cb + 1];
+    pid == P_STEP_CONTROL ? (
+      clampi(val,1,2) == 1 ? inherit_after = 1;
+    ) : pid == P_CURVE ? (
+      curve_after = max(-100,min(100,val));
+    ) : pid == P_CURVE_DOWN_LEGACY ? (
+      curve_after = -max(0,min(100,abs(val)));
+    ) : pid == P_CURVE_RESOLUTION ? (
+      // It only modifies parameters to its right, and only while a Curve is active.
+      abs(curve_after) > 0.000000001 ? curve_resolution_after = max(2,min(1024,2*floor((val+1)/2))) : curve_resolution_after = 0;
+    ) : pid == P_CURVE_RATIO ? (
+      // Zero is Off. Non-zero modes interrupt the Curve according to a
+      // musical straight:curve ratio. It also works without Resolution.
+      abs(curve_after) > 0.000000001 ? curve_ratio_after = clampi(val,0,8) : curve_ratio_after = 0;
+    ) : pid >= P_SLIDER_BASE ? (
+      sid = pid - P_SLIDER_BASE;
+      song_context ? sid = song_map_slider(sid);
+      sid == 3 ? sid = -1;
+      sid >= 1 && sid <= 512 && param_count < MAX_CELLS ? (
+        inherit_after ? val = previous_step_param_value(st,pid,val);
+        currentv = val;
+        nextv = currentv;
+        source_st = st;
+        target_st = st;
+        abs(curve_after) > 0.000000001 && find_next_real_param(st,pid) ? (
+          target_st = lookahead_step;
+          nextv = lookahead_value;
+        );
+        mem[CURVE_PID_BASE + param_count] = sid;
+        mem[CURVE_CURRENT_BASE + param_count] = currentv;
+        mem[CURVE_NEXT_BASE + param_count] = nextv;
+        mem[CURVE_AMOUNT_BASE + param_count] = curve_after;
+        mem[CURVE_RESOLUTION_BASE + param_count] = curve_resolution_after;
+        mem[CURVE_RATIO_BASE + param_count] = curve_ratio_after;
+        max_curve_segments = max(max_curve_segments, curve_resolution_after > 0 ? curve_resolution_after : CURVE_SEGMENTS);
+        mem[CURVE_SOURCE_STEP_BASE + param_count] = source_st;
+        mem[CURVE_TARGET_STEP_BASE + param_count] = target_st;
+        mem[SEEN_PARAM_BASE+sid-1] = 1;
+        param_count += 1;
+      );
+    );
+    i += 1;
+  );
+
+  // Carry curves across empty steps. For each slider, only its nearest previous
+  // occurrence matters. If that occurrence had Curve and its next real value is
+  // still ahead, generate only this step's portion of the continuous curve.
+  ps = st - 1;
+  while (ps >= 0 && param_count < MAX_CELLS) (
+    psb = step_base(ps);
+    pcount = clampi(gmem[psb],0,MAX_CELLS);
+    pcurve = 0;
+    presolution = 0;
+    pratio = 0;
+    pinherit = 0;
+    pi = 0;
+    while (pi < pcount && param_count < MAX_CELLS) (
+      pcb = psb + 1 + pi*CELL_SIZE;
+      ppid = floor(gmem[pcb]+0.5);
+      pval = gmem[pcb+1];
+      ppid == P_STEP_CONTROL ? (
+        clampi(pval,1,2) == 1 ? pinherit = 1;
+      ) : ppid == P_CURVE ? (
+        pcurve = max(-100,min(100,pval));
+      ) : ppid == P_CURVE_DOWN_LEGACY ? (
+        pcurve = -max(0,min(100,abs(pval)));
+      ) : ppid == P_CURVE_RESOLUTION ? (
+        abs(pcurve) > 0.000000001 ? presolution = max(2,min(1024,2*floor((pval+1)/2))) : presolution = 0;
+      ) : ppid == P_CURVE_RATIO ? (
+        abs(pcurve) > 0.000000001 ? pratio = clampi(pval,0,8) : pratio = 0;
+      ) : ppid >= P_SLIDER_BASE ? (
+        sid = ppid - P_SLIDER_BASE;
+        song_context ? sid = song_map_slider(sid);
+        sid == 3 ? sid = -1;
+        sid >= 1 && sid <= 512 ? (
+          seen_key = SEEN_PARAM_BASE+sid-1;
+          mem[seen_key] < 0.5 ? (
+            // This is the nearest previous occurrence, so older occurrences of
+            // the same parameter must never take over.
+            mem[seen_key] = 1;
+            abs(pcurve) > 0.000000001 && find_next_real_param(ps,ppid) && lookahead_step > st ? (
+              pinherit ? pval = previous_step_param_value(ps,ppid,pval);
+              mem[CURVE_PID_BASE + param_count] = sid;
+              mem[CURVE_CURRENT_BASE + param_count] = pval;
+              mem[CURVE_NEXT_BASE + param_count] = lookahead_value;
+              mem[CURVE_AMOUNT_BASE + param_count] = pcurve;
+              mem[CURVE_RESOLUTION_BASE + param_count] = presolution;
+              mem[CURVE_RATIO_BASE + param_count] = pratio;
+              max_curve_segments = max(max_curve_segments, presolution > 0 ? presolution : CURVE_SEGMENTS);
+              mem[CURVE_SOURCE_STEP_BASE + param_count] = ps;
+              mem[CURVE_TARGET_STEP_BASE + param_count] = lookahead_step;
+              param_count += 1;
+            );
+          );
+        );
+      );
+      pi += 1;
+    );
+    ps -= 1;
+  );
+
+  // Everything due at the beginning of the step is queued first.
+  i = 0;
+  while (i < param_count) (
+    sid = mem[CURVE_PID_BASE + i];
+    currentv = mem[CURVE_CURRENT_BASE + i];
+    nextv = mem[CURVE_NEXT_BASE + i];
+    param_curve = mem[CURVE_AMOUNT_BASE + i];
+    source_st = mem[CURVE_SOURCE_STEP_BASE + i];
+    target_st = mem[CURVE_TARGET_STEP_BASE + i];
+    target_st > source_st && abs(param_curve) > 0.000000001 ? (
+      global_t = (st-source_st)/(target_st-source_st);
+      currentv = currentv + (nextv-currentv)*curve_progress(global_t,param_curve);
+    );
+    queue_event(target, EVT_PARAM, op, sid, currentv);
+    i += 1;
+  );
+
+  next_st = st + 1;
+  song_context ? (
+    // Pattern Start / Play Length can turn one source Pattern into individual
+    // Song notes.  At the window end, look at the first step that will really
+    // play on the next internal or Song-row repeat, never at an excluded source
+    // step.  The old full-Pattern lookup could swallow the last single-note
+    // event on every repeat except the final one.
+    next_st >= song_window_end ? (
+      (repeat_index + 1 < pattern_repeat || song_row_repeat_index + 1 < song_row_repeat_count) ? next_st = song_window_start : next_st = -1;
+    );
+  ) : (
+    next_st >= pattern_length ? (repeat_index + 1 < pattern_repeat ? next_st = 0 : next_st = -1);
+  );
+  next_control = next_st >= 0 ? read_step_control(next_st) : 0;
+  hold_into_next = next_control == 1;
+  noteoff_time = -1;
+  noteoff_queued = 0;
+
+  pause_present ? (
+    active_note >= 0 ? queue_event(target, EVT_NOTE_OFF, op, active_note, 0);
+    j=0; while (j<active_sub_count) ( queue_event(target,EVT_NOTE_OFF,op,mem[active_sub_base+j],0); j+=1; );
+    mem[ACTIVE_SUB_COUNT_BASE+op-1]=0;
+    active_note = -1;
+  ) : note >= 0 && (!song_context || song_gate_deadline < 0 || target < song_gate_deadline) ? (
+    song_context && song_entry_legato >= 0.5 && st == 0 && active_note >= 0 ? (
+      queue_event(target, EVT_NOTE_LEGATO, op, note, active_note);
+      // Legato keeps only the main oscillator note. Replace the complete arp
+      // note pool so Sub Notes from the previous song entry never accumulate.
+      j=0; while (j<active_sub_count) ( queue_event(target,EVT_NOTE_OFF,op,mem[active_sub_base+j],0); j+=1; );
+      mem[ACTIVE_SUB_COUNT_BASE+op-1]=0;
+      active_sub_count=0;
+    ) : (
+      active_note >= 0 ? queue_event(target, EVT_NOTE_OFF, op, active_note, 0);
+      j=0; while (j<active_sub_count) ( queue_event(target,EVT_NOTE_OFF,op,mem[active_sub_base+j],0); j+=1; );
+      lfo_trigger_mask=song_context ? song_note_lfo_trigger_mask(op,target) : 7;
+      queue_event(target, EVT_NOTE_ON, op, note, lfo_trigger_mask);
+    );
+    j=0;
+    while (j<sub_count) (
+      sub_note=mem[STEP_SUB_NOTE_BASE+j];
+      queue_event(target,EVT_NOTE_ON,op,sub_note,0);
+      mem[active_sub_base+j]=sub_note;
+      j+=1;
+    );
+    mem[ACTIVE_SUB_COUNT_BASE+op-1]=sub_count;
+    active_sub_count=sub_count;
+    active_note = note;
+    !hold_into_next ? noteoff_time = target + max(1, floor(sps * gate));
+    song_context && song_gate_deadline >= 0 ? noteoff_time=min(noteoff_time,song_gate_deadline);
+  ) : gate_present && active_note >= 0 ? (
+    held_note = active_note;
+    note = held_note;
+    noteoff_time = target + max(1, floor(sps * gate));
+  ) : control == 1 ? (
+    active_note = active_note;
+  );
+
+  // Generate only the current row's section of every active curve. This keeps
+  // the event queue chronological while the interpolation crosses empty rows.
+  seg = 1;
+  while (seg <= max_curve_segments) (
+    // The event time is calculated per parameter below because normal curves
+    // use the legacy 32 points while Curve Resolution may use up to 1024.
+    t = seg / max_curve_segments;
+    event_time = target + floor((sps-1) * t);
+    noteoff_time >= 0 && !noteoff_queued && noteoff_time <= event_time ? (
+      queue_event(noteoff_time, EVT_NOTE_OFF, op, note, 0);
+      j=0; while (j<active_sub_count) ( queue_event(noteoff_time,EVT_NOTE_OFF,op,mem[active_sub_base+j],0); j+=1; );
+      queue_event(noteoff_time, EVT_GATE_OFF, op, 0, 0);
+      mem[ACTIVE_SUB_COUNT_BASE+op-1]=0;
+      active_sub_count=0;
+      noteoff_queued = 1;
+      active_note = -1;
+    );
+    i = 0;
+    while (i < param_count) (
+      sid = mem[CURVE_PID_BASE + i];
+      currentv = mem[CURVE_CURRENT_BASE + i];
+      nextv = mem[CURVE_NEXT_BASE + i];
+      param_curve = mem[CURVE_AMOUNT_BASE + i];
+      param_resolution = mem[CURVE_RESOLUTION_BASE + i];
+      param_ratio = clampi(mem[CURVE_RATIO_BASE + i],0,8);
+      source_st = mem[CURVE_SOURCE_STEP_BASE + i];
+      target_st = mem[CURVE_TARGET_STEP_BASE + i];
+      effective_segments = param_resolution > 0 ? param_resolution : CURVE_SEGMENTS;
+      seg <= effective_segments && target_st > source_st && abs(param_curve) > 0.000000001 && abs(nextv-currentv) >= 0.000000001 ? (
+        t = seg / effective_segments;
+        event_time = target + floor((sps-1) * t);
+        // Ratio 0 leaves the old behavior untouched: a normal Curve stays
+        // smooth, while Curve Resolution keeps its original 1:1 alternation.
+        // Any non-zero Ratio overrides the straight/curve pattern for either
+        // the legacy 32-point Curve or the selected Resolution.
+        ratio_curved = curve_ratio_is_curved(seg,param_ratio);
+        param_ratio > 0 ? (
+          ratio_curved ? (
+            global_t = ((st-source_st)+t)/(target_st-source_st);
+            prog = curve_progress(global_t, param_curve);
+            v = currentv + (nextv-currentv) * prog;
+          ) : v = currentv;
+          queue_event(event_time, EVT_PARAM, op, sid, v);
+        ) : param_resolution > 0 ? (
+          (seg % 2) == 1 ? v = currentv : (
+            global_t = ((st-source_st)+t)/(target_st-source_st);
+            prog = curve_progress(global_t, param_curve);
+            v = currentv + (nextv-currentv) * prog;
+          );
+          queue_event(event_time, EVT_PARAM, op, sid, v);
+        ) : (
+          global_t = ((st-source_st)+t)/(target_st-source_st);
+          prog = curve_progress(global_t, param_curve);
+          v = currentv + (nextv-currentv) * prog;
+          queue_event(event_time, EVT_PARAM, op, sid, v);
+        );
+      );
+      i += 1;
+    );
+    seg += 1;
+  );
+
+  noteoff_time >= 0 && !noteoff_queued ? (
+    queue_event(noteoff_time, EVT_NOTE_OFF, op, note, 0);
+    j=0; while (j<active_sub_count) ( queue_event(noteoff_time,EVT_NOTE_OFF,op,mem[active_sub_base+j],0); j+=1; );
+    queue_event(noteoff_time, EVT_GATE_OFF, op, 0, 0);
+    mem[ACTIVE_SUB_COUNT_BASE+op-1]=0;
+    active_sub_count=0;
+    active_note = -1;
+  );
+
+  i = 0;
+  while (i < param_count) (
+    sid = mem[CURVE_PID_BASE + i];
+    mem[PARAM_STATE_BASE+sid] = mem[CURVE_NEXT_BASE+i];
+    mem[PARAM_KNOWN_BASE+sid] = 1;
+    i += 1;
+  );
+  song_owner_eval_time=previous_owner_eval;
+);
+
+function restore_history_to_step(start_st,target) local(st,sb,count,i,cb,pid,val,inherit_after,curve_after,sid,nextv,source_st,target_st,global_t,op,clear_i) (
+  // Rebuild the deterministic parameter state that would exist immediately
+  // before start_st. Notes, gates and pauses are deliberately ignored: only
+  // the oscillator/filter/LFO state is restored, then start_st supplies the
+  // real audio trigger.
+  clear_i=0;
+  while(clear_i<512) (
+    mem[PARAM_KNOWN_BASE+clear_i]=0;
+    clear_i+=1;
+  );
+  st=0;
+  while(st<start_st) (
+    sb=step_base(st);
+    count=clampi(gmem[sb],0,MAX_CELLS);
+    inherit_after=0;
+    curve_after=0;
+    i=0;
+    while(i<count) (
+      cb=sb+1+i*CELL_SIZE;
+      pid=floor(gmem[cb]+0.5);
+      val=gmem[cb+1];
+      pid==P_STEP_CONTROL ? (
+        clampi(val,1,2)==1 ? inherit_after=1;
+      ) : pid==P_CURVE ? (
+        curve_after=max(-100,min(100,val));
+      ) : pid==P_CURVE_DOWN_LEGACY ? (
+        curve_after=-max(0,min(100,abs(val)));
+      ) : pid>=P_SLIDER_BASE ? (
+        sid=pid-P_SLIDER_BASE;
+        sid==3 ? sid=-1;
+        sid>=1 && sid<=512 ? (
+          inherit_after ? val=previous_step_param_value(st,pid,val);
+          nextv=val;
+          source_st=st;
+          target_st=st;
+          abs(curve_after)>0.000000001 && find_next_real_param(st,pid) ? (
+            target_st=lookahead_step;
+            nextv=lookahead_value;
+          );
+          target_st>source_st && target_st>=start_st && abs(curve_after)>0.000000001 ? (
+            global_t=(start_st-source_st)/(target_st-source_st);
+            val=val+(nextv-val)*curve_progress(global_t,curve_after);
+          );
+          mem[PARAM_STATE_BASE+sid]=val;
+          mem[PARAM_KNOWN_BASE+sid]=1;
+        );
+      );
+      i+=1;
+    );
+    st+=1;
+  );
+  op=clampi(slider5,1,3);
+  sid=1;
+  while(sid<=512) (
+    mem[PARAM_KNOWN_BASE+sid]>=0.5 ? queue_event(target,EVT_PARAM,op,sid,mem[PARAM_STATE_BASE+sid]);
+    sid+=1;
+  );
+);
+
+function prepare_clean_midi_start(target) (
+  // Discard every event still waiting from an earlier preview or mapped key.
+  // The mapped performance then starts from one deterministic All Off followed
+  // immediately by its first step, without the old two-block pre-roll.
+  mem[QUEUE_WRITE_STATE_BASE+1]=clampi(gmem[CORE_BASE+8],0,QUEUE_CAPACITY-1);
+  mem[QUEUE_WRITE_STATE_BASE+2]=clampi(gmem[CORE_BASE+9],0,QUEUE_CAPACITY-1);
+  mem[QUEUE_WRITE_STATE_BASE+3]=clampi(gmem[CORE_BASE+10],0,QUEUE_CAPACITY-1);
+  gmem[CORE_BASE+4]=mem[QUEUE_WRITE_STATE_BASE+1];
+  gmem[CORE_BASE+5]=mem[QUEUE_WRITE_STATE_BASE+2];
+  gmem[CORE_BASE+6]=mem[QUEUE_WRITE_STATE_BASE+3];
+  midi_q_read=midi_q_write;
+  active_note=-1;
+  song_context=0;
+  play_active=0;
+  gmem[SONG_MIXER_LIVE_BASE+7]=0;
+);
+
+function begin_pattern(base, from_bank, forced_start) local(core_clock, lead,start_st) (
+  // Pattern playback must never inherit a Song mixer.
+  gmem[SONG_MIXER_LIVE_BASE+7]=0;
+  active_midi_header_base = base;
+  bank_mode = from_bank;
+  active_pattern_base = base;
+  active_step_dir_rel = from_bank ? clampi(gmem[base+4],5,2000) : 0;
+  midi_mode = from_bank;
+  pattern_length = from_bank ? clampi(gmem[base + 2],1,MAX_STEPS) : clampi(gmem[LUA_BASE + 4], 1, MAX_STEPS);
+  pattern_repeat = from_bank ? clampi(gmem[base + 3],1,1000) : clampi(gmem[LUA_BASE + 5], 1, 1000);
+  repeat_index = 0;
+  slider4 = from_bank ? 1 : max(0.25, min(16, gmem[LUA_BASE + 6]));
+  repeat_speed = from_bank ? max(0.25,min(16,gmem[base+5]>0?gmem[base+5]:1)) : max(0.25, min(16, gmem[LUA_BASE + 8] > 0 ? gmem[LUA_BASE + 8] : slider4));
+  repeat_transpose = from_bank ? clampi(gmem[base+5+pattern_repeat],-96,96) : clampi(gmem[REPEAT_TRANSPOSE_BASE],-96,96);
+  release_arp_enabled = from_bank ? clampi(gmem[BANK_RELEASE_ARP_BASE+clampi(gmem[base+1],0,999)],0,1) : clampi(gmem[RELEASE_ARP_CURRENT],0,1);
+  slider5 = clampi(gmem[LUA_BASE + 7], 1, 3);
+  start_st = from_bank ? 0 : clampi(gmem[PATTERN_START_STEP],0,pattern_length-1);
+  current_step = start_st;
+  // Every start is a fresh tracker performance. Any previous tracker note is
+  // closed before this function is called, so no ADSR/gate state leaks between
+  // two MIDI-mapped patterns.
+  active_note = -1;
+  // A new performance starts with an empty deterministic parameter history.
+  // The first occurrence of a parameter is applied square; later steps can curve.
+  clear_i = 0;
+  while (clear_i < 512) (
+    mem[PARAM_KNOWN_BASE+clear_i] = 0;
+    clear_i += 1;
+  );
+  play_active = 1;
+  status_stop_pending = 0;
+  status_stop_time = 0;
+  gmem[PLAY_STATUS] = 1;
+  slider2 = 1;
+  sliderchange(slider2);
+  core_clock = gmem[CORE_BASE + 1];
+  lead = max(128, gmem[CORE_BASE + 3] * 2);
+  next_step_time = forced_start > 0 ? forced_start : core_clock + lead;
+  queue_event(max(core_clock+1,next_step_time-1),EVT_ALL_OFF,0,0,0);
+  start_st>0 ? restore_history_to_step(start_st,next_step_time);
+);
+
+
+function lane_addr(lane, field) (
+  LANE_STATE_BASE + (lane-1)*LANE_STATE_STRIDE + field;
+);
+function song_entry_base(lane, st) (
+  // Always read entries from the Song currently selected by the chain.
+  // SONG_BASE is only the initial Lua launch buffer; linked Songs live in
+  // SONG_BANK_BASE and song_data_base changes at every Song End transition.
+  song_data_base + SONG_HEADER_SIZE + (lane-1)*SONG_LANE_STRIDE + st*SONG_STEP_STRIDE;
+);
+function song_lane_length_value(lane) (
+  clampi(gmem[song_data_base+3013+lane],1,SONG_MAX_STEPS);
+);
+function song_lane_repeat_value(lane) ( clampi(gmem[song_data_base+7+lane],1,1000); );
+function song_lane_cycle_speed(lane,cycle) local(idx) (
+  idx=(lane-1)*1000+clampi(cycle,1,1000);
+  max(0.25,min(16,gmem[song_data_base+10+idx]>0?gmem[song_data_base+10+idx]:1));
+);
+function song_queue_filter_mask(target) (
+  queue_event(target,EVT_PARAM,song_filter_owner,114,(song_filter_mask&1)?1:0);
+  queue_event(target,EVT_PARAM,song_filter_owner,115,(song_filter_mask&2)?1:0);
+  queue_event(target,EVT_PARAM,song_filter_owner,116,(song_filter_mask&4)?1:0);
+);
+
+function song_prime_pattern_state(base, start_st, lane, target) local(dir_rel,st,sb,count,i,cb,pid,sid,val,marker_seen,previous_eval) (
+  previous_eval=song_owner_eval_time;
+  song_owner_eval_time=target;
+  // Prime the persistent synth state for the first audible row of every Song
+  // entry. This is deliberately note-free: it reconstructs Wave, envelopes,
+  // filter and LFO values from Pattern row 0 through Pattern Start, inclusive.
+  // The current row is included so its explicit settings are guaranteed to be
+  // in the queue before its Note On, even at Song step 0.
+  dir_rel=clampi(gmem[base+4],5,2000);
+  st=0;
+  while(st<=start_st) (
+    sb=base+floor(gmem[base+dir_rel+st]+0.5);
+    count=clampi(gmem[sb],0,MAX_CELLS);
+    marker_seen=0;
+    i=0;
+    while(i<count) (
+      cb=sb+1+i*CELL_SIZE;
+      pid=floor(gmem[cb]+0.5);
+      val=gmem[cb+1];
+      pid==P_STEP_CONTROL ? (
+        clampi(val,1,2)==1 ? marker_seen=1;
+      ) : pid>=P_SLIDER_BASE ? (
+        sid=pid-P_SLIDER_BASE;
+        song_context=1; song_lane=lane; sid=song_map_slider(sid);
+        sid>=1 && sid<=512 ? (
+          marker_seen && st>0 ? val=previous_step_param_value(st,pid,val);
+          queue_event(target,EVT_PARAM,lane,sid,val);
+        );
+      );
+      i+=1;
+    );
+    st+=1;
+  );
+  song_owner_eval_time=previous_eval;
+);
+
+// Return the complete shared-resource usage of one Pattern.
+// bit 0=Filter, bit 1=LFO1, bit 2=LFO2, bit 3=LFO3.
+// Every LFO parameter counts, including PWM/Pitch/Level/Pan Depth: a Pattern
+// using only a Depth still genuinely uses that LFO.
+function song_pattern_shared_resource_flags(base) local(plen,dir_rel,st,sb,count,i,cb,pid,sid,flags) (
+  flags=0;
+  base>0 && floor(gmem[base]+0.5)==BANK_MAGIC ? (
+    plen=clampi(gmem[base+2],1,MAX_STEPS);
+    dir_rel=clampi(gmem[base+4],5,2000);
+    st=0;
+    while(st<plen && flags<15) (
+      sb=base+floor(gmem[base+dir_rel+st]+0.5);
+      count=clampi(gmem[sb],0,MAX_CELLS);
+      i=0;
+      while(i<count && flags<15) (
+        cb=sb+1+i*CELL_SIZE; pid=floor(gmem[cb]+0.5);
+        pid>=P_SLIDER_BASE ? (
+          sid=pid-P_SLIDER_BASE;
+          // Op1/2/3 To Filter are replaced by Song Filter Operators.
+          (sid==6 || sid==7 || (sid>=108 && sid<=121 && !(sid>=114 && sid<=116))) ? flags=flags|1;
+          sid>=122 && sid<=144 ? flags=flags|2;
+          sid>=145 && sid<=167 ? flags=flags|4;
+          sid>=168 && sid<=190 ? flags=flags|8;
+        );
+        i+=1;
+      );
+      st+=1;
+    );
+  );
+  flags;
+);
+
+function song_pattern_shared_lfo_flags(base) local(flags) (
+  // Compatibility helper for the legacy initial scan.
+  flags=song_pattern_shared_resource_flags(base);
+  ((flags&2)?1:0) | ((flags&4)?2:0) | ((flags&8)?4:0);
+);
+
+// Inspect the rows from Song step 0 through the first valid Pattern of one lane.
+// The function publishes its result through the auto_lfo_* globals so the caller
+// can compare all three lanes before any Pattern state is queued.
+function song_scan_initial_lane_lfo(lane) local(st,len,eb,packed_ref,packed_trans,packed_repeat,packed_gate,l1,l2,l3,ref,base,found) (
+  auto_lfo_flags=0; auto_lfo1_code=0; auto_lfo2_code=0; auto_lfo3_code=0;
+  st=0; len=song_lane_length_value(lane); found=0;
+  while(st<len && !found) (
+    eb=song_entry_base(lane,st);
+    packed_trans=gmem[eb+2]; packed_repeat=max(0,gmem[eb+3]); packed_gate=max(0,gmem[eb+4]);
+    l1=floor(packed_trans/256); l2=floor(packed_repeat/32); l3=floor(packed_gate/2);
+    l1>0 ? auto_lfo1_code=clampi(l1,1,3);
+    l2>0 ? auto_lfo2_code=clampi(l2,1,3);
+    l3>0 ? auto_lfo3_code=clampi(l3,1,3);
+    packed_ref=max(0,gmem[eb]); ref=clampi(packed_ref%2048,0,1000);
+    ref>0 ? (
+      base=floor(gmem[BANK_DIR_BASE+ref-1]+0.5);
+      base>0 && floor(gmem[base]+0.5)==BANK_MAGIC ? (auto_lfo_flags=song_pattern_shared_lfo_flags(base); found=1;);
+    );
+    st+=1;
+  );
+);
+
+// On a direct Song launch, the historical default owner is Operator 1.  If Op1's
+// first Pattern does not define that LFO but exactly another lane does, select the
+// lane that actually contains the shared LFO strip. Explicit F3 owner commands
+// still have priority and multiple-LFO conflicts remain deterministic.
+function song_autoselect_initial_lfo_owners() local(f1,f2,f3,e11,e12,e13,e21,e22,e23,e31,e32,e33,explicit) (
+  song_scan_initial_lane_lfo(1); f1=auto_lfo_flags; e11=auto_lfo1_code; e12=auto_lfo2_code; e13=auto_lfo3_code;
+  song_scan_initial_lane_lfo(2); f2=auto_lfo_flags; e21=auto_lfo1_code; e22=auto_lfo2_code; e23=auto_lfo3_code;
+  song_scan_initial_lane_lfo(3); f3=auto_lfo_flags; e31=auto_lfo1_code; e32=auto_lfo2_code; e33=auto_lfo3_code;
+
+  explicit=e11>0?e11:e21>0?e21:e31;
+  explicit>0 ? song_lfo1_owner=explicit : (
+    ((song_lfo1_owner==1 && !(f1&1)) || (song_lfo1_owner==2 && !(f2&1)) || (song_lfo1_owner==3 && !(f3&1))) ?
+      (f1&1?song_lfo1_owner=1:f2&1?song_lfo1_owner=2:f3&1?song_lfo1_owner=3:0);
+  );
+  explicit=e12>0?e12:e22>0?e22:e32;
+  explicit>0 ? song_lfo2_owner=explicit : (
+    ((song_lfo2_owner==1 && !(f1&2)) || (song_lfo2_owner==2 && !(f2&2)) || (song_lfo2_owner==3 && !(f3&2))) ?
+      (f1&2?song_lfo2_owner=1:f2&2?song_lfo2_owner=2:f3&2?song_lfo2_owner=3:0);
+  );
+  explicit=e13>0?e13:e23>0?e23:e33;
+  explicit>0 ? song_lfo3_owner=explicit : (
+    ((song_lfo3_owner==1 && !(f1&4)) || (song_lfo3_owner==2 && !(f2&4)) || (song_lfo3_owner==3 && !(f3&4))) ?
+      (f1&4?song_lfo3_owner=1:f2&4?song_lfo3_owner=2:f3&4?song_lfo3_owner=3:0);
+  );
+);
+
+function song_reset_live_sidechain() local(lane,b) (
+  lane=1;
+  while(lane<=3) (
+    b=SIDECHAIN_LIVE_BASE+(lane-1)*SIDECHAIN_LIVE_STRIDE;
+    gmem[b+0]=0; gmem[b+1]=0; gmem[b+2]=gmem[b+2]+1;
+    lane+=1;
+  );
+);
+
+function song_apply_entry_fx(lane, eb, target)
+local(packed_ref,packed_speed,packed_trans,packed_repeat,packed_gate,packed_misc,fo_code,fm_code,l1_code,l2_code,l3_code,sc_source_code,sc_amount_code,delay_speed_code,delay_feedback_code,delay_volume_code,delay_pingpong_code,dly_live_b,sc_live_b) (
+  // Song FX belong to the Song row, not to the Pattern reference.  They must
+  // also run on an FX-only row; otherwise the values are visible and saved in
+  // F3 but are silently skipped until Lua pushes a live edit.
+  packed_ref=max(0,gmem[eb]); packed_speed=max(0,gmem[eb+1]); packed_trans=gmem[eb+2]; packed_repeat=max(0,gmem[eb+3]); packed_gate=max(0,gmem[eb+4]);
+  fo_code=floor(packed_ref/2048); fm_code=floor(packed_speed/32); l1_code=floor(packed_trans/256); l2_code=floor(packed_repeat/32); l3_code=floor(packed_gate/2);
+  packed_misc=max(0,gmem[eb+5]);
+  sc_source_code=floor(packed_misc/2)%5; sc_amount_code=floor(packed_misc/10)%128;
+  (sc_source_code>0 || sc_amount_code>0) ? (
+    sc_live_b=SIDECHAIN_LIVE_BASE+(lane-1)*SIDECHAIN_LIVE_STRIDE;
+    // Encoded value 1 means an explicit zero.  Source Off or Amount 0 is a
+    // complete reset, so no source/amount from the preceding Song can return.
+    (sc_source_code==1 || sc_amount_code==1) ? (
+      queue_event(target,EVT_SIDECHAIN,lane,0,0);
+      gmem[sc_live_b+0]=0; gmem[sc_live_b+1]=0;
+    ) : (
+      queue_event(target,EVT_SIDECHAIN,lane,sc_source_code>0?sc_source_code-1:-1,sc_amount_code>0?min(100,sc_amount_code-1):-1);
+      sc_source_code>0 ? gmem[sc_live_b+0]=sc_source_code-1;
+      sc_amount_code>0 ? gmem[sc_live_b+1]=min(100,sc_amount_code-1);
+    );
+    gmem[sc_live_b+2]=gmem[sc_live_b+2]+1;
+  );
+  delay_speed_code=max(0,floor(gmem[eb+6]+0.5)); delay_feedback_code=max(0,floor(gmem[eb+7]+0.5)); delay_volume_code=max(0,floor(gmem[eb+8]+0.5)); delay_pingpong_code=max(0,floor(gmem[eb+9]+0.5));
+  (delay_speed_code>0 || delay_feedback_code>0) ? queue_event(target,EVT_DELAY,lane,delay_speed_code>0?max(0,(delay_speed_code-1)/8):-1,delay_feedback_code>0?min(100,delay_feedback_code-1):-1);
+  delay_volume_code>0 ? queue_event(target,EVT_DELAY_VOLUME,lane,min(100,delay_volume_code-1),0);
+  delay_pingpong_code>0 ? queue_event(target,EVT_DELAY_PINGPONG,lane,min(100,delay_pingpong_code-1),0);
+  dly_live_b=DELAY_LIVE_BASE+(lane-1)*DELAY_LIVE_STRIDE;
+  delay_speed_code>0 ? gmem[dly_live_b+0]=max(0,(delay_speed_code-1)/8);
+  delay_feedback_code>0 ? gmem[dly_live_b+1]=min(100,delay_feedback_code-1);
+  delay_volume_code>0 ? gmem[dly_live_b+2]=min(100,delay_volume_code-1);
+  delay_pingpong_code>0 ? gmem[dly_live_b+3]=min(100,delay_pingpong_code-1);
+  (delay_speed_code>0 || delay_feedback_code>0 || delay_volume_code>0 || delay_pingpong_code>0) ? gmem[dly_live_b+4]=gmem[dly_live_b+4]+1;
+  fo_code>0 ? song_filter_owner=clampi(fo_code,1,3); fm_code>0 ? song_filter_mask=clampi(fm_code-1,0,7);
+  l1_code>0 ? song_lfo1_owner=clampi(l1_code,1,3); l2_code>0 ? song_lfo2_owner=clampi(l2_code,1,3); l3_code>0 ? song_lfo3_owner=clampi(l3_code,1,3);
+  (fo_code>0 || fm_code>0) ? song_queue_filter_mask(target);
+);
+
+function song_load_lane_entry(lane, target) local(st,start_st,skipped,grid_hz,grid_step,scan_target,eb,ref,base,ls,found,mode,cycle,restart_lane,packed_ref,packed_speed,packed_trans,packed_repeat,packed_gate,packed_start,start_offset_code,start_offset,fo_code,fm_code,l1_code,l2_code,l3_code) (
+  ls=lane_addr(lane,0);
+  restart_lane=1;
+  while(restart_lane) (
+    restart_lane=0;
+    lane_length=song_lane_length_value(lane); st=clampi(mem[ls+0],0,lane_length); start_st=st; found=0;
+    grid_hz=(tempo/60)*(division_value(slider3)/4); grid_hz<=0?grid_hz=1; grid_step=srate/grid_hz; scan_target=target;
+    while(st<lane_length && !found) (
+      eb=song_entry_base(lane,st);
+      // Apply the row state before testing its Pattern reference.  Empty Song
+      // rows may intentionally contain Delay/Sidechain/owner commands.
+      song_apply_entry_fx(lane,eb,scan_target);
+      packed_ref=max(0,gmem[eb]); ref=clampi(packed_ref%2048,0,1000);
+      ref<=0 ? (st+=1; scan_target+=grid_step;) : (
+        base=floor(gmem[BANK_DIR_BASE+ref-1]+0.5);
+        base>0 && floor(gmem[base]+0.5)==BANK_MAGIC ? found=1 : (st+=1; scan_target+=grid_step;);
+      );
+    );
+    skipped=max(0,st-start_st); target=scan_target;
+    mem[ls+0]=st;
+    st>=lane_length || !found ? (
+      mode=song_lane_repeat_value(lane); cycle=max(1,mem[ls+19]);
+      (start_st>0 && cycle<mode) ? (
+        mem[ls+19]=cycle+1; mem[ls+0]=0; restart_lane=1;
+      ) : (
+        // Do not declare the lane fully finished while its last Note On/Off is
+        // still only queued in the future. 1 = finish pending, 2 = audio-finished.
+        // Keep the Pattern base/resource flags alive during the pending window.
+        mem[ls+1]=1;
+        mem[ls+13]=target;
+      );
+    ) : (
+      source_pattern_length=clampi(gmem[base+2],1,MAX_STEPS);
+      packed_start=max(0,floor(gmem[eb+10]+0.5));
+      pattern_start=clampi(floor(packed_start/SONG_START_PACK_BASE),0,source_pattern_length-1);
+      start_offset_code=clampi(packed_start%SONG_START_PACK_BASE,0,SONG_START_OFFSET_DIVISIONS);
+      start_offset=start_offset_code>0?start_offset_code-1:0;
+      target+=grid_step*(start_offset/SONG_START_OFFSET_DIVISIONS);
+      raw_play_length=floor(gmem[eb+11]+0.5); play_length=raw_play_length>0?clampi(raw_play_length,1,source_pattern_length-pattern_start):(source_pattern_length-pattern_start);
+      mem[ls+1]=0; mem[ls+2]=base; mem[ls+22]=song_pattern_shared_resource_flags(base);
+      // Keep the source Pattern length separate from the Song window length.
+      // Pattern Start and Play Length select real Pattern steps; they must not
+      // redefine the Pattern itself or turn its rows into single-note events.
+      mem[ls+3]=source_pattern_length; mem[ls+20]=pattern_start; mem[ls+21]=play_length;
+      mem[ls+4]=clampi(gmem[base+3],1,1000);
+      mem[ls+5]=0; mem[ls+6]=max(0.25,min(16,gmem[base+5]>0?gmem[base+5]:1)); mem[ls+7]=clampi(gmem[base+5+mem[ls+4]],-96,96);
+      packed_ref=max(0,gmem[eb]); packed_speed=max(0,gmem[eb+1]); packed_trans=gmem[eb+2]; packed_repeat=max(0,gmem[eb+3]); packed_gate=max(0,gmem[eb+4]);
+      fo_code=floor(packed_ref/2048); fm_code=floor(packed_speed/32); l1_code=floor(packed_trans/256); l2_code=floor(packed_repeat/32); l3_code=floor(packed_gate/2);
+      cycle=max(1,mem[ls+19]);
+      mem[ls+8]=max(0.25,min(16,packed_speed-fm_code*32))*song_lane_cycle_speed(lane,cycle);
+      mem[ls+9]=clampi((packed_trans-l1_code*256)-128,-96,96); mem[ls+10]=clampi(packed_repeat-l2_code*32,1,16);
+      // b+4 stores Legato in bit 0 and the packed LFO3 owner above it.
+      mem[ls+16]=1; mem[ls+17]=clampi(packed_gate%2,0,1);
+      // Rebuild the Pattern state before its first note. Without this pass the
+      // first Song row could inherit Wave/filter/LFO values from the preceding
+      // entry and only become correct on the second Pattern row.
+      song_prime_pattern_state(base,pattern_start,lane,target);
+      mem[ls+11]=0; mem[ls+12]=mem[ls+20]; mem[ls+13]=target; mem[ls+14]=-1; mem[ls+15]=clampi(gmem[base+4],5,2000);
+      // No legacy percentage gate in Song/Part playback. Each real Pattern
+      // step is scheduled until Pattern Start + Play Length is reached.
+      mem[ls+18]=-1;
+    );
+  );
+);
+
+function song_reset_three_queues() local(lane,r) (
+  // Start every Song from three clean and aligned event streams.
+  // This prevents stale future events from an earlier preview from blocking
+  // the first Note On of one of the operators.
+  lane=1;
+  while(lane<=3) (
+    r=clampi(gmem[CORE_BASE+7+lane],0,QUEUE_CAPACITY-1);
+    mem[QUEUE_WRITE_STATE_BASE+lane]=r;
+    gmem[CORE_BASE+3+lane]=r;
+    lane+=1;
+  );
+);
+
+
+function song_restore_params_before(row,target) local(lane,r,b,patref,pbase,plen,st,sb,n,i,cb,pid,sid,val,op) (
+  // Reconstruct persistent synth state without producing notes.
+  lane=1;
+  while(lane<=3) (
+    r=0;
+    while(r<row) (
+      b=song_data_base+SONG_HEADER_SIZE+(lane-1)*SONG_LANE_STRIDE+r*SONG_STEP_STRIDE;
+      patref=clampi(gmem[b],0,1000)-1;
+      patref>=0 ? (
+        pbase=floor(gmem[BANK_DIR_BASE+patref]+0.5);
+        pbase>0 && floor(gmem[pbase]+0.5)==BANK_MAGIC ? (
+          plen=clampi(gmem[pbase+2],1,MAX_STEPS);
+          st=0;
+          while(st<plen) (
+            sb=pbase+floor(gmem[pbase+floor(gmem[pbase+4]+0.5)+st]+0.5);
+            n=clampi(gmem[sb],0,MAX_CELLS);
+            i=0;
+            while(i<n) (
+              cb=sb+1+i*2;
+              pid=floor(gmem[cb]+0.5);
+              val=gmem[cb+1];
+              pid>=P_SLIDER_BASE ? (
+                sid=pid-P_SLIDER_BASE;
+                song_context=1; song_lane=lane; sid=song_map_slider(sid);
+                sid>=1 && sid<=512 ? queue_event(target,EVT_PARAM,lane,sid,val);
+              );
+              i+=1;
+            );
+            st+=1;
+          );
+        );
+      );
+      r+=1;
+    );
+    lane+=1;
+  );
+);
+function song_jump(row) local(core_clock,lead,target,lane,ls) (
+  row=clampi(row,0,max(0,song_length-1));
+  song_reset_three_queues();
+  diag_reset(2);
+  lane=1; while(lane<=3) ( ls=lane_addr(lane,0); mem[ls+1]=2; mem[ls+2]=0; mem[ls+22]=0; lane+=1; );
+  core_clock=gmem[CORE_BASE+1]; lead=max(128,gmem[CORE_BASE+3]*2); target=forced_start>0 ? forced_start : core_clock+lead;
+  queue_event_one(target-1,EVT_ALL_OFF,1,0,0);
+  song_restore_params_before(row,target-1);
+  song_queue_filter_mask(target);
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0);
+    mem[ls+0]=row; mem[ls+1]=0; mem[ls+14]=-1; mem[ls+19]=1;
+    song_load_lane_entry(lane,target);
+    lane+=1;
+  );
+  song_context=1; play_active=1; song_paused=0; status_stop_pending=0; gmem[PLAY_STATUS]=1;
+);
+function song_pause() local(core_clock,target,lane,ls) (
+  song_context && play_active ? (
+    core_clock=gmem[CORE_BASE+1]; target=core_clock+max(1,gmem[CORE_BASE+3]);
+    song_reset_three_queues();
+    queue_event_one(target,EVT_ALL_OFF,1,0,0);
+    play_active=0; song_paused=1; gmem[PLAY_STATUS]=2;
+  );
+);
+function song_resume() local(core_clock,lead,target,lane,ls) (
+  song_context && song_paused ? (
+    core_clock=gmem[CORE_BASE+1]; lead=max(128,gmem[CORE_BASE+3]*2); target=core_clock+lead;
+    lane=1;
+    while(lane<=3) (
+      ls=lane_addr(lane,0);
+      mem[ls+1]<0.5 ? mem[ls+13]=target : mem[ls+1]<1.5 ? mem[ls+1]=2;
+      mem[ls+14]=-1;
+      lane+=1;
+    );
+    play_active=1; song_paused=0; gmem[PLAY_STATUS]=1;
+  );
+);
+
+function song_publish_mixer_volumes() local(vol_raw,state_raw,state,packed,v1,v2,v3,mute_mask,solo_lane) (
+  // Header cells 3008-3010 belong to lane-3 repeat speeds.  The mixer uses
+  // only the two free cells 3018-3019, with a magic-tagged packed format.
+  vol_raw=floor(gmem[song_data_base+3018]+0.5);
+  state_raw=floor(gmem[song_data_base+3019]+0.5);
+  state=state_raw-SONG_MIXER_HEADER_MAGIC;
+  state>=0 && state<=31 && vol_raw>0 ? (
+    packed=max(0,vol_raw-1);
+    v1=packed%101; packed=floor(packed/101);
+    v2=packed%101; v3=floor(packed/101)%101;
+    mute_mask=state%8; solo_lane=floor(state/8)%4;
+  ) : (
+    v1=100; v2=100; v3=100; mute_mask=0; solo_lane=0;
+  );
+  gmem[SONG_MIXER_LIVE_BASE+0]=clampi(v1,0,100);
+  gmem[SONG_MIXER_LIVE_BASE+1]=clampi(v2,0,100);
+  gmem[SONG_MIXER_LIVE_BASE+2]=clampi(v3,0,100);
+  gmem[SONG_MIXER_LIVE_BASE+3]=clampi(mute_mask,0,7);
+  gmem[SONG_MIXER_LIVE_BASE+4]=clampi(solo_lane,0,3);
+  gmem[SONG_MIXER_LIVE_BASE+6]=SONG_MIXER_MAGIC;
+  // The Tracker, not the controller page, owns the authoritative Song state.
+  gmem[SONG_MIXER_LIVE_BASE+7]=1;
+  gmem[SONG_MIXER_LIVE_BASE+5]=gmem[SONG_MIXER_LIVE_BASE+5]+1;
+);
+function song_read_header() (
+  song_length=clampi(gmem[song_data_base+1],1,SONG_MAX_STEPS);
+  song_end_mode=clampi(gmem[song_data_base+2],-1,99);
+  song_chain_loop=0;
+  song_loop_target=-1;
+  selected_song=clampi(gmem[song_data_base+3013],0,99);
+  song_filter_owner=clampi(gmem[song_data_base+3],1,3);
+  song_filter_mask=clampi(gmem[song_data_base+4],0,7);
+  song_lfo1_owner=clampi(gmem[song_data_base+5],1,3);
+  song_lfo2_owner=clampi(gmem[song_data_base+6],1,3);
+  song_lfo3_owner=clampi(gmem[song_data_base+7],1,3);
+  song_publish_mixer_volumes();
+);
+function song_begin(forced_start) local(core_clock,lead,target,lane,ls,fx_reset_target) (
+  song_reset_three_queues();
+  song_paused=0;
+  song_read_header();
+  diag_reset(1);
+  // Header/row Owners are conflict preferences; lone Patterns own automatically.
+  song_initial_lfo1_owner=song_lfo1_owner;
+  song_initial_lfo2_owner=song_lfo2_owner;
+  song_initial_lfo3_owner=song_lfo3_owner;
+  song_reset_live_sidechain();
+  song_cycle=1;
+  vi=0; while(vi<100) ( mem[SONG_VISITED_BASE+vi]=0; vi+=1; );
+  mem[SONG_VISITED_BASE+selected_song]=1;
+  chain_start_song=selected_song;
+  core_clock=gmem[CORE_BASE+1]; lead=max(128,gmem[CORE_BASE+3]*2);
+  // A mapped MIDI key uses the earliest sample the Core can still consume.
+  // Normal Space/transport starts keep the safe two-block scheduling lead.
+  target=forced_start>0 ? forced_start : core_clock+lead;
+
+  // Reset only sidechain state before a new Song launch. Delay state is never
+  // forced Off here: Delay Speed is persistent and may be changed only by an
+  // explicit Song row (including an explicit Off value). Queue the earlier
+  // target first so lane 1 is chronological even before the safety insertion.
+  fx_reset_target=max(0,target-2);
+  queue_event(fx_reset_target,EVT_SIDECHAIN,1,0,0); queue_event(fx_reset_target,EVT_SIDECHAIN,2,0,0); queue_event(fx_reset_target,EVT_SIDECHAIN,3,0,0);
+  // Reset the complete three-voice core exactly once, one sample before the
+  // first Song events. Do not broadcast EVT_ALL_OFF to all three queues here:
+  // the event itself is global, so later copies would silence operators that
+  // have already started. This single pre-roll reset clears stale held notes,
+  // gates and legato state even when all lanes use the same pattern.
+  queue_event_one(target-1,EVT_ALL_OFF,1,0,0);
+  // Header Filter routing belongs at the Song boundary, before any lane may
+  // prime a Pattern after an empty row or Start Offset. Row-level overrides are
+  // still queued later by song_apply_entry_fx() at their exact row timestamp.
+  song_queue_filter_mask(target);
+
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0); mem[ls+0]=0; mem[ls+1]=1; mem[ls+2]=0; mem[ls+14]=-1; mem[ls+19]=1; mem[ls+22]=0;
+    lane+=1;
+  );
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0); mem[ls+1]=0;
+    song_load_lane_entry(lane,target);
+    lane+=1;
+  );
+  song_context=1; play_active=1; status_stop_pending=0; gmem[PLAY_STATUS]=1;
+  slider2=1; sliderchange(slider2);
+);
+function song_restart(target) local(lane,ls,fx_reset_target) (
+  gmem[DIAG_BASE]==DIAG_MAGIC ? (gmem[DIAG_BASE+7]+=1; gmem[DIAG_BASE+9]=target;);
+  // Reuse the owners resolved at Song launch. Re-scanning complete Patterns at
+  // every short loop would create an unnecessary control-rate CPU spike.
+  song_lfo1_owner=song_initial_lfo1_owner;
+  song_lfo2_owner=song_initial_lfo2_owner;
+  song_lfo3_owner=song_initial_lfo3_owner;
+  song_reset_live_sidechain();
+  // A Song repeat must not switch off or clear an active delay. Queue the
+  // earlier sidechain reset first, then the global voice reset.
+  fx_reset_target=max(0,target-2);
+  queue_event(fx_reset_target,EVT_SIDECHAIN,1,0,0); queue_event(fx_reset_target,EVT_SIDECHAIN,2,0,0); queue_event(fx_reset_target,EVT_SIDECHAIN,3,0,0);
+  // Each global Song repeat starts from a clean shared voice state.
+  queue_event_one(max(0,target-1),EVT_ALL_OFF,1,0,0);
+  song_queue_filter_mask(target);
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0); mem[ls+0]=0; mem[ls+1]=1; mem[ls+2]=0; mem[ls+14]=-1; mem[ls+19]=1; mem[ls+22]=0;
+    lane+=1;
+  );
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0); mem[ls+1]=0;
+    song_load_lane_entry(lane,target);
+    lane+=1;
+  );
+);
+function song_transition(target) local(lane,ls) (
+  gmem[DIAG_BASE]==DIAG_MAGIC ? (gmem[DIAG_BASE+8]+=1; gmem[DIAG_BASE+9]=target; gmem[DIAG_BASE+4]=selected_song;);
+  song_initial_lfo1_owner=song_lfo1_owner;
+  song_initial_lfo2_owner=song_lfo2_owner;
+  song_initial_lfo3_owner=song_lfo3_owner;
+  // A linked Song is the next block of the same composition. Keep the audio
+  // engine, queues, envelopes, delay and clock alive; only replace the three
+  // lane readers at the exact boundary. Musical pauses must come from data.
+  // Queue the next Song header routing before lane priming; otherwise an empty
+  // first row can place future Op3 events in front of this boundary event.
+  song_queue_filter_mask(target);
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0);
+    mem[ls+0]=0; mem[ls+1]=1; mem[ls+2]=0; mem[ls+14]=-1; mem[ls+19]=1; mem[ls+22]=0;
+    lane+=1;
+  );
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0); mem[ls+1]=0;
+    song_load_lane_entry(lane,target);
+    lane+=1;
+  );
+  song_context=1; play_active=1; song_paused=0; status_stop_pending=0; gmem[PLAY_STATUS]=1;
+);
+function song_schedule_lane_step(lane) local(ls,sps,base,pr,ri,nextt,st,loaded_new,j,sub_base,sub_count,carry_note) (
+  ls=lane_addr(lane,0);
+  mem[ls+1]<0.5 ? (
+    loaded_new=0;
+    active_pattern_base=mem[ls+2]; bank_mode=1; active_step_dir_rel=mem[ls+15];
+    // Preserve the historical lane-state contract: mem[ls+3] is always
+    // the complete source Pattern length. Start and Play Length are separate.
+    pattern_length=mem[ls+3]; pattern_repeat=mem[ls+4]; repeat_index=mem[ls+5];
+    repeat_speed=mem[ls+6]; repeat_transpose=mem[ls+7]+mem[ls+9];
+    song_speed_mult=mem[ls+8]; current_step=mem[ls+12]; next_step_time=mem[ls+13];
+    active_note=mem[ls+14]; song_lane=lane; song_gate_deadline=mem[ls+18]; song_entry_legato=mem[ls+17];
+    song_window_start=mem[ls+20]; song_window_end=mem[ls+20]+mem[ls+21];
+    song_row_repeat_index=mem[ls+11]; song_row_repeat_count=mem[ls+10];
+    sps=samples_per_step();
+    schedule_step(current_step,next_step_time);
+    next_step_time+=sps; current_step+=1;
+    current_step>=mem[ls+20]+mem[ls+21] ? (
+      repeat_index+=1;
+      repeat_index<pattern_repeat ? (
+        repeat_speed=max(0.25,min(16,gmem[active_pattern_base+5+repeat_index]>0?gmem[active_pattern_base+5+repeat_index]:1));
+        repeat_transpose=clampi(gmem[active_pattern_base+5+pattern_repeat+repeat_index],-96,96)+mem[ls+9];
+        current_step=mem[ls+20];
+      ) : (
+        mem[ls+11]+=1;
+        mem[ls+11]<mem[ls+10] ? (
+          repeat_index=0; repeat_speed=max(0.25,min(16,gmem[active_pattern_base+5]>0?gmem[active_pattern_base+5]:1));
+          repeat_transpose=clampi(gmem[active_pattern_base+5+pattern_repeat],-96,96)+mem[ls+9]; current_step=mem[ls+20];
+        ) : (
+          // A Legato row may carry its live note into the following Song entry.
+          // Previously song_load_lane_entry() always reset ls+14 to -1, so the
+          // Core kept the old gate while the Tracker forgot it. Repeated entries
+          // then accumulated hidden held notes and a later melodic Note On could
+          // fail to retrigger, typically near the end of every non-final cycle.
+          carry_note=mem[ls+17]>=0.5 ? active_note : -1;
+          mem[ls+17]<0.5 ? (
+            active_note>=0 ? queue_event(next_step_time,EVT_NOTE_OFF,lane,active_note,0);
+            // A song pattern owns a complete monophonic arp pool. Release every
+            // Sub Note at the same boundary as the root note; otherwise copied
+            // chords remain held and corrupt the next pattern on this operator.
+            sub_base=ACTIVE_SUB_NOTE_BASE+(lane-1)*ACTIVE_SUB_STRIDE;
+            sub_count=clampi(mem[ACTIVE_SUB_COUNT_BASE+lane-1],0,ACTIVE_SUB_STRIDE);
+            j=0; while(j<sub_count) ( queue_event(next_step_time,EVT_NOTE_OFF,lane,mem[sub_base+j],0); j+=1; );
+            // The GMEM lane owns one operator. Close that operator explicitly
+            // after releasing its root/Sub Notes; never hard-reset shared synth state.
+            queue_event(next_step_time,EVT_GATE_OFF,lane,0,0);
+            mem[ACTIVE_SUB_COUNT_BASE+lane-1]=0;
+          );
+          mem[ls+13]=next_step_time; mem[ls+14]=active_note;
+          mem[ls+0]+=1;
+          song_load_lane_entry(lane,next_step_time);
+          // Preserve a real legato note only when another valid entry follows.
+          // At the physical lane end, close it at the boundary so Song Stop can
+          // apply the normal release tail instead of leaving a permanently held gate.
+          carry_note>=0 ? (
+            mem[ls+1]<0.5 ? mem[ls+14]=carry_note : (
+              queue_event(next_step_time,EVT_NOTE_OFF,lane,carry_note,0);
+              queue_event(next_step_time,EVT_GATE_OFF,lane,0,0);
+              mem[ls+14]=-1;
+            );
+          );
+          loaded_new=1;
+        );
+      );
+    );
+    !loaded_new ? (
+      mem[ls+5]=repeat_index; mem[ls+6]=repeat_speed; mem[ls+7]=repeat_transpose-mem[ls+9];
+      mem[ls+12]=current_step; mem[ls+13]=next_step_time; mem[ls+14]=active_note;
+    );
+  );
+);
+function song_update_lane_finishes() local(lane,ls,state,audio_clock) (
+  // Promote pending lanes only when the Core audio clock has actually reached
+  // their final queued event. This prevents look-ahead scheduling from ending
+  // a lane, reassigning shared resources, or restarting/stopping the Song early.
+  audio_clock=floor(gmem[CORE_BASE+1]+0.5);
+  lane=1;
+  while(lane<=3) (
+    ls=lane_addr(lane,0);
+    state=mem[ls+1];
+    state>=0.5 && state<1.5 && audio_clock>=mem[ls+13] ? (
+      mem[ls+1]=2;
+      mem[ls+2]=0;
+      mem[ls+22]=0;
+    );
+    lane+=1;
+  );
+);
+function song_schedule_all(horizon) local(lane,best_lane,best_time,t) (
+  best_lane=1;
+  while(best_lane>0) (
+    best_lane=0;
+    best_time=horizon+1;
+    lane=1;
+    while(lane<=3) (
+      mem[lane_addr(lane,1)]<0.5 ? (
+        t=mem[lane_addr(lane,13)];
+        t<=horizon && t<best_time ? (best_time=t; best_lane=lane;);
+      );
+      lane+=1;
+    );
+    best_lane>0 ? song_schedule_lane_step(best_lane);
+  );
+);
+function song_all_queued() (
+  // State 1 means that every event of this lane, including its final boundary,
+  // is already timestamped in the Core FIFO.  A linked Song must be appended
+  // now, while that boundary is still in the future. Waiting for state 2 made
+  // the transition up to one audio block late and collapsed short 16x rows.
+  mem[lane_addr(1,1)]>=0.5 && mem[lane_addr(2,1)]>=0.5 && mem[lane_addr(3,1)]>=0.5;
+);
+function song_all_finished() (
+  mem[lane_addr(1,1)]>=1.5 && mem[lane_addr(2,1)]>=1.5 && mem[lane_addr(3,1)]>=1.5;
+);
+function song_stop_at(target) local(song_release) (
+  song_release=max(max(mem[PARAM_KNOWN_BASE+43]?max(0,mem[PARAM_STATE_BASE+43]):slider43,mem[PARAM_KNOWN_BASE+44]?max(0,mem[PARAM_STATE_BASE+44]):slider44),max(mem[PARAM_KNOWN_BASE+45]?max(0,mem[PARAM_STATE_BASE+45]):slider45,mem[PARAM_KNOWN_BASE+121]?max(0,mem[PARAM_STATE_BASE+121]):slider121));
+  song_stop_target=target+max(1,floor(song_release*srate)+samplesblock);
+  // The lane readers can finish while the last Song rows are still future
+  // events in the Core queues.  Keep Song mode active until those events and
+  // their natural Release have actually elapsed.  Turning Run Mode off here
+  // could make the final one or two short Pattern rows disappear.
+  queue_event(song_stop_target,EVT_ALL_OFF,0,0,0);
+  status_stop_pending=1;
+  status_stop_time=song_stop_target;
+);
+function song_finish_or_restart() local(target,next_song,next_base) (
+  target=max(mem[lane_addr(1,13)],max(mem[lane_addr(2,13)],mem[lane_addr(3,13)]));
+  song_end_mode<0 ? (
+    song_stop_at(target);
+  ) : (
+    next_song=clampi(song_end_mode,0,99);
+    next_base=SONG_BANK_BASE+next_song*SONG_BANK_STRIDE;
+    floor(gmem[next_base]+0.5)==SONG_MAGIC ? (
+      selected_song=next_song;
+      song_data_base=next_base;
+      song_read_header();
+      selected_song=next_song;
+      song_transition(target);
+    ) : (
+      song_stop_at(target);
+    );
+  );
+);
+
+// initialize writer from current shared state
+mem[QUEUE_WRITE_STATE_BASE+1]=clampi(gmem[CORE_BASE+4],0,QUEUE_CAPACITY-1);
+mem[QUEUE_WRITE_STATE_BASE+2]=clampi(gmem[CORE_BASE+5],0,QUEUE_CAPACITY-1);
+mem[QUEUE_WRITE_STATE_BASE+3]=clampi(gmem[CORE_BASE+6],0,QUEUE_CAPACITY-1);
+
+@block
+block_start=floor(gmem[CORE_BASE+1]+0.5);
+block_end=block_start+samplesblock;
+gmem[DIAG_BASE]==DIAG_MAGIC ? (
+  gmem[DIAG_BASE+12]=block_start;
+  gmem[DIAG_BASE+13]=gmem[PLAY_STATUS];
+  gmem[DIAG_BASE+14]=gmem[CORE_BASE+2];
+  gmem[DIAG_BASE+15]=gmem[CORE_BASE+3];
+);
+// REAPER Stop must also stop every Tracker performance.  Detect only the
+// Playing -> Stopped transition, so mapped MIDI and Song Trigger can still be
+// auditioned while REAPER has never been started.
+transport_playing_now=(play_state & 1) ? 1 : 0;
+transport_started_now=!last_transport_playing && transport_playing_now;
+transport_stopped_now=last_transport_playing && !transport_playing_now;
+transport_stopped_now ? (
+  // REAPER Stop always terminates the current Tracker performance, but do not
+  // reinterpret an unchanged automation value in this same stopped block.
+  play_active || status_stop_pending ? stop_pattern_at(block_start+1);
+  song_slider_active=0;
+  song_slider_waiting=0;
+);
+last_transport_playing=transport_playing_now;
+// Song and Pattern MIDI assignments coexist without a global Mode switch.
+// On the same key Song wins; where Song is empty the Pattern assignment works.
+// Launch with only the two-sample safety margin used by Song Trigger.
+// The previous half-block offset could add about 20 ms with large audio
+// buffers. The Startup Loader/controller keep Tracker before Core, so both
+// MIDI and automated Song Trigger can reach the same audio block.
+midi_launch_offset=2;
+while (midirecv(offset,msg1,msg23)) (
+  status=msg1&240; note=msg23&127; vel=(msg23/256)&127;
+  mapped_song=floor(gmem[SONG_MIDI_MAP_BASE+note]+0.5);
+  mapped_pattern=floor(gmem[LUA_BASE+1600+note]+0.5);
+  handled=0;
+
+  status==144 && vel>0 && mapped_song>0 ? (
+    midi_trigger_note=note;
+    selected_song=clampi(mapped_song-1,0,99);
+    song_data_base=SONG_BANK_BASE+selected_song*SONG_BANK_STRIDE;
+    floor(gmem[song_data_base]+0.5)==SONG_MAGIC ? (
+      midi_start_target=floor(gmem[CORE_BASE+1]+0.5)+midi_launch_offset;
+      prepare_clean_midi_start(midi_start_target);
+      song_begin(midi_start_target);
+    );
+    handled=1;
+  ) : status==144 && vel>0 && mapped_pattern>0 ? (
+    mapped_pattern_index=clampi(mapped_pattern-1,0,999);
+    mapped_pattern_base=floor(gmem[BANK_DIR_BASE+mapped_pattern_index]+0.5);
+    floor(gmem[BANK_CTRL_BASE]+0.5)==BANK_MAGIC &&
+    mapped_pattern_base>=BANK_DATA_BASE &&
+    floor(gmem[mapped_pattern_base]+0.5)==BANK_MAGIC ? (
+      midi_trigger_note=note;
+      midi_start_target=floor(gmem[CORE_BASE+1]+0.5)+midi_launch_offset;
+      prepare_clean_midi_start(midi_start_target);
+      begin_pattern(mapped_pattern_base,1,midi_start_target);
+    );
+    handled=1;
+  ) : (mapped_song>0 || mapped_pattern>0) &&
+      (status==128 || (status==144 && vel==0)) ? (
+    note==midi_trigger_note ? (
+      midi_trigger_note=-1;
+      stop_pattern_at(gmem[CORE_BASE+1]+max(1,offset));
+    );
+    handled=1;
+  );
+
+  handled ? 0 : midisend(offset,msg1,msg23);
+);
+status_stop_pending && gmem[CORE_BASE + 1] >= status_stop_time ? (
+  status_stop_pending = 0;
+  play_active = 0;
+  song_context = 0;
+  selected_song = -1;
+  song_paused = 0;
+  active_note = -1;
+  slider2 = 0;
+  sliderchange(slider2);
+  gmem[PLAY_STATUS] = 0;
+  gmem[SONG_MIXER_LIVE_BASE+7]=0;
+);
+(gmem[LUA_BASE + 0] == LUA_MAGIC) ? (
+  lua_serial = floor(gmem[LUA_BASE + 1] + 0.5);
+  lua_serial != last_lua_serial ? (
+    last_lua_serial = lua_serial;
+    slider1 = gmem[LUA_BASE + 2] >= 0.5 ? 1 : 0;
+    run = clampi(gmem[LUA_BASE + 3], 0, 3);
+    run == 3 ? song_pause() :
+    run == 2 && floor(gmem[SONG_BASE]+0.5)==SONG_MAGIC ? (
+      midi_trigger_note=-1; song_data_base=SONG_BASE; selected_song=-1;
+      song_paused ? song_resume() : song_begin(0);
+    ) :
+    run == 1 ? (song_context=0; midi_trigger_note=-1; begin_pattern(PATTERN_BASE,0,0)) : stop_pattern_at(gmem[CORE_BASE + 1] + max(1, gmem[CORE_BASE + 3]));
+  );
+);
+
+
+// Song Trigger is independent from REAPER transport.
+// 0 = Off, 1..100 = Song 0..99.  Automation can restore the slider before
+// the Startup Loader has rebuilt the Song bank, so keep a pending request and
+// launch it as soon as the selected Song becomes valid.  Do not require the
+// slider to move a second time.
+song_select_now=clampi(slider6,0,100);
+// A normal slider edge always triggers.  In addition, when REAPER starts,
+// re-evaluate the automation value at the new play position.  This is needed
+// because REAPER can restore the same value (for example 1.0) without first
+// delivering an Off value while stopped.
+song_trigger_edge=(song_select_now!=last_song_select) || (transport_started_now && song_select_now>0);
+song_trigger_edge ? (
+  last_song_select=song_select_now;
+  song_select_now==0 ? (
+    song_slider_waiting=0;
+    song_slider_active ? (
+      song_slider_active=0; selected_song=-1;
+      stop_pattern_at(gmem[CORE_BASE+1]+2);
+    );
+  ) : (
+    // A new automated Song selection replaces any previous performance.
+    song_slider_active ? stop_pattern_at(gmem[CORE_BASE+1]+2);
+    song_slider_active=0;
+    song_slider_waiting=1;
+  );
+);
+
+song_slider_waiting && song_select_now>0 ? (
+  pending_song=song_select_now-1;
+  pending_song_base=SONG_BANK_BASE+pending_song*SONG_BANK_STRIDE;
+  floor(gmem[pending_song_base]+0.5)==SONG_MAGIC ? (
+    song_slider_waiting=0;
+    song_slider_active=1;
+    selected_song=pending_song;
+    song_data_base=pending_song_base;
+    trigger_target=floor(gmem[CORE_BASE+1]+0.5)+2;
+    prepare_clean_midi_start(trigger_target);
+    song_begin(trigger_target);
+  );
+);
+
+slider1 >= 0.5 && play_active ? (
+  horizon = gmem[CORE_BASE + 1] + max(256, gmem[CORE_BASE + 3] * 3);
+  song_context ? (
+    song_update_lane_finishes();
+    song_schedule_all(horizon);
+    // As soon as all three readers have queued their final boundary, append
+    // the linked Song (or the final release stop) at that exact future sample.
+    // Schedule the new Song immediately in this same @block: at 16x its first
+    // row can be shorter than one audio block, so waiting for the next @block
+    // would still collapse the opening transient. The guard prevents a chain
+    // of empty/tiny Songs from looping forever inside one audio block.
+    chain_guard=0;
+    while(!status_stop_pending && song_all_queued() && chain_guard<100) (
+      song_finish_or_restart();
+      !status_stop_pending ? song_schedule_all(horizon);
+      chain_guard+=1;
+    );
+    song_update_lane_finishes();
+  ) : (
+    while (play_active && next_step_time <= horizon) (
+      sps = samples_per_step();
+      schedule_step(current_step, next_step_time);
+      current_step += 1;
+      current_step >= pattern_length ? (
+        repeat_index += 1;
+        repeat_index < pattern_repeat ? (
+          repeat_speed = midi_mode ? max(0.25,min(16,gmem[active_midi_header_base+5+repeat_index]>0?gmem[active_midi_header_base+5+repeat_index]:1)) : max(0.25, min(16, gmem[LUA_BASE + 8 + repeat_index] > 0 ? gmem[LUA_BASE + 8 + repeat_index] : slider4));
+          repeat_transpose = midi_mode ? clampi(gmem[active_midi_header_base+5+pattern_repeat+repeat_index],-96,96) : clampi(gmem[REPEAT_TRANSPOSE_BASE+repeat_index],-96,96);
+          current_step = 0;
+        ) : finish_pattern_at(next_step_time + sps);
+      );
+      next_step_time += sps;
+    );
+  );
+);
+
+@sample
+// The core consumes all Pattern and Song events from the shared GMEM queue at
+// their exact target sample. FX order is irrelevant.
+
+@gfx 620 100
+gfx_set(1,1,1,1);
+gfx_x=10; gfx_y=10; gfx_drawstr("Biscot1 Tracker: direct GMEM, three independent Song operators.");
+gfx_x=10; gfx_y=30; gfx_drawstr(play_active ? "Pattern playing" : "Stopped");
+gfx_x=10; gfx_y=50; gfx_drawstr("Step "); gfx_drawnumber(current_step,0);
