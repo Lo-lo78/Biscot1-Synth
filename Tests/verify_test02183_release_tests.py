@@ -9,6 +9,6 @@ for file in ("TrackerPatternBankTest.cpp", "TrackerSearchStepTest.cpp"):
     assert "CHECK(" in source
     assert "#include <cassert>" not in source
     assert "assert(" not in source.replace("unlike assert,", "")
-assert "TEST0.2.21.1" in (root / "Source/PluginEditor.cpp").read_text()
+assert "TEST0.2.21.2" in (root / "Source/PluginEditor.cpp").read_text()
 assert "VERSION 0.2.21" in (root / "CMakeLists.txt").read_text()
 print("OK: tracker checks run in Release and Debug, without assert side effects")

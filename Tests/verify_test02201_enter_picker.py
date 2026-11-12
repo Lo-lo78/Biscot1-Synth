@@ -15,6 +15,6 @@ assert 'if(code==juce::KeyPress::returnKey){\n   if(const auto* def=currentParam
 assert 'if(!m.isCtrlDown()){page=1;refresh(true);}' in s
 assert 'if(code==juce::KeyPress::escapeKey && page==2)' in s
 assert 'NumericPurpose::patternNumber,"Go to Pattern 0 to 999"' in s
-assert 'Biscot1-TEST0.2.21.1-Windows-x64' in workflow
-assert 'VERSION 0.2.21.1' in (r/'CMakeLists.txt').read_text()
+assert 'Biscot1-TEST0.2.21.2-Windows-x64' in workflow
+assert 'VERSION 0.2.21.2' in (r/'CMakeLists.txt').read_text()
 print('OK: remapped Enter, Alt+E, Alt+Enter, F2 reserved, reversed value limits')

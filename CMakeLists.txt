@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.21.1 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.21.2 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native tracker TEST0.2.21.1"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native tracker TEST0.2.21.2"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -127,9 +127,13 @@ target_compile_features(TrackerCurvePreviousTest PRIVATE cxx_std_20)
 add_executable(TrackerMidiFeaturesTest Tests/TrackerMidiFeaturesTest.cpp)
 target_compile_features(TrackerMidiFeaturesTest PRIVATE cxx_std_20)
 
-# TEST0.2.21.1: real manual Note-Off release chord (no pedal) and
+# TEST0.2.21.2: real manual Note-Off release chord (no pedal) and
 # direct F1 header navigation including forward/reverse repeat cycling.
 add_executable(SidArpReleaseLatchTest Tests/SidArpReleaseLatchTest.cpp)
 target_compile_features(SidArpReleaseLatchTest PRIVATE cxx_std_20)
 add_executable(TrackerHeaderNavigationTest Tests/TrackerHeaderNavigationTest.cpp)
 target_compile_features(TrackerHeaderNavigationTest PRIVATE cxx_std_20)
+
+# TEST0.2.21.2: insert/paste at current F1 cell; ordered Curve helpers.
+add_executable(TrackerInsertionPositionTest Tests/TrackerInsertionPositionTest.cpp)
+target_compile_features(TrackerInsertionPositionTest PRIVATE cxx_std_20)

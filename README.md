@@ -579,3 +579,22 @@ To push this source from an existing repository (preserve its `.git` folder):
 ```cmd
 git add . && git commit -m "Biscot1 VST3 TEST0.2.21.1 fix manual arp release chord and add F1 header shortcuts" && git push
 ```
+
+## TEST0.2.21.2 — Correct selected-cell insertion
+
+- F1 Ctrl+V inserts a copied parameter at the **current cell** (before the
+  previously selected parameter), not one position to its right. Subsequent
+  cells are shifted right and the new cell stays selected.
+- F1 Enter opens the parameter picker; Enter or Ctrl+Enter inserts the chosen
+  parameter at the same current cell, not at the end of the step.
+- Ordinary parameter IDs cannot be duplicated by pasting; Sub Note can be
+  repeated after an active OP Arp Mode. Curve Resolution and Ratio retain
+  their required relative order, with Curve auto-added when missing.
+- Release Arpeggio is retained, OFF by default. In the original tracker, this
+  option uses the Pattern's written notes for pitch-only legato movement in
+  the final envelope tail. It is distinct from the synthesizer's normal
+  arpeggiator, which now continues throughout the normal Release.
+- No changes to the SID DSP, normal arpeggiator release, preset format, or
+  Pattern playback scheduler.
+
+Git: `git add . && git commit -m "Biscot1 TEST0.2.21.2 fix tracker parameter insertion position" && git push`

@@ -514,7 +514,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
     // A cheap scratch copy avoids adding an Undo entry if the command is
     // already present, invalid, or the row has reached its cell limit.
     TrackerPattern candidate=pat;
-    const auto test=insertTrackerParameter(candidate,row,tab,*def);
+    const auto test=insertTrackerParameter(candidate,row,tab,*def,cell);
     if(test.status==TrackerInsertStatus::needsArpeggiator){announce("Sub Note requires OP Arp Mode");return true;}
     if(test.status==TrackerInsertStatus::full){announce("Step is full, 128 cells");return true;}
     if(test.status==TrackerInsertStatus::invalid){announce("Select a pattern step first");return true;}
@@ -652,9 +652,23 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    else pasteSelectedSteps();return true;
   }
   if(clipboardMode==ClipboardMode::parameter && hasClipboard && row>=0&&row<currentPattern().length){
-   auto& pat=currentPattern();if(pat.totalCells(row)<128){recordUndo();const int at=cell+1;
-    pat.insert(row,tab,at,clipboard);cell=at;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();announce("Parameter pasted");}
-   else announce("Step is full, 128 cells");
+   auto& pat=currentPattern();
+   // Insert at the selected position, not after it. Use the same validated
+   // message-thread operation as the parameter picker; no partial undo state.
+   TrackerPattern candidate=pat;
+   const auto result=pasteTrackerParameter(candidate,row,tab,cell,clipboard);
+   if(result.status==TrackerInsertStatus::inserted){
+    recordUndo();pat=std::move(candidate);
+    cell=result.index;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
+    finishEdit();announce("Parameter pasted");
+   }else if(result.status==TrackerInsertStatus::alreadyPresent){
+    cell=result.index;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
+    refresh(true);announce("Parameter already present");
+   }else if(result.status==TrackerInsertStatus::needsArpeggiator){
+    announce("Sub Note requires OP Arp Mode before this cell");
+   }else if(result.status==TrackerInsertStatus::full){
+    announce("Step is full, 128 cells");
+   }else announce("Select a step before pasting");
   }else announce(clipboardMode==ClipboardMode::none?
                 "Clipboard empty":"Select a step before pasting");return true;
  }
