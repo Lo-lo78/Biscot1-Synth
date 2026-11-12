@@ -1,3 +1,20 @@
+# Biscot1 Synth VST3 — TEST0.2.19
+
+First audible native Pattern test (Alt+Q, F1/F2): **Space** starts/stops from the edit cursor, **Ctrl+Space** pauses on the currently sounding step, and vertical F1 movement auditions one step as in TrackerControl Lua 0.166. Note/Gate/Pause, per-repeat speed/transpose and direct F2 OP1/Filter/LFO parameter changes are implemented using the existing SID sound engine. REAPER host and `.biscot` Pattern persistence are maintained.
+
+**This is not the complete tracker:** Curve/Curve Resolution, Sub Notes, full Previous Value semantics, Release Arpeggio, MIDI step recording, F1 Ctrl+S file export and F3–F6 Song/browser are still being migrated. See [`RELEASE_NOTES_TEST0.2.19.md`](RELEASE_NOTES_TEST0.2.19.md). Complete Windows VST3 build and NVDA audio tests have not yet been performed.
+
+---
+
+# Biscot1 Synth VST3 — TEST0.2.18.4
+
+Fixes F1 Ctrl+C / Ctrl+X / Ctrl+V on Windows, adds the Lua F1 Tab current-position
+reading, Enter Pattern number jump (0–999), Ctrl+J step number jump,
+Ctrl+PageUp/Down nonempty step search, Alt+Left/Right configurable jumps,
+Alt+Home/End min/max, Backspace reset and whole-Pattern copy/initialize.
+
+Synth DSP and MIDI are unchanged. See `RELEASE_NOTES_TEST0.2.18.4.md`.
+
 # Biscot1 Synth VST3 — TEST0.2.18.3
 
 Hotfix for the TEST0.2.18.2 Windows GitHub Actions failure AFTER a successful VST3 compilation.

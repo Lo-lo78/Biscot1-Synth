@@ -5,6 +5,7 @@
 #include <cmath>
 #include <utility>
 #include <string>
+#include "TrackerShortcutKey.h"
 
 namespace biscot {
 namespace {
@@ -19,7 +20,7 @@ TrackerPatternPanel::TrackerPatternPanel(BiscotProcessor& p):navigator(*this),nu
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  header.setText("Biscot1 Tracker - F1 Patterns",juce::dontSendNotification);
- help.setText("F1 Pattern | F2 Parameters | 1/2/3 OP/Filter/LFO | Esc: synth",juce::dontSendNotification);
+ help.setText("F1 Pattern | F2 Parameters | Space: play/stop | Ctrl+Space: pause at sounding step | Esc: synth",juce::dontSendNotification);
  for(auto* label:{&header,&help}){label->setAccessible(false);label->setColour(juce::Label::textColourId,fg);addAndMakeVisible(*label);}
  navigator.setName("Tracker Grid");navigator.setDescription({});navigator.setWantsKeyboardFocus(true);
  navigator.setEditableText(false);navigator.setExplicitFocusOrder(1);
@@ -53,7 +54,9 @@ void TrackerPatternPanel::open(){
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
 }
 void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;page=1;refresh();}
-void TrackerPatternPanel::close(){setVisible(false);if(onClose)onClose();}
+void TrackerPatternPanel::close(){
+ processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
+}
 void TrackerPatternPanel::refreshParameterList(){
  parameterList.clear();for(const auto& p:trackerCatalog)if(p.tab==tab+1)parameterList.push_back(&p);
  parameterIndex=juce::jlimit(0,juce::jmax(0,(int)parameterList.size()-1),lastParam[(size_t)tab]);
@@ -164,7 +167,7 @@ void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
  tab=next;cell=0;refresh(true);
 }
 void TrackerPatternPanel::changeRow(int delta){clearSelection();const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
- if(to==row)return;row=to;cell=0;refresh(true);
+ if(to==row)return;row=to;cell=0;refresh(true);auditionCurrentStep();
 }
 // Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
 // selects the current step, subsequent Shift+arrows extend the inclusive range.
@@ -245,15 +248,113 @@ void TrackerPatternPanel::clearCurrentSection(){
  }
  clearSelection();cell=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
 }
+void TrackerPatternPanel::openNumericEditor(NumericPurpose purpose,const juce::String& label,
+                                             const juce::String& initial){
+ numericPurpose=purpose;
+ numeric.setName(label);
+ numeric.setText(initial,juce::dontSendNotification);
+ numeric.setVisible(true);
+ numeric.grabKeyboardFocus();numeric.selectAll();
+}
+void TrackerPatternPanel::jumpToPattern(int target){
+ if(target<0||target>=TrackerPatternBank::maxPatterns){announce("Invalid pattern number");return;}
+ auto& bank=processor.trackerPatterns;
+ if(target==bank.activePattern){announce("Pattern "+juce::String(target));return;}
+ clearSelection();bank.activePattern=target;row=-1;cell=0;
+ processor.commitTrackerState();refresh(true);
+}
+void TrackerPatternPanel::jumpToStep(int target){
+ if(target<0||target>=currentPattern().length){announce("Invalid step number");return;}
+ clearSelection();row=target;cell=0;refresh(true);auditionCurrentStep();
+}
+void TrackerPatternPanel::jumpToNonemptyStep(int direction){
+ if(row<0||row>=currentPattern().length)return;
+ const auto& p=currentPattern();
+ for(int next=row+direction;next>=0&&next<p.length;next+=direction){
+  const auto it=p.steps.find(next);
+  if(it!=p.steps.end() && (!it->second.tabs[0].empty() || !it->second.tabs[1].empty()
+                           || !it->second.tabs[2].empty())){
+   clearSelection();row=next;cell=0;refresh(true);return;
+  }
+ }
+}
+void TrackerPatternPanel::resetCurrentCell(){
+ if(row<0||row>=currentPattern().length)return;
+ auto* c=selectedCell();if(!c)return;
+ const auto* def=findTrackerParam(c->id);if(!def)return;
+ if(c->value==def->initial)return;
+ recordUndo();c->value=def->initial;finishEdit();
+}
+void TrackerPatternPanel::setCurrentValueExtreme(bool maximum){
+ if(row<0){changeValue(maximum?(cell==0?1024.0:127.0):(cell==0?1.0:-1.0));return;}
+ const auto& p=currentPattern();
+ if(row==p.length){changeValue(maximum?1000:1);return;}
+ if(row>p.length){changeValue(cell%2==0?(maximum?16.0:0.25):(maximum?96.0:-96.0));return;}
+ if(const auto* c=selectedCell())if(const auto* def=findTrackerParam(c->id))
+  changeValue(maximum?def->max:def->min);
+}
+void TrackerPatternPanel::auditionCurrentStep(){
+ if(page!=1 || row<0 || row>=currentPattern().length)return;
+ // As in the Lua tracker, visiting an actual step auditions just that step;
+ // do not interrupt an intentionally running full Pattern.
+ const int status=processor.trackerPlaybackStatus.load(std::memory_order_relaxed);
+ if(status!=1)processor.requestTrackerStart(row,true);
+}
+void TrackerPatternPanel::playFromCursor(){
+ const int status=processor.trackerPlaybackStatus.load(std::memory_order_relaxed);
+ if(status==1){
+  processor.requestTrackerStop();announce("Pattern stopped");return;
+ }
+ const int step=(row>=0 && row<currentPattern().length)?row:0;
+ processor.requestTrackerStart(step,false);
+ announce("Pattern "+juce::String(processor.trackerPatterns.activePattern)+
+          " playing from step "+juce::String(step));
+}
+void TrackerPatternPanel::pauseAtAudibleStep(){
+ const int status=processor.trackerPlaybackStatus.load(std::memory_order_relaxed);
+ if(status!=1 && status!=3){announce("Pattern not playing");return;}
+ processor.requestTrackerPause();
+ // The audio callback consumes the pause request at the next block boundary.
+ // Update the edit cursor from the ACTUAL audio step, not a guessed next step.
+ juce::Component::SafePointer<TrackerPatternPanel> safe(this);
+ juce::Timer::callAfterDelay(65,[safe]{
+  if(safe==nullptr || !safe->isShowing() ||
+     safe->processor.trackerPlaybackStatus.load(std::memory_order_relaxed)!=2)return;
+  const int step=safe->processor.trackerAudibleStep.load(std::memory_order_relaxed);
+  if(step>=0 && step<safe->currentPattern().length){
+   safe->row=step;safe->cell=0;safe->clearSelection();safe->page=1;
+   safe->refresh(false);
+   safe->announce("Paused at step "+juce::String(step));
+  }else safe->announce("Pattern paused");
+ });
+}
+void TrackerPatternPanel::resetWholePattern(){
+ recordUndo();currentPattern()=TrackerPattern{};
+ clearSelection();row=-1;cell=0;finishEdit();announce("Pattern initialized");
+}
 bool TrackerPatternPanel::keyPressed(const juce::KeyPress& k){return handle(k,false);}
 bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  const auto m=k.getModifiers();const int code=k.getKeyCode();
- const auto letter=[&](char c){return juce::CharacterFunctions::toLowerCase(k.getTextCharacter())==c;};
+ const auto letter=[&](char c){return trackerShortcutLetterMatches(
+  code,(int)k.getTextCharacter(),c,m.isCtrlDown());};
  if(editing){
   if(code==juce::KeyPress::returnKey){
-   const auto txt=numeric.getText().trim().replaceCharacter(',','.');
-   if(txt.isNotEmpty()){changeValue(txt.getDoubleValue());}
-   numeric.setVisible(false);navigator.grabKeyboardFocus();return true;
+   const auto txt=numeric.getText().trim();
+   const auto purpose=numericPurpose;
+   numeric.setVisible(false);navigator.grabKeyboardFocus();
+   if(purpose==NumericPurpose::value){
+    if(txt.isNotEmpty())changeValue(txt.replaceCharacter(',','.').getDoubleValue());
+   }else if(txt.isNotEmpty() && [&]{
+    const auto digits=txt.toStdString();
+    return std::all_of(digits.begin(),digits.end(),
+                       [](unsigned char d){return d>='0'&&d<='9';});
+   }()){
+    const int n=txt.getIntValue();
+    if(purpose==NumericPurpose::patternNumber)jumpToPattern(n);
+    else jumpToStep(n);
+   }else if(txt.isNotEmpty())announce(purpose==NumericPurpose::patternNumber?
+     "Invalid pattern number":"Invalid step number");
+   return true;
   }
   if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();return true;}
   return false;
@@ -262,9 +363,20 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
  if(code==juce::KeyPress::F1Key){page=1;parameterSearch.reset();refresh(true);return true;}
+ if(code==32){
+  if(m.isCtrlDown() && !m.isAltDown()){pauseAtAudibleStep();return true;}
+  if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && page==1){playFromCursor();return true;}
+  return true;
+ }
  if(code==juce::KeyPress::F2Key){if(row>=0&&row<currentPattern().length){clearSelection();page=2;parameterSearch.reset();refresh(true);}return true;}
  if(code>=juce::KeyPress::F3Key&&code<=juce::KeyPress::F6Key){announce("Song, browser and diagnostics arrive in later tracker versions");return true;}
  if(m.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2){setTab((tab+(m.isShiftDown()?2:1))%3);return true;}
+ if(!m.isCtrlDown() && code==juce::KeyPress::tabKey){
+  // Lua F1: Tab speaks the full row/section/parameter position and never
+  // transfers keyboard focus out of the tracker editor.
+  announce(positionText());return true;
+ }
+ if(page==1 && m.isCtrlDown() && code==juce::KeyPress::tabKey)return true;
  if(page==2){
   if(m.isCtrlDown() && code==juce::KeyPress::homeKey){
    parameterSearch.reset();parameterIndex=0;lastParam[(size_t)tab]=parameterIndex;refresh(true);return true;
@@ -314,6 +426,38 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   parameterSearch.reset();
   return true;
  }
+ // F1: Enter opens the original Lua Pattern 0..999 number dialog.
+ if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
+  openNumericEditor(NumericPurpose::patternNumber,"Go to Pattern 0 to 999",
+                    juce::String(processor.trackerPatterns.activePattern));return true;
+ }
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('j')){
+  openNumericEditor(NumericPurpose::stepNumber,
+   "Go to step 0 to "+juce::String(currentPattern().length-1),
+   juce::String(juce::jlimit(0,currentPattern().length-1,row)));
+  return true;
+ }
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::pageUpKey){
+  jumpToNonemptyStep(-1);return true;
+ }
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::pageDownKey){
+  jumpToNonemptyStep(1);return true;
+ }
+ if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::leftKey){
+  if(jumpIndex>0){--jumpIndex;announce("Jump "+juce::String(jumpSizes[(size_t)jumpIndex]));}return true;
+ }
+ if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::rightKey){
+  if(jumpIndex<(int)jumpSizes.size()-1){++jumpIndex;announce("Jump "+juce::String(jumpSizes[(size_t)jumpIndex]));}return true;
+ }
+ if(m.isCtrlDown() && m.isShiftDown() && m.isAltDown() && letter('c')){
+  wholePatternClipboard=currentPattern();clipboardMode=ClipboardMode::pattern;
+  announce("Entire Pattern copied");return true;
+ }
+ if(m.isCtrlDown() && m.isShiftDown() && m.isAltDown() && code==juce::KeyPress::deleteKey){
+  resetWholePattern();return true;
+ }
+ if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+    code==juce::KeyPress::backspaceKey){resetCurrentCell();return true;}
  if(m.isShiftDown() && !m.isCtrlDown() && !m.isAltDown()){
   if(code==juce::KeyPress::upKey){extendStepSelection(-1);return true;}
   if(code==juce::KeyPress::downKey){extendStepSelection(1);return true;}
@@ -323,7 +467,12 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
   if(letter('1')||letter('2')||letter('3')){setTab(k.getTextCharacter()-'1');return true;}
  }
- if(m.isCtrlDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
+ if(m.isCtrlDown() && m.isShiftDown() && !m.isAltDown() &&
+    (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
+  jumpToStep(juce::jlimit(0,currentPattern().length-1,
+    (row<0?0:row)+(code==juce::KeyPress::upKey?-1:1)));return true;
+ }
+ if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
   if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;processor.commitTrackerState();refresh(true);}return true;
@@ -339,21 +488,30 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(hasStepSelection()){copySelectedSteps();return true;}
   if(const auto* c=selectedCell()){
    clipboard=*c;hasClipboard=true;clipboardMode=ClipboardMode::parameter;announce("Parameter copied");
-  }return true;
+  }else announce("No parameter to copy");return true;
  }
  if(m.isCtrlDown() && letter('x')){
   if(hasStepSelection()){eraseSelectedSteps(true);return true;}
   if(const auto* c=selectedCell()){
    clipboard=*c;hasClipboard=true;clipboardMode=ClipboardMode::parameter;
    recordUndo();currentPattern().erase(row,tab,cell);finishEdit();announce("Parameter cut");
-  }return true;
+  }else announce("No parameter to cut");return true;
  }
  if(m.isCtrlDown() && letter('v')){
-  if(clipboardMode==ClipboardMode::steps){pasteSelectedSteps();return true;}
+  if(clipboardMode==ClipboardMode::pattern){
+   recordUndo();currentPattern()=wholePatternClipboard;
+   row=-1;cell=0;clearSelection();finishEdit();announce("Entire Pattern pasted");return true;
+  }
+  if(clipboardMode==ClipboardMode::steps){
+   if(row<0||row>=currentPattern().length)announce("Select a step before pasting");
+   else pasteSelectedSteps();return true;
+  }
   if(clipboardMode==ClipboardMode::parameter && hasClipboard && row>=0&&row<currentPattern().length){
    auto& pat=currentPattern();if(pat.totalCells(row)<128){recordUndo();const int at=cell+1;
-    pat.insert(row,tab,at,clipboard);cell=at;finishEdit();}
-  }return true;
+    pat.insert(row,tab,at,clipboard);cell=at;finishEdit();announce("Parameter pasted");}
+   else announce("Step is full, 128 cells");
+  }else announce(clipboardMode==ClipboardMode::none?
+                "Clipboard empty":"Select a step before pasting");return true;
  }
  if(m.isCtrlDown() && code==juce::KeyPress::leftKey && row>=0 && row<currentPattern().length){
   auto& a=currentPattern().cells(row,tab);if(cell>0&&cell<(int)a.size()){
@@ -370,12 +528,14 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    else if(row>currentPattern().length){const int idx=(row-currentPattern().length-1)*5+cell/2;
     if(idx<currentPattern().repeat)v=cell%2==0?currentPattern().repeatSpeeds[(size_t)idx]:currentPattern().repeatTransposes[(size_t)idx];
    }else if(auto* c=selectedCell())v=c->value;
-   numeric.setText(juce::String(v,4),juce::dontSendNotification);numeric.setVisible(true);numeric.grabKeyboardFocus();numeric.selectAll();
+   openNumericEditor(NumericPurpose::value,"Tracker numeric edit",juce::String(v,4));
   return true;}
   if(code==juce::KeyPress::upKey){adjustValue(1);return true;}
   if(code==juce::KeyPress::downKey){adjustValue(-1);return true;}
   if(code==juce::KeyPress::pageUpKey){adjustValue(1,10);return true;}
   if(code==juce::KeyPress::pageDownKey){adjustValue(-1,10);return true;}
+  if(code==juce::KeyPress::homeKey){setCurrentValueExtreme(false);return true;}
+  if(code==juce::KeyPress::endKey){setCurrentValueExtreme(true);return true;}
  }
  if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && m.isShiftDown() && !m.isAltDown()){
   clearCurrentSection();return true;
@@ -392,8 +552,8 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  }
  if(code==juce::KeyPress::upKey){changeRow(-1);return true;}
  if(code==juce::KeyPress::downKey){changeRow(1);return true;}
- if(code==juce::KeyPress::pageUpKey){changeRow(-5);return true;}
- if(code==juce::KeyPress::pageDownKey){changeRow(5);return true;}
+ if(code==juce::KeyPress::pageUpKey){changeRow(-juce::jmax(5,jumpSizes[(size_t)jumpIndex]));return true;}
+ if(code==juce::KeyPress::pageDownKey){changeRow(juce::jmax(5,jumpSizes[(size_t)jumpIndex]));return true;}
  if(code==juce::KeyPress::leftKey||code==juce::KeyPress::rightKey){
   clearSelection();const int next=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell+(code==juce::KeyPress::leftKey?-1:1));
   if(next!=cell){cell=next;refresh(true);}return true;

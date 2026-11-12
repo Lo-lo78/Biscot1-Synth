@@ -19,7 +19,7 @@ assert '{226, "Pitch Bend Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Multi|Omni"}' in cat
 assert 'std::array<std::atomic<float>*,234> parameters' in header
 assert 'routePitchBend(ch,bend,mode,integer(param(226))' in processor
 assert 'global.insert(pos,{226,230});' in editor
-assert 'TEST0.2.18' in editor
+assert 'TEST0.2.19' in editor
 assert 'LFO3 Rate Mod Depth' in cat
 assert native[4]['index']==230 and native[4]['enum']==['Independent','Op1 Master']
 assert native[0]['index']==226 and native[0]['enum']==['Multi','Omni']

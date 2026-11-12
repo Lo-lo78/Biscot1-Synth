@@ -2,6 +2,8 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ParameterCatalog.h"
 #include "TrackerPatternBank.h"
+#include "TrackerPatternPlayback.h"
+#include <memory>
 #include "SidOutputStage.h"
 #include "SidFilterCore.h"
 #include "SidWaveCore.h"
@@ -46,8 +48,19 @@ public:
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState state;
  TrackerPatternBank trackerPatterns;
- void commitTrackerState(); // UI thread: serialize after each Pattern edit
- float param(int i) const noexcept {return i>=0 && i<(int)parameters.size() && parameters[(size_t)i] ? parameters[(size_t)i]->load(std::memory_order_relaxed) : 0.f;}
+ void commitTrackerState(); // UI thread: serialize and publish an immutable Pattern snapshot
+ void requestTrackerStart(int step,bool audition=false) noexcept;
+ void requestTrackerPause() noexcept;
+ void requestTrackerStop() noexcept;
+ std::atomic<int> trackerAudibleStep{-1}; // audio-clock position for accessible pause
+ std::atomic<int> trackerPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused, 3 audition
+ float param(int i) const noexcept {
+  if(i<0 || i>=(int)parameters.size())return 0.f;
+  if(trackerOverridesEnabled.load(std::memory_order_relaxed) &&
+     trackerOverrideMask[(size_t)i].load(std::memory_order_relaxed))
+   return trackerOverrideValues[(size_t)i].load(std::memory_order_relaxed);
+  return parameters[(size_t)i] ? parameters[(size_t)i]->load(std::memory_order_relaxed) : 0.f;
+ }
  static juce::String id(int slider){return "s"+juce::String(slider).paddedLeft('0',3);}
 private:
  static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -65,6 +78,17 @@ private:
  };
  using Lfo = SidLfoCore;
  std::array<Voice,3> voices{};
+ std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
+ std::shared_ptr<const TrackerPlayablePattern> trackerPlaybackSnapshot; // pinned while audio transport is active
+ std::atomic<int> trackerRequested{0}; // 1..1024 start; 2049..3072 audition; -1 stop; -2 pause
+ TrackerPatternTransport trackerTransport{}; // audio thread only
+ std::array<std::atomic<float>,234> trackerOverrideValues{};
+ std::array<std::atomic<bool>,234> trackerOverrideMask{};
+ std::atomic<bool> trackerOverridesEnabled{false};
+ void trackerSetOverride(int index,float value) noexcept;
+ void trackerClearOverrides() noexcept;
+ void trackerApplyStep(const TrackerPlayableRow& row,int transpose,double stepSamples);
+ void trackerReleaseNote() noexcept;
  SidMidiNoteState heldNotes;
  std::array<SidSeqMemory,3> sidSeq{};
  SidArpSustain sustainedArp;

@@ -7,6 +7,7 @@
 #include "ParameterSearchKey.h"
 #include <functional>
 #include <map>
+#include <array>
 #include <vector>
 
 namespace biscot {
@@ -37,15 +38,20 @@ private:
  BiscotProcessor& processor;
  juce::Label header,help;
  int page=1,tab=0,row=-1,cell=0,parameterIndex=0,paramHeight=8;
+ enum class NumericPurpose { value, patternNumber, stepNumber };
+ NumericPurpose numericPurpose=NumericPurpose::value;
+ std::array<int,5> jumpSizes{1,5,10,15,20};
+ int jumpIndex=0;
  std::array<int,3> lastParam{0,0,0};
  bool refreshing=false;
  std::vector<const TrackerParam*> parameterList;
  std::map<int,std::vector<TrackerPattern>> undo,redo;
  TrackerCell clipboard{};
  bool hasClipboard=false;
- enum class ClipboardMode { none, parameter, steps };
+ enum class ClipboardMode { none, parameter, steps, pattern };
  ClipboardMode clipboardMode=ClipboardMode::none;
  std::vector<TrackerStep> stepClipboard;
+ TrackerPattern wholePatternClipboard{false};
  int selectionAnchor=-1,selectionEnd=-1;
  IncrementalParameterSearch parameterSearch;
  void clearSelection() noexcept { selectionAnchor=-1;selectionEnd=-1; }
@@ -56,6 +62,16 @@ private:
  void eraseSelectedSteps(bool cut);
  void resetCurrentStep();
  void clearCurrentSection();
+ void openNumericEditor(NumericPurpose,const juce::String&,const juce::String&);
+ void jumpToPattern(int);
+ void jumpToStep(int);
+ void jumpToNonemptyStep(int);
+ void resetCurrentCell();
+ void setCurrentValueExtreme(bool);
+ void resetWholePattern();
+ void playFromCursor();
+ void pauseAtAudibleStep();
+ void auditionCurrentStep();
  TrackerPattern& currentPattern(){return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
  const TrackerParam* currentParameter() const;
  TrackerCell* selectedCell();
