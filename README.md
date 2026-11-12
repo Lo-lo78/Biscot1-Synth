@@ -1,3 +1,15 @@
+# Biscot1 Synth VST3 — TEST0.2.18.3
+
+Hotfix for the TEST0.2.18.2 Windows GitHub Actions failure AFTER a successful VST3 compilation.
+The MSVC Release build disables <cassert> assertions, so the new TrackerSearchStepTest
+skipped operations embedded in assert calls, leaving the LFO test vectors empty and
+exiting with code 1. The two Pattern tracker regression tests now use always-on CHECK
+that evaluates expressions and reports failures even under -DNDEBUG.
+
+No changes to the synthesizer DSP, MIDI, CPU idle, tracker navigation, preset memory,
+serialisation format, parameter IDs or NVDA controls. F1/F2 are as in TEST0.2.18.2.
+See RELEASE_NOTES_TEST0.2.18.3.md.
+
 # Biscot1 Synth VST3 — TEST0.2.18.2
 
 **Tracker Alt+Q navigation and F1 editing enhancements:** F1 Home/End
