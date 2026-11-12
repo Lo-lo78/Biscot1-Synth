@@ -598,3 +598,7 @@ git add . && git commit -m "Biscot1 VST3 TEST0.2.21.1 fix manual arp release cho
   Pattern playback scheduler.
 
 Git: `git add . && git commit -m "Biscot1 TEST0.2.21.2 fix tracker parameter insertion position" && git push`
+
+## TEST0.2.21.3 — F1 fixed navigation regions and Release Arpeggio analysis
+
+Plain Up/Down/PageUp/PageDown stay strictly within Header, Steps or Repeat/Speed/Transpose. Only Home/End move between regions. **Release Arpeggio** is not an arp sustain toggle: Off leaves the ordinary chord arpeggiator cycling during Release; On tries to replace it with explicit Pattern Note cells (not Sub Notes). The user reports On can sound static; its audible Windows behavior remains to be diagnosed. This update leaves the audio code untouched. See `RELEASE_NOTES_TEST0.2.21.3.md`.

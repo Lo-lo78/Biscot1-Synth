@@ -10,6 +10,6 @@ assert 'Step Recording, ' in panel and 'Release Arpeggio, ' in panel
 assert 'trackerRecordStep' in panel and 'popTrackerRecordedMidi' in panel
 assert 'trackerMidiMap.store' in processor and 'handleTrackerExternalMidi(message)' in processor
 assert 'trackerReleaseArpTick()' in processor and 'trackerTransport.activeSubNotes' in processor
-assert 'TrackerMidiFeaturesTest.exe' in workflow and 'Biscot1-TEST0.2.21.2-Windows-x64' in workflow
-assert 'VERSION 0.2.21.2' in (r/'CMakeLists.txt').read_text()
+assert 'TrackerMidiFeaturesTest.exe' in workflow and 'Biscot1-TEST0.2.21.3-Windows-x64' in workflow
+assert 'VERSION 0.2.21.3' in (r/'CMakeLists.txt').read_text()
 print('OK TEST0.2.21 speech, sub note, step recording, release arp and MIDI trigger wiring')

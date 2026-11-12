@@ -15,5 +15,5 @@ assert 'recordUndo();c->value=def->initial;finishEdit();' in panel
 assert 'if(trackerCanAuditionStep(currentPattern(),row,status))' in panel
 assert 'trackerStepHasAuditionNote' in clock and 'status!=1' in clock
 assert 'TrackerPatternEditAuditionTest.exe' in workflow
-assert 'VERSION 0.2.21.2' in (r/'CMakeLists.txt').read_text()
+assert 'VERSION 0.2.21.3' in (r/'CMakeLists.txt').read_text()
 print('OK F1 live-value audition, no-op boundaries, note-only preview, full-playback protection')

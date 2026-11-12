@@ -30,6 +30,28 @@ inline TrackerHeaderLocation trackerHeaderShortcut(char key, bool backwards,
  }
  return {length+1+index/5, (index%5)*2+(transpose?1:0),true};
 }
+// F1 has three independent vertical navigation regions: Pattern header,
+// actual steps, and Repeat/Speed/Transpose. Plain Up/Down and PageUp/Down
+// must NEVER silently cross a boundary; only explicit Home/End can.
+inline int trackerMoveWithinF1Region(int row,int delta,int length,int repeats) noexcept {
+ length=std::clamp(length,1,1024);
+ repeats=std::clamp(repeats,1,1000);
+ const int lastFooterRow=length+(repeats+4)/5;
+ if(row<0)return -1;  // The four header fields are one horizontal row.
+ if(row<length)return std::clamp(row+delta,0,length-1);
+ return std::clamp(row+delta,length,lastFooterRow);
+}
+inline int trackerF1HomeTarget(int row,int length,int savedStep) noexcept {
+ if(row<0)return -1;
+ if(row<length)return -1; // Steps -> Length/header.
+ return std::clamp(savedStep,0,std::max(0,length-1)); // Repeat/Speed -> remembered step.
+}
+inline int trackerF1EndTarget(int row,int length,int repeats,int savedStep) noexcept {
+ if(row<0)return std::clamp(savedStep,0,std::max(0,length-1)); // Header -> steps.
+ if(row<length)return length; // Steps -> Repeat.
+ if(row==length && repeats>0)return length+1; // Repeat -> first Speed/Transpose.
+ return row; // Last group: no additional navigation region.
+}
 inline int trackerReturnToLastStep(int currentRow,int length,int previousStep) noexcept {
  // Only the transition from Repeat -> real steps restores the remembered
  // editor cursor. From Speed/Transpose, Up still visits Repeat first.

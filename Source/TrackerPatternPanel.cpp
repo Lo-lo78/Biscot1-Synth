@@ -205,15 +205,13 @@ void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
  refresh(true);
 }
 void TrackerPatternPanel::changeRow(int delta){
- clearSelection();const auto& pat=currentPattern();
- const int maxRow=pat.length+(pat.repeat+4)/5;
- // Lua F1 remembers the edit step when crossing into Repeat/Speed rows.
- // Up from Repeat returns to that exact step, NOT to Length-1.
- const int to=(delta==-1 && row==pat.length)
-    ? trackerReturnToLastStep(row,pat.length,lastRealStep)
-    : juce::jlimit(-1,maxRow,row+delta);
- if(to==row)return;
- row=to;if(row>=0&&row<pat.length)lastRealStep=row;
+ const auto& pat=currentPattern();
+ // Respect the three independent F1 regions. Never leave Steps through
+ // an arrow or a Page key, and never enter Steps from Repeat/Speed.
+ const int to=trackerMoveWithinF1Region(row,delta,pat.length,pat.repeat);
+ if(to==row)return; // Silent border, as in other accessible grids.
+ clearSelection();row=to;
+ if(row>=0&&row<pat.length)lastRealStep=row;
  refresh(true);auditionCurrentStep();
 }
 // Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
@@ -714,20 +712,18 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    cell=next;if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}refresh(true);}
   return true;
  }
- // User-preferred F1 direction: Home travels backward toward Length;
- // End travels forward toward Repeat and Speed. Picker navigation stays unchanged.
+ // Home/End are the only vertical keys which explicitly change F1
+ // regions. Returning from Repeat/Speed restores the remembered edit step.
  if(code==juce::KeyPress::homeKey){
-  clearSelection();
-  if(row>currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
-  else if(row==currentPattern().length){row=juce::jlimit(0,currentPattern().length-1,lastRealStep);cell=0;refresh(true);auditionCurrentStep();}
-  else if(row>=0){row=-1;cell=0;refresh(true);}
+  const int next=trackerF1HomeTarget(row,currentPattern().length,lastRealStep);
+  if(next!=row){clearSelection();row=next;cell=0;refresh(true);auditionCurrentStep();}
   return true;
  }
  if(code==juce::KeyPress::endKey){
-  clearSelection();
-  if(row==-1)changeRow(1);
-  else if(row<currentPattern().length){lastRealStep=row;row=currentPattern().length;cell=0;refresh(true);}
-  else if(row==currentPattern().length)changeRow(1);
+  const int next=trackerF1EndTarget(row,currentPattern().length,currentPattern().repeat,lastRealStep);
+  if(next!=row){clearSelection();
+   if(row>=0 && row<currentPattern().length)lastRealStep=row;
+   row=next;cell=0;refresh(true);auditionCurrentStep();}
   return true;
  }
  return true; // All keys are owned by Alt+Q; never leak into REAPER shortcuts.
