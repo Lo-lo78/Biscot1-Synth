@@ -495,18 +495,18 @@ The native tracker has no need for `gmem` or a Lua startup loader to retain Patt
 
 - `Alt+Q`: open the tracker from the synth; inside tracker, return to synth.
 - `Esc`: return to synth without discarding edits.
-- `F1`: Pattern Editor; `F2`: parameter picker on an actual Pattern step.
+- `F1`: Pattern Editor; `Enter`: parameter picker on an actual Pattern step. `F2` is reserved for a future Song editor.
 - In F1, `1`, `2`, `3`: OP, Filter, LFO section; `Up/Down`: step;
   `Left/Right`: parameter cell; `PageUp/PageDown`: five steps.
 - `Ctrl+Up/Down`: previous/next Pattern (0–999), `Ctrl+Left/Right`: move a
   parameter one cell chronologically within its section.
 - `Alt+Up/Down`: change value; `Alt+PageUp/PageDown`: change by ten steps;
-  `Alt+E`: exact numeric entry, Enter to accept, Esc to cancel.
+  `Alt+E`: exact numeric entry, Enter to accept, Esc to cancel. `Alt+Enter`: jump to a Pattern number.
 - `Delete`: remove selected cell; `Ctrl+C` and `Ctrl+V`: copy/paste one cell;
   `Ctrl+Z` / `Ctrl+Shift+Z`: Pattern undo/redo.
-- In F2, arrows move through the parameter picker; `Ctrl+Tab` cycles OP,
+- In the Enter-opened parameter picker, arrows navigate parameters; `Ctrl+Tab` cycles OP,
   Filter and LFO; `Enter` inserts and returns to F1; `Ctrl+Enter` inserts
-  and remains in F2. `Ctrl+Left/Right` changes the picker column height.
+  and remains in the picker. `Ctrl+Left/Right` changes the picker column height. `Esc` returns to F1.
 - `Alt+S` and `Alt+B` retain the existing preset save/browser behaviour;
   `.biscot` and REAPER host state now also include all edited Patterns.
 
@@ -514,7 +514,7 @@ The Pattern bank supports up to 1000 Patterns, 1024 steps and 128 ordered cells
 per step, with dynamic (sparse) storage. Pattern values are independent from
 live synth parameters until the future native tracker playback engine is added.
 Original JSFX and plugin MIDI/DSP paths have not been modified by this stage.
-The F2 picker also includes VST3-native Sustain Pedal, Pitch Bend Mode,
+The parameter picker also includes VST3-native Sustain Pedal, Pitch Bend Mode,
 Chord Op1 Controls and Square PWM with append-only logical tracker IDs.
 
 **Not yet implemented in TEST0.2.18**: playing Patterns or Songs, F3–F6,
@@ -546,3 +546,22 @@ This is the first native Pattern automation pass, ported from `Biscot1 TrackerCo
 F2 Enter inserts (or moves the cursor to an existing parameter), Ctrl+Enter inserts and remains in F2, and Sub Note can be inserted more than once only after an active Arp Mode. Adding Resolution or Ratio without Curve automatically inserts Curve at +100. Playback uses a single-pass, immutable message-thread compiled automation snapshot; no file-format changes, no per-sample allocations.
 
 **Still pending:** live native Sub Note sound, Step Recording MIDI, MIDI Pattern triggers, Release Arpeggio and individual Pattern library exports. F3 Song editor has not yet been started. This test version is not a final parity claim.
+
+
+## TEST0.2.21 — Cleaner Alt+Q keyboard layout
+
+From F1, **Enter** now opens the OP / Filter / LFO parameter picker on the
+selected Pattern step. **Alt+E** opens exact numeric value entry, including
+Length, MIDI Note, Repeat, Speed, Transpose and all populated cells. The old
+F2 parameter-picker shortcut has been removed: **F2 is reserved for the future
+Song editor** and currently announces that the Song page is not implemented.
+In the picker, Enter inserts and returns to F1; Ctrl+Enter inserts and stays;
+Ctrl+Tab cycles sections; Esc returns to F1. Alt+Enter still jumps to the
+specified Pattern 0–999. The F1 Alt+Home/End **value** boundaries have been
+reversed at the user's request: **Alt+Home = maximum; Alt+End = minimum**.
+Unmodified Home/End and the parameter picker grid navigation are unchanged.
+No DSP, MIDI transport, Curve, Pattern persistence or `.biscot` format changes.
+
+### Native tracker TEST0.2.21
+
+F1 announces the concise section/step/value on arrows or 1/2/3; Tab gives the full Pattern number. Header items include Length, MIDI Note, Step Recording and Release Arpeggio. Step Recording captures MIDI Note On and sustain pedal-down as Pause, without passing recorded input to the synth. MIDI Note assignment launches a Pattern while consuming its trigger note. Sub Note and first pitch-only Release Arpeggio execution are integrated; see `RELEASE_NOTES_TEST0.2.21.md`. F2 is reserved for the future Song page.

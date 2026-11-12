@@ -1,4 +1,4 @@
-"""TEST0.2.20: first native F1/F2 tracker; preserve trusted synth/audio code."""
+"""TEST0.2.21: first native F1/F2 tracker; preserve trusted synth/audio code."""
 from pathlib import Path
 import hashlib,re
 root=Path(__file__).resolve().parents[1]
@@ -8,7 +8,7 @@ header=(root/'Source/PluginProcessor.h').read_text()
 panel=(root/'Source/TrackerPatternPanel.cpp').read_text()
 model=(root/'Source/TrackerPatternBank.h').read_text()
 workflow=(root/'.github/workflows/build-windows.yml').read_text()
-assert 'TEST0.2.20' in editor and 'TEST0.2.20' in workflow
+assert 'TEST0.2.21' in editor and 'TEST0.2.21' in workflow
 assert 'if(letter(\'q\')){openTracker();return true;}' in editor
 assert 'trackerPanel->open();' in editor
 assert 'Alt+Q' in (root/'Source/PluginEditor.cpp').read_text()

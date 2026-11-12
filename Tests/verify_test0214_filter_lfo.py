@@ -13,6 +13,6 @@ assert 'if(!active && !oneShot)active=true;' in core
 assert core.index('smoothed=(float)') < core.index('const double squash=')
 assert 'delayAge=1000000.' in core
 assert 'LFO1 Rate Mod Source' in (p/'Source/ParameterCatalog.h').read_text()
-assert 'TEST0.2.20' in (p/'CMakeLists.txt').read_text()
+assert 'TEST0.2.21' in (p/'CMakeLists.txt').read_text()
 assert 'SidFilterLfoParityTest' in (p/'CMakeLists.txt').read_text()
 print('OK: TEST0.2.16 filter gate, LFO event and JSFX signal-path wiring')

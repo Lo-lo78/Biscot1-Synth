@@ -16,6 +16,7 @@ struct TrackerPlayableRow {
  int note=-1;
  float gate=0.92f;
  bool pause=false;
+ std::vector<int> subNotes;
  bool gateExplicit=false;
  bool holdIntoNext=false;
  std::vector<TrackerAutomatedParameter> automation;
@@ -44,12 +45,16 @@ inline TrackerPlayablePattern compileTrackerPattern(const TrackerPattern& patter
   out.automation=std::move(automation[(size_t)i]);
   for(int a=0;a<(int)out.automation.size();++a)
    if(out.automation[(size_t)a].active())out.curveIndices.push_back(a);
+  bool arpeggiatorEnabled=false; // Sub Notes require an earlier active Arp Mode (Lua 0.166).
   for(int tab=0;tab<3;++tab)
    for(const auto& c:pattern.view(i,tab)){
     if(out.ordered.size()<128)out.ordered.push_back(c);
     if(c.id==1)out.note=std::clamp((int)std::lround(c.value),0,127);
     if(c.id==2){out.gate=(float)std::clamp(c.value,0.01,1.);out.gateExplicit=true;}
     if(c.id==6)out.pause=true;
+    if(c.id==2022)arpeggiatorEnabled=c.value>0.5;
+    if(c.id==7 && arpeggiatorEnabled && out.subNotes.size()<15)
+     out.subNotes.push_back(std::clamp((int)std::lround(c.value),0,127));
    }
   // The Lua's Previous value at the next step preserves the preceding gate.
   if(i+1<result.length)for(int tab=0;tab<3;++tab)
@@ -60,6 +65,12 @@ inline TrackerPlayablePattern compileTrackerPattern(const TrackerPattern& patter
 }
 // Lua 0.166 previews a step only when that step has an explicit Note.
 // Previewing a parameter-only row must not restart an unrelated held note.
+// During Release no Note On is generated; only the oscillator pitch changes.
+inline int trackerReleaseArpNote(const TrackerPlayablePattern& p,int step,int previous) noexcept {
+ if(p.rows.empty())return previous;
+ const auto& row=p.rows[(size_t)(std::clamp(step,0,p.length-1))];
+ return row.note>=0?row.note:previous;
+}
 inline bool trackerStepHasAuditionNote(const TrackerPattern& pattern,int step){
  if(step<0 || step>=pattern.length)return false;
  for(int tab=0;tab<3;++tab)
@@ -76,13 +87,14 @@ struct TrackerTransportTick {int startStep=-1; bool gateOff=false, finished=fals
 class TrackerPatternTransport {
 public:
  bool running=false, audition=false;
- int currentStep=-1, nextStep=0, repeatIndex=0, activeNote=-1;
+ int currentStep=-1, nextStep=0, repeatIndex=0, activeNote=-1,lastNote=-1;
+ std::array<int,15> activeSubNotes{};int activeSubCount=0;
  double stepRemaining=0,stepLength=0,gateRemaining=-1;
  void start(int step,const TrackerPlayablePattern& p,bool onlyOne=false){
   running=true;audition=onlyOne;currentStep=-1;nextStep=std::clamp(step,0,p.length-1);
-  repeatIndex=0;activeNote=-1;stepRemaining=0;stepLength=0;gateRemaining=-1;
+  repeatIndex=0;activeNote=-1;lastNote=-1;activeSubCount=0;stepRemaining=0;stepLength=0;gateRemaining=-1;
  }
- void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;stepRemaining=0;stepLength=0;gateRemaining=-1;}
+ void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;activeSubCount=0;stepRemaining=0;stepLength=0;gateRemaining=-1;}
  double stepSamples(const TrackerPlayablePattern& p,double rate,double bpm)const{
   const double speed=repeatIndex<(int)p.repeatSpeeds.size()?p.repeatSpeeds[(size_t)repeatIndex]:1.;
   // Original JSFX division_value(slider3==4) = 16, i.e. 16th notes.

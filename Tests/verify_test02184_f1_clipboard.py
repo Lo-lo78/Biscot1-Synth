@@ -22,7 +22,7 @@ assert 'NumericPurpose::stepNumber' in panel
 assert 'std::all_of(digits.begin(),digits.end()' in panel
 assert 'jumpToPattern(n)' in panel and 'jumpToStep(n)' in panel
 assert 'void TrackerPatternPanel::jumpToNonemptyStep(int direction)' in panel
-assert 'announce(positionText());return true;' in panel
+assert 'announce(positionText(true));return true;' in panel  # Tab retains full Pattern number
 assert 'void TrackerPatternPanel::resetCurrentCell()' in panel
 assert 'setCurrentValueExtreme(true)' in panel
 assert 'setCurrentValueExtreme(false)' in panel
@@ -30,8 +30,8 @@ assert 'resetWholePattern()' in panel
 assert 'jumpSizes{1,5,10,15,20}' in hdr
 assert 'TrackerShortcutTest.exe' in (root/'.github/workflows/build-windows.yml').read_text()
 assert 'Source/TrackerShortcutKey.h' in (root/'CMakeLists.txt').read_text()
-assert 'TEST0.2.20' in (root/'Source/PluginEditor.cpp').read_text()
-assert 'VERSION 0.2.20' in (root/'CMakeLists.txt').read_text()
+assert 'TEST0.2.21' in (root/'Source/PluginEditor.cpp').read_text()
+assert 'VERSION 0.2.21' in (root/'CMakeLists.txt').read_text()
 # no changes whatsoever to active DSP/MIDI and persistence since 0.2.18.3
 # The main invariant is the same processor byte checksum baked into this release audit.
 actual=hashlib.sha256((root/'Source/PluginProcessor.cpp').read_bytes()).hexdigest()

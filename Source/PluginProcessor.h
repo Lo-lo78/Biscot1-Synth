@@ -17,6 +17,7 @@
 #include "SidFilterLfoTrigger.h"
 #include "SidArpSustain.h"
 #include "SidQuantizedArp.h"
+#include "TrackerMidiRouting.h"
 #include "SidArpTransport.h"
 #include <array>
 #include <atomic>
@@ -48,6 +49,9 @@ public:
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState state;
  TrackerPatternBank trackerPatterns;
+ using TrackerRecordedMidiEvent=biscot::TrackerRecordedMidiEvent;
+ std::atomic<bool> trackerStepRecording{false};
+ bool popTrackerRecordedMidi(TrackerRecordedMidiEvent& e) noexcept {return trackerMidiQueue.pop(e);}
  void commitTrackerState(); // UI thread: serialize and publish an immutable Pattern snapshot
  void requestTrackerStart(int step,bool audition=false) noexcept;
  void requestTrackerPause() noexcept;
@@ -79,6 +83,14 @@ private:
  using Lfo = SidLfoCore;
  std::array<Voice,3> voices{};
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
+ std::atomic<std::shared_ptr<const TrackerMidiMap>> trackerMidiMap{};
+ TrackerMidiInputQueue trackerMidiQueue{};
+ int trackerMidiTriggerNote=-1;
+ bool trackerReleaseArpActive=false;
+ double trackerReleaseSamplesRemaining=0,trackerReleaseStepRemain=0,trackerReleaseStepSamples=0;
+ int trackerReleaseStep=0,trackerReleaseLastNote=-1,trackerReleaseTranspose=0;
+ void trackerReleaseArpTick() noexcept;
+ bool handleTrackerExternalMidi(const juce::MidiMessage&) noexcept;
  std::shared_ptr<const TrackerPlayablePattern> trackerPlaybackSnapshot; // pinned while audio transport is active
  std::atomic<int> trackerRequested{0}; // 1..1024 start; 2049..3072 audition; -1 stop; -2 pause
  TrackerPatternTransport trackerTransport{}; // audio thread only

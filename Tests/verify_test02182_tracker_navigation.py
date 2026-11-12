@@ -33,4 +33,4 @@ for num in (1,2,3):
   assert f'"LFO{num} {suffix}",3,' in catalog,(num,suffix)
 assert 'const juce::Identifier trackerStateKey{"trackerPatternsV1"}' in (root/'Source/PluginProcessor.cpp').read_text()
 assert 'renderOne(' in (root/'Source/PluginProcessor.cpp').read_text()
-print('OK TEST0.2.20 navigation, multi-letter search, steps and all 3 LFOs')
+print('OK TEST0.2.21 navigation, multi-letter search, steps and all 3 LFOs')

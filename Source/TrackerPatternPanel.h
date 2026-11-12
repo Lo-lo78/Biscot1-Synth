@@ -11,9 +11,9 @@
 #include <vector>
 
 namespace biscot {
-// Initial native F1/F2 tracker editor. The JUCE controls, not a Lua/GFX window,
+// Native F1 Pattern grid and Enter-opened parameter picker. The JUCE controls, not a Lua/GFX window,
 // receive keyboard focus and expose their selected text through Windows UIA.
-class TrackerPatternPanel final : public juce::Component {
+class TrackerPatternPanel final : public juce::Component, private juce::Timer {
 public:
  explicit TrackerPatternPanel(BiscotProcessor&);
  void resized() override;
@@ -45,6 +45,11 @@ private:
  int jumpIndex=0;
  std::array<int,3> lastParam{0,0,0};
  bool refreshing=false;
+ bool stepRecording=false,recordSustainDown=false;
+ int recordingNextStep=0,lastRealStep=0;
+ void timerCallback() override;
+ void recordMidiStep(int midiNote,bool pause);
+ void setStepRecording(bool enable);
  std::vector<const TrackerParam*> parameterList;
  std::map<int,std::vector<TrackerPattern>> undo,redo;
  TrackerCell clipboard{};
@@ -80,7 +85,7 @@ private:
  TrackerCell* selectedCell();
  void refresh(bool speakPosition=false);
  void announce(const juce::String&);
- juce::String positionText() const;
+ juce::String positionText(bool includePattern=false) const;
  juce::String cellText(const TrackerCell&) const;
  void refreshParameterList();
  void recordUndo();

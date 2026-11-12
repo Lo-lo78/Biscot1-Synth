@@ -10,6 +10,7 @@
 #include "TrackerCellPresentation.h"
 #include "TrackerCellNavigation.h"
 #include "TrackerPatternInsert.h"
+#include "TrackerStepRecording.h"
 
 namespace biscot {
 namespace {
@@ -24,7 +25,7 @@ TrackerPatternPanel::TrackerPatternPanel(BiscotProcessor& p):navigator(*this),nu
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  header.setText("Biscot1 Tracker - F1 Patterns",juce::dontSendNotification);
- help.setText("F1 Pattern | F2 Parameters | Space: play/stop | Ctrl+Space: pause at sounding step | Esc: synth",juce::dontSendNotification);
+ help.setText("F1 Pattern | Enter: parameters | Alt+E: edit value | Alt+Enter: Pattern | F2: Song (planned) | Space: play | Esc: back",juce::dontSendNotification);
  for(auto* label:{&header,&help}){label->setAccessible(false);label->setColour(juce::Label::textColourId,fg);addAndMakeVisible(*label);}
  navigator.setName("Tracker Grid");navigator.setDescription({});navigator.setWantsKeyboardFocus(true);
  navigator.setEditableText(false);navigator.setExplicitFocusOrder(1);
@@ -60,13 +61,13 @@ void TrackerPatternPanel::resized(){
 }
 void TrackerPatternPanel::announce(const juce::String& s){announceToActiveScreenReader(navigator,s);}
 void TrackerPatternPanel::open(){
- parameterSearch.reset();clearSelection();page=1;refresh();setVisible(true);toFront(false);
+ startTimerHz(40);parameterSearch.reset();clearSelection();page=1;refresh();setVisible(true);toFront(false);
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
 }
-void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
+void TrackerPatternPanel::restoreAfterPreset(){setStepRecording(false);undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
 void TrackerPatternPanel::close(){
- processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
+ stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
 }
 void TrackerPatternPanel::refreshParameterList(){
  parameterList.clear();
@@ -88,22 +89,25 @@ juce::String TrackerPatternPanel::cellText(const TrackerCell& c) const{
  // Enumerations must speak their actual choice names, as the main synth does.
  return juce::String(trackerCellLabel(c).c_str());
 }
-juce::String TrackerPatternPanel::positionText() const{
+juce::String TrackerPatternPanel::positionText(bool includePattern) const{
+ const juce::String prefix=includePattern?"Pattern "+juce::String(processor.trackerPatterns.activePattern)+". ":juce::String{};
  const int n=processor.trackerPatterns.activePattern;
  const auto& p=*processor.trackerPatterns.find(n);
  if(page==2){const auto* def=currentParameter();return "Parameters "+juce::String(sectionNames[tab])+". "+juce::String(def?def->name:"empty");}
- if(row==-1){return "Pattern "+juce::String(n)+". "+
+ if(row==-1){return prefix+
   (cell==0?("Length, "+juce::String(p.length)):
-   ("MIDI Note, "+(p.midiNote<0?juce::String("Off"):noteName(p.midiNote))));}
- if(row==p.length)return "Pattern "+juce::String(n)+". Repeat, "+juce::String(p.repeat);
+   cell==1?("MIDI Note, "+(p.midiNote<0?juce::String("Off"):noteName(p.midiNote))):
+   cell==2?("Step Recording, "+juce::String(stepRecording?"On":"Off")):
+   ("Release Arpeggio, "+juce::String(p.releaseArp?"On":"Off")));}
+ if(row==p.length)return prefix+"Repeat, "+juce::String(p.repeat);
  if(row>p.length){
   const int idx=(row-p.length-1)*5+cell/2;
-  if(idx<0||idx>=p.repeat)return "Pattern "+juce::String(n)+". Speed row "+juce::String(row-p.length);
-  return "Pattern "+juce::String(n)+". "+(cell%2==0?"Speed ":"Transpose ")+juce::String(idx+1)+", "+
+  if(idx<0||idx>=p.repeat)return prefix+"Speed row "+juce::String(row-p.length);
+  return prefix+(cell%2==0?"Speed ":"Transpose ")+juce::String(idx+1)+", "+
    (cell%2==0?juce::String(p.repeatSpeeds[(size_t)idx],2):juce::String(p.repeatTransposes[(size_t)idx]));
  }
  const auto& values=p.view(row,tab);
- return "Pattern "+juce::String(n)+". "+sectionNames[tab]+". step "+juce::String(row)+". "+
+ return prefix+sectionNames[tab]+". step "+juce::String(row)+". "+
   (values.empty()?juce::String("empty"):cellText(values[(size_t)juce::jlimit(0,(int)values.size()-1,cell)]));
 }
 void TrackerPatternPanel::refresh(bool speakPosition){
@@ -115,12 +119,14 @@ void TrackerPatternPanel::refresh(bool speakPosition){
   refreshParameterList();
   for(int i=0;i<(int)parameterList.size();++i)navigator.addItem(juce::String(parameterList[(size_t)i]->name),i+1);
   navigator.setSelectedId(parameterIndex+1,juce::dontSendNotification);
-  header.setText("Biscot1 Tracker - F2 "+juce::String(sectionNames[tab])+" Parameters",juce::dontSendNotification);
+  header.setText("Biscot1 Tracker - "+juce::String(sectionNames[tab])+" parameter picker",juce::dontSendNotification);
  }else{
   header.setText("Biscot1 Tracker - F1 Pattern "+juce::String(processor.trackerPatterns.activePattern)+" / "+sectionNames[tab],juce::dontSendNotification);
   if(row==-1){
    navigator.addItem("Length, "+juce::String(pat.length),1);
    navigator.addItem("MIDI Note, "+(pat.midiNote<0?juce::String("Off"):noteName(pat.midiNote)),2);
+   navigator.addItem("Step Recording, "+juce::String(stepRecording?"On":"Off"),3);
+   navigator.addItem("Release Arpeggio, "+juce::String(pat.releaseArp?"On":"Off"),4);
   }else if(row==pat.length){
    navigator.addItem("Repeat, "+juce::String(pat.repeat),1);
   }else if(row>pat.length){
@@ -153,7 +159,14 @@ void TrackerPatternPanel::finishEdit(){processor.commitTrackerState();refresh(tr
 void TrackerPatternPanel::changeValue(double v){
  auto& p=currentPattern();
  if(page!=1)return;
- if(row==-1){recordUndo();if(cell==0){p.length=juce::jlimit(1,1024,(int)std::round(v));row=juce::jmin(row,p.length);}else p.midiNote=juce::jlimit(-1,127,(int)std::round(v));finishEdit();return;}
+ if(row==-1){
+  if(cell==2){setStepRecording(v>0.5);refresh(true);return;}
+  recordUndo();
+  if(cell==0)p.length=juce::jlimit(1,1024,(int)std::round(v));
+  else if(cell==1)p.midiNote=juce::jlimit(-1,127,(int)std::round(v));
+  else p.releaseArp=v>0.5;
+  finishEdit();return;
+ }
  if(row==p.length){recordUndo();p.repeat=juce::jlimit(1,1000,(int)std::round(v));p.repeatSpeeds.resize((size_t)p.repeat,1.0);p.repeatTransposes.resize((size_t)p.repeat,0);finishEdit();return;}
  if(row>p.length){const int idx=(row-p.length-1)*5+cell/2;if(idx>=0&&idx<p.repeat){recordUndo();if(cell%2==0)p.repeatSpeeds[(size_t)idx]=juce::jlimit(0.25,16.0,v);else p.repeatTransposes[(size_t)idx]=juce::jlimit(-96,96,(int)std::round(v));finishEdit();}return;}
  if(auto* c=selectedCell()){
@@ -171,7 +184,7 @@ void TrackerPatternPanel::changeValue(double v){
 void TrackerPatternPanel::adjustValue(int direction,double multiplier){
  if(page!=1)return;
  const auto& p=currentPattern();double old=0,step=1;
- if(row==-1){old=cell==0?p.length:p.midiNote;}
+ if(row==-1){old=cell==0?p.length:cell==1?p.midiNote:cell==2?double(stepRecording):double(p.releaseArp);}
  else if(row==p.length){old=p.repeat;}
  else if(row>p.length){const int idx=(row-p.length-1)*5+cell/2;if(idx<0||idx>=p.repeat)return;
   if(cell%2==0){old=p.repeatSpeeds[(size_t)idx];step=0.25;}else old=p.repeatTransposes[(size_t)idx];}
@@ -191,7 +204,7 @@ void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
  refresh(true);
 }
 void TrackerPatternPanel::changeRow(int delta){clearSelection();const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
- if(to==row)return;row=to;refresh(true);auditionCurrentStep();
+ if(to==row)return;row=to;if(row>=0&&row<currentPattern().length)lastRealStep=row;refresh(true);auditionCurrentStep();
 }
 // Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
 // selects the current step, subsequent Shift+arrows extend the inclusive range.
@@ -273,13 +286,15 @@ void TrackerPatternPanel::clearCurrentSection(){
  clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
 }
 void TrackerPatternPanel::openSelectedValueEditor(){
- if(page!=1)return; // F2 Enter must keep its parameter-insertion function.
+ if(page!=1)return; // Numeric editing is Alt+E in the Pattern grid.
  const auto& pat=currentPattern();
  double value=0;
  juce::String name;
  if(row==-1){
   if(cell==0){value=pat.length;name="Length";}
-  else {value=pat.midiNote;name="MIDI Note";}
+  else if(cell==1){value=pat.midiNote;name="MIDI Note";}
+  else if(cell==2){value=stepRecording?1:0;name="Step Recording (0 Off, 1 On)";}
+  else {value=pat.releaseArp?1:0;name="Release Arpeggio (0 Off, 1 On)";}
  }else if(row==pat.length){value=pat.repeat;name="Repeat";}
  else if(row>pat.length){
   const int idx=(row-pat.length-1)*5+cell/2;
@@ -288,7 +303,7 @@ void TrackerPatternPanel::openSelectedValueEditor(){
   else {value=pat.repeatTransposes[(size_t)idx];name="Transpose "+juce::String(idx+1);}
  }else{
   const auto* selected=selectedCell();
-  if(selected==nullptr){announce("Empty step. Use F2 to insert a parameter");return;}
+  if(selected==nullptr){announce("Empty step. Press Enter to add a parameter");return;}
   value=selected->value;
   const auto* definition=findTrackerParam(selected->id);
   name=definition!=nullptr?juce::String(definition->name):juce::String("Parameter");
@@ -310,11 +325,11 @@ void TrackerPatternPanel::jumpToPattern(int target){
  clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};
  processor.commitTrackerState();
  if(page==2){refresh(false);announce("Pattern "+juce::String(target)+". "+positionText());}
- else refresh(true);
+ else {refresh(false);announce(positionText(true));}
 }
 void TrackerPatternPanel::jumpToStep(int target){
  if(target<0||target>=currentPattern().length){announce("Invalid step number");return;}
- clearSelection();row=target;refresh(true);auditionCurrentStep();
+ clearSelection();row=target;lastRealStep=row;refresh(true);auditionCurrentStep();
 }
 void TrackerPatternPanel::jumpToSameParameter(int direction){
  if(row<0 || row>=currentPattern().length){announce("Select a step parameter first");return;}
@@ -328,7 +343,7 @@ void TrackerPatternPanel::jumpToSameParameter(int direction){
            " occurrence of "+juce::String(d?d->name:"parameter"));
   return;
  }
- clearSelection();row=match.first;cell=match.second;
+ clearSelection();row=match.first;lastRealStep=row;cell=match.second;
  logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
  refresh(true);auditionCurrentStep();
 }
@@ -353,7 +368,7 @@ void TrackerPatternPanel::resetCurrentCell(){
  auditionCurrentStep();
 }
 void TrackerPatternPanel::setCurrentValueExtreme(bool maximum){
- if(row<0){changeValue(maximum?(cell==0?1024.0:127.0):(cell==0?1.0:-1.0));return;}
+ if(row<0){changeValue(cell==0?(maximum?1024.0:1.0):cell==1?(maximum?127.0:-1.0):(maximum?1.0:0.0));return;}
  const auto& p=currentPattern();
  if(row==p.length){changeValue(maximum?1000:1);return;}
  if(row>p.length){changeValue(cell%2==0?(maximum?16.0:0.25):(maximum?96.0:-96.0));return;}
@@ -431,6 +446,9 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();return true;}
   return false;
  }
+ // Inside the parameter picker, Esc returns to the Pattern editor; a second
+ // Esc leaves Alt+Q. Alt+Q always returns directly to the synthesizer.
+ if(code==juce::KeyPress::escapeKey && page==2){page=1;parameterSearch.reset();refresh(true);return true;}
  if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){parameterSearch.reset();clearSelection();close();return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
@@ -440,17 +458,19 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && page==1){playFromCursor();return true;}
   return true;
  }
- if(code==juce::KeyPress::F2Key){if(row>=0&&row<currentPattern().length){clearSelection();page=2;parameterSearch.reset();refresh(true);}return true;}
+ // F2 is reserved for the forthcoming Song page. The old F2 parameter
+ // picker is now opened with Enter from an actual Pattern step.
+ if(code==juce::KeyPress::F2Key){announce("Song editor not yet implemented");return true;}
  if(code>=juce::KeyPress::F3Key&&code<=juce::KeyPress::F6Key){announce("Song, browser and diagnostics arrive in later tracker versions");return true;}
  if(m.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2){setTab((tab+(m.isShiftDown()?2:1))%3);return true;}
  if(!m.isCtrlDown() && code==juce::KeyPress::tabKey){
   // Lua F1: Tab speaks the full row/section/parameter position and never
   // transfers keyboard focus out of the tracker editor.
-  announce(positionText());return true;
+  announce(positionText(true));return true;
  }
  if(page==1 && m.isCtrlDown() && code==juce::KeyPress::tabKey)return true;
  // Alt+Enter preserves the old Enter shortcut for choosing Pattern 0..999.
- // It also works in F2 without replacing F2's insert-parameter Enter command.
+ // It also works in the parameter picker without replacing its Enter-to-insert action.
  if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
   openNumericEditor(NumericPurpose::patternNumber,"Go to Pattern 0 to 999",
                     juce::String(processor.trackerPatterns.activePattern));return true;
@@ -496,7 +516,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    }
    if(!m.isCtrlDown()){page=1;refresh(true);}return true;
   }
-  // Multi-character F2 search, with the same whole-label/word-prefix,
+  // Multi-character parameter picker search, with the same whole-label/word-prefix,
   // Shift-reverse and repeated-letter cycling used by Biscot1's main grid.
   // Words such as "Square", "Rate", "Cutoff" match even after LFO1/Filter.
   if(const auto ch=biscotParameterSearchCharacter(k);ch!=0){
@@ -513,9 +533,13 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   parameterSearch.reset();
   return true;
  }
- // F1: Enter directly edits the selected value, including Pattern metadata.
+ // Enter on a Pattern step opens the parameter list; Alt+E is the sole
+ // numeric editor shortcut, also on Length / MIDI Note / Repeat / Speed.
  if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
-  openSelectedValueEditor();return true;
+  if(row>=0 && row<currentPattern().length){
+   clearSelection();page=2;parameterSearch.reset();refresh(true);
+  }else announce("Select a Pattern step to add a parameter. Alt+E edits this value");
+  return true;
  }
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('j')){
   openNumericEditor(NumericPurpose::stepNumber,
@@ -559,7 +583,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  }
  // Lua F1: unmodified 1/2/3 switches OP / Filter / LFO sections.
  // These are NUMBER keys, so do not call the Ctrl+letter helper here.
- // F2 intentionally retains 1/2/3 for parameter-list search, like the Lua.
+ // The parameter picker intentionally retains 1/2/3 for incremental search.
  if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
   const int section=trackerShortcutSectionIndex(code,(int)k.getTextCharacter());
   if(section>=0){setTab(section);return true;}
@@ -572,7 +596,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(true);}return true;
+  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(false);announce(positionText(true));}return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -619,14 +643,15 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell+1)]);++cell;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();}return true;
  }
  if(m.isAltDown()){
-  // Preserve Alt+E as a backwards-compatible alias of F1 Enter.
+  // Alt+E performs numeric editing (including Pattern header and Speed rows).
   if(letter('e')){openSelectedValueEditor();return true;}
   if(code==juce::KeyPress::upKey){adjustValue(1);return true;}
   if(code==juce::KeyPress::downKey){adjustValue(-1);return true;}
   if(code==juce::KeyPress::pageUpKey){adjustValue(1,10);return true;}
   if(code==juce::KeyPress::pageDownKey){adjustValue(-1,10);return true;}
-  if(code==juce::KeyPress::homeKey){setCurrentValueExtreme(false);return true;}
-  if(code==juce::KeyPress::endKey){setCurrentValueExtreme(true);return true;}
+  // Requested value boundaries: Alt+Home = maximum, Alt+End = minimum.
+  if(code==juce::KeyPress::homeKey){setCurrentValueExtreme(true);return true;}
+  if(code==juce::KeyPress::endKey){setCurrentValueExtreme(false);return true;}
  }
  if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && m.isShiftDown() && !m.isAltDown()){
   clearCurrentSection();return true;
@@ -652,7 +677,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   return true;
  }
  // User-preferred F1 direction: Home travels backward toward Length;
- // End travels forward toward Repeat and Speed. F2 is deliberately unchanged.
+ // End travels forward toward Repeat and Speed. Picker navigation stays unchanged.
  if(code==juce::KeyPress::homeKey){
   clearSelection();
   if(row>currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
@@ -668,5 +693,42 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   return true;
  }
  return true; // All keys are owned by Alt+Q; never leak into REAPER shortcuts.
+}
+
+void TrackerPatternPanel::setStepRecording(bool enable){
+ if(enable && !stepRecording){
+  BiscotProcessor::TrackerRecordedMidiEvent ignored;
+  while(processor.popTrackerRecordedMidi(ignored)){}
+  recordingNextStep=juce::jlimit(0,currentPattern().length-1,lastRealStep);
+ }
+ stepRecording=enable;recordSustainDown=false;
+ processor.trackerStepRecording.store(enable,std::memory_order_release);
+ if(enable)processor.requestTrackerStop();
+}
+void TrackerPatternPanel::recordMidiStep(int midiNote,bool pause){
+ if(!stepRecording || page!=1 || row<0 || row>=currentPattern().length)return;
+ auto& pat=currentPattern();recordUndo();
+ // Lua fills skipped recording positions with Pause if the user moves the cursor ahead.
+ for(int st=recordingNextStep;st<row;++st)trackerRecordStep(pat,st,0,true);
+ trackerRecordStep(pat,row,midiNote,pause);
+ auto& cells=pat.cells(row,0);
+ const int id=pause?6:1;
+ tab=0;logicalCell=0;lastLogicalCell[0]=0;
+ for(int i=0;i<(int)cells.size();++i)if(cells[(size_t)i].id==id){cell=i;logicalCell=i;lastLogicalCell[0]=i;break;}
+ const int recorded=row;recordingNextStep=row+1;
+ if(row+1<pat.length){++row;lastRealStep=row;}
+ else setStepRecording(false);
+ processor.commitTrackerState();refresh(true);
+ if(!stepRecording)announce("Step Recording completed at step "+juce::String(recorded));
+}
+void TrackerPatternPanel::timerCallback(){
+ BiscotProcessor::TrackerRecordedMidiEvent event;
+ int count=0;
+ while(count++<128 && processor.popTrackerRecordedMidi(event)){
+  if(!stepRecording)continue;
+  if(event.type==2){recordSustainDown=false;continue;}
+  if(event.type==1){if(!recordSustainDown){recordSustainDown=true;recordMidiStep(0,true);}continue;}
+  if(event.type==0)recordMidiStep(event.note,false);
+ }
 }
 }
