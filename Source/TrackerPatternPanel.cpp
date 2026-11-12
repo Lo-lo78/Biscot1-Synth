@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <string>
 
 namespace biscot {
 namespace {
@@ -47,11 +48,11 @@ void TrackerPatternPanel::resized(){
 }
 void TrackerPatternPanel::announce(const juce::String& s){announceToActiveScreenReader(navigator,s);}
 void TrackerPatternPanel::open(){
- page=1;refresh();setVisible(true);toFront(false);
+ parameterSearch.reset();clearSelection();page=1;refresh();setVisible(true);toFront(false);
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
 }
-void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();row=-1;cell=0;page=1;refresh();}
+void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;page=1;refresh();}
 void TrackerPatternPanel::close(){setVisible(false);if(onClose)onClose();}
 void TrackerPatternPanel::refreshParameterList(){
  parameterList.clear();for(const auto& p:trackerCatalog)if(p.tab==tab+1)parameterList.push_back(&p);
@@ -158,11 +159,91 @@ void TrackerPatternPanel::adjustValue(int direction,double multiplier){
  changeValue(old+direction*multiplier*step);
 }
 void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
+ parameterSearch.reset();clearSelection();
  if(page==2)lastParam[(size_t)tab]=parameterIndex;
  tab=next;cell=0;refresh(true);
 }
-void TrackerPatternPanel::changeRow(int delta){const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
+void TrackerPatternPanel::changeRow(int delta){clearSelection();const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
  if(to==row)return;row=to;cell=0;refresh(true);
+}
+// Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
+// selects the current step, subsequent Shift+arrows extend the inclusive range.
+void TrackerPatternPanel::extendStepSelection(int delta){
+ auto& pat=currentPattern();
+ if(row<0)row=0;
+ else if(row>=pat.length)row=pat.length-1;
+ if(!hasStepSelection()){selectionAnchor=row;selectionEnd=row;}
+ else{
+  const int next=juce::jlimit(0,pat.length-1,selectionEnd+delta);
+  if(next==selectionEnd)return;
+  selectionEnd=next;row=next;
+ }
+ cell=0;refresh();
+ const int lo=juce::jmin(selectionAnchor,selectionEnd);
+ const int hi=juce::jmax(selectionAnchor,selectionEnd);
+ announce(lo==hi?"Step "+juce::String(lo)+" selected":
+  "Steps "+juce::String(lo)+" to "+juce::String(hi)+" selected");
+}
+void TrackerPatternPanel::copySelectedSteps(){
+ if(!hasStepSelection())return;
+ stepClipboard.clear();
+ const int lo=juce::jmin(selectionAnchor,selectionEnd);
+ const int hi=juce::jmax(selectionAnchor,selectionEnd);
+ const auto& pat=currentPattern();
+ for(int st=lo;st<=hi;++st){
+  const auto i=pat.steps.find(st);
+  stepClipboard.push_back(i==pat.steps.end()?TrackerStep{}:i->second);
+ }
+ clipboardMode=ClipboardMode::steps;
+ announce(stepClipboard.size()==1?"One step copied":juce::String((int)stepClipboard.size())+" steps copied");
+}
+void TrackerPatternPanel::pasteSelectedSteps(){
+ if(stepClipboard.empty() || row<0 || row>=currentPattern().length)return;
+ auto& pat=currentPattern();
+ const int n=juce::jmin((int)stepClipboard.size(),pat.length-row);
+ if(n<=0)return;
+ recordUndo();
+ // Safe even when the source and destination belong to the same Pattern:
+ // the clipboard owns complete, independent snapshots of all three sections.
+ for(int i=0;i<n;++i)pat.steps[row+i]=stepClipboard[(size_t)i];
+ clearSelection();cell=0;processor.commitTrackerState();refresh();
+ announce(n==1?"One step pasted":juce::String(n)+" steps pasted");
+}
+void TrackerPatternPanel::eraseSelectedSteps(bool cut){
+ if(!hasStepSelection())return;
+ const int lo=juce::jmin(selectionAnchor,selectionEnd);
+ const int hi=juce::jmax(selectionAnchor,selectionEnd);
+ if(cut)copySelectedSteps();
+ recordUndo();
+ auto& pat=currentPattern();
+ for(int st=lo;st<=hi;++st)pat.steps.erase(st);
+ clearSelection();cell=0;processor.commitTrackerState();refresh();
+ const int n=hi-lo+1;
+ announce(juce::String(n==1?"One step ":"Steps ")+juce::String(cut?"cut":"deleted")+
+  (n==1?juce::String():" ("+juce::String(n)+")"));
+}
+void TrackerPatternPanel::resetCurrentStep(){
+ if(row<0 || row>=currentPattern().length)return;
+ recordUndo();
+ auto& pat=currentPattern();
+ // Lua initializes the OP row with the same eight starting cells.
+ pat.steps[row].tabs[(size_t)tab].clear();
+ if(tab==0){
+  const TrackerPattern defaults;
+  pat.steps[row].tabs[0]=defaults.view(0,0);
+ }
+ clearSelection();cell=0;finishEdit();announce("Step "+juce::String(row)+" "+sectionNames[tab]+" initialized");
+}
+void TrackerPatternPanel::clearCurrentSection(){
+ recordUndo();
+ auto& pat=currentPattern();
+ for(auto it=pat.steps.begin();it!=pat.steps.end();){
+  it->second.tabs[(size_t)tab].clear();
+  if(it->second.tabs[0].empty() && it->second.tabs[1].empty() && it->second.tabs[2].empty())
+   it=pat.steps.erase(it);
+  else ++it;
+ }
+ clearSelection();cell=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
 }
 bool TrackerPatternPanel::keyPressed(const juce::KeyPress& k){return handle(k,false);}
 bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
@@ -177,15 +258,23 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();return true;}
   return false;
  }
- if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){close();return true;}
+ if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){parameterSearch.reset();clearSelection();close();return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
- if(code==juce::KeyPress::F1Key){page=1;refresh(true);return true;}
- if(code==juce::KeyPress::F2Key){if(row>=0&&row<currentPattern().length){page=2;refresh(true);}return true;}
+ if(code==juce::KeyPress::F1Key){page=1;parameterSearch.reset();refresh(true);return true;}
+ if(code==juce::KeyPress::F2Key){if(row>=0&&row<currentPattern().length){clearSelection();page=2;parameterSearch.reset();refresh(true);}return true;}
  if(code>=juce::KeyPress::F3Key&&code<=juce::KeyPress::F6Key){announce("Song, browser and diagnostics arrive in later tracker versions");return true;}
  if(m.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2){setTab((tab+(m.isShiftDown()?2:1))%3);return true;}
  if(page==2){
+  if(m.isCtrlDown() && code==juce::KeyPress::homeKey){
+   parameterSearch.reset();parameterIndex=0;lastParam[(size_t)tab]=parameterIndex;refresh(true);return true;
+  }
+  if(m.isCtrlDown() && code==juce::KeyPress::endKey){
+   parameterSearch.reset();parameterIndex=juce::jmax(0,(int)parameterList.size()-1);
+   lastParam[(size_t)tab]=parameterIndex;refresh(true);return true;
+  }
   const int count=(int)parameterList.size();if(count==0)return true;
+  if(biscotParameterSearchCharacter(k)==0)parameterSearch.reset();
   int move=0;
   if(code==juce::KeyPress::upKey)move=-1;
   if(code==juce::KeyPress::downKey)move=1;
@@ -208,18 +297,28 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    }
    if(!m.isCtrlDown()){page=1;refresh(true);}return true;
   }
-  // Incremental first-letter parameter selection in the current F2 section.
-  if(!m.isAltDown() && !m.isCtrlDown()){
-   const auto c=juce::CharacterFunctions::toLowerCase(k.getTextCharacter());
-   if(juce::CharacterFunctions::isLetter(c)){
-    for(int o=1;o<=count;++o){const int idx=(parameterIndex+o)%count;
-     if(juce::String(parameterList[(size_t)idx]->name).startsWithChar(c)){
-      parameterIndex=idx;lastParam[(size_t)tab]=idx;refresh(true);break;
-     }
-    }return true;
+  // Multi-character F2 search, with the same whole-label/word-prefix,
+  // Shift-reverse and repeated-letter cycling used by Biscot1's main grid.
+  // Words such as "Square", "Rate", "Cutoff" match even after LFO1/Filter.
+  if(const auto ch=biscotParameterSearchCharacter(k);ch!=0){
+   const int found=parameterSearch.next(
+     (wchar_t)ch,parameterIndex,count,m.isShiftDown()?-1:1,
+     juce::Time::getMillisecondCounter(),[this](int idx){
+      return std::wstring(juce::String(parameterList[(size_t)idx]->name).toWideCharPointer());
+     });
+   if(found>=0){
+    parameterIndex=found;lastParam[(size_t)tab]=found;refresh(true);
    }
+   return true;
   }
+  parameterSearch.reset();
   return true;
+ }
+ if(m.isShiftDown() && !m.isCtrlDown() && !m.isAltDown()){
+  if(code==juce::KeyPress::upKey){extendStepSelection(-1);return true;}
+  if(code==juce::KeyPress::downKey){extendStepSelection(1);return true;}
+  if(code==juce::KeyPress::pageUpKey){extendStepSelection(-5);return true;}
+  if(code==juce::KeyPress::pageDownKey){extendStepSelection(5);return true;}
  }
  if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
   if(letter('1')||letter('2')||letter('3')){setTab(k.getTextCharacter()-'1');return true;}
@@ -227,7 +326,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){bank.activePattern=next;row=-1;cell=0;processor.commitTrackerState();refresh(true);}return true;
+  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;processor.commitTrackerState();refresh(true);}return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -236,11 +335,26 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    to.push_back(currentPattern());currentPattern()=std::move(from.back());from.pop_back();finishEdit();
   }return true;
  }
- if(m.isCtrlDown() && letter('c')){if(const auto* c=selectedCell()){clipboard=*c;hasClipboard=true;announce("Parameter copied");}return true;}
- if(m.isCtrlDown() && letter('v')){if(hasClipboard&&row>=0&&row<currentPattern().length){
-  auto& pat=currentPattern();if(pat.totalCells(row)<128){recordUndo();const int at=cell+1;
-   pat.insert(row,tab,at,clipboard);cell=at;finishEdit();}
- }return true;}
+ if(m.isCtrlDown() && letter('c')){
+  if(hasStepSelection()){copySelectedSteps();return true;}
+  if(const auto* c=selectedCell()){
+   clipboard=*c;hasClipboard=true;clipboardMode=ClipboardMode::parameter;announce("Parameter copied");
+  }return true;
+ }
+ if(m.isCtrlDown() && letter('x')){
+  if(hasStepSelection()){eraseSelectedSteps(true);return true;}
+  if(const auto* c=selectedCell()){
+   clipboard=*c;hasClipboard=true;clipboardMode=ClipboardMode::parameter;
+   recordUndo();currentPattern().erase(row,tab,cell);finishEdit();announce("Parameter cut");
+  }return true;
+ }
+ if(m.isCtrlDown() && letter('v')){
+  if(clipboardMode==ClipboardMode::steps){pasteSelectedSteps();return true;}
+  if(clipboardMode==ClipboardMode::parameter && hasClipboard && row>=0&&row<currentPattern().length){
+   auto& pat=currentPattern();if(pat.totalCells(row)<128){recordUndo();const int at=cell+1;
+    pat.insert(row,tab,at,clipboard);cell=at;finishEdit();}
+  }return true;
+ }
  if(m.isCtrlDown() && code==juce::KeyPress::leftKey && row>=0 && row<currentPattern().length){
   auto& a=currentPattern().cells(row,tab);if(cell>0&&cell<(int)a.size()){
    recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell-1)]);--cell;finishEdit();}return true;
@@ -263,6 +377,15 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::pageUpKey){adjustValue(1,10);return true;}
   if(code==juce::KeyPress::pageDownKey){adjustValue(-1,10);return true;}
  }
+ if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && m.isShiftDown() && !m.isAltDown()){
+  clearCurrentSection();return true;
+ }
+ if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && !m.isAltDown()){
+  resetCurrentStep();return true;
+ }
+ if(code==juce::KeyPress::deleteKey && hasStepSelection() && !m.isCtrlDown() && !m.isAltDown()){
+  eraseSelectedSteps(false);return true;
+ }
  if(code==juce::KeyPress::deleteKey && row>=0 && row<currentPattern().length){
   if(currentPattern().view(row,tab).empty())return true;
   recordUndo();currentPattern().erase(row,tab,cell);finishEdit();return true;
@@ -272,17 +395,24 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(code==juce::KeyPress::pageUpKey){changeRow(-5);return true;}
  if(code==juce::KeyPress::pageDownKey){changeRow(5);return true;}
  if(code==juce::KeyPress::leftKey||code==juce::KeyPress::rightKey){
-  const int next=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell+(code==juce::KeyPress::leftKey?-1:1));
+  clearSelection();const int next=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell+(code==juce::KeyPress::leftKey?-1:1));
   if(next!=cell){cell=next;refresh(true);}return true;
  }
+ // User-preferred F1 direction: Home travels backward toward Length;
+ // End travels forward toward Repeat and Speed. F2 is deliberately unchanged.
  if(code==juce::KeyPress::homeKey){
-  if(row==-1)changeRow(1);else if(row<currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
-  else if(row==currentPattern().length)changeRow(1);return true;
- }
- if(code==juce::KeyPress::endKey){
+  clearSelection();
   if(row>currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
   else if(row==currentPattern().length){row=currentPattern().length-1;cell=0;refresh(true);}
-  else if(row>=0){row=-1;cell=0;refresh(true);}return true;
+  else if(row>=0){row=-1;cell=0;refresh(true);}
+  return true;
+ }
+ if(code==juce::KeyPress::endKey){
+  clearSelection();
+  if(row==-1)changeRow(1);
+  else if(row<currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
+  else if(row==currentPattern().length)changeRow(1);
+  return true;
  }
  return true; // All keys are owned by Alt+Q; never leak into REAPER shortcuts.
 }

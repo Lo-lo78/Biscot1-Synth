@@ -3,6 +3,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginProcessor.h"
 #include "TrackerParameterCatalog.h"
+#include "IncrementalParameterSearch.h"
+#include "ParameterSearchKey.h"
 #include <functional>
 #include <map>
 #include <vector>
@@ -41,6 +43,19 @@ private:
  std::map<int,std::vector<TrackerPattern>> undo,redo;
  TrackerCell clipboard{};
  bool hasClipboard=false;
+ enum class ClipboardMode { none, parameter, steps };
+ ClipboardMode clipboardMode=ClipboardMode::none;
+ std::vector<TrackerStep> stepClipboard;
+ int selectionAnchor=-1,selectionEnd=-1;
+ IncrementalParameterSearch parameterSearch;
+ void clearSelection() noexcept { selectionAnchor=-1;selectionEnd=-1; }
+ bool hasStepSelection() const noexcept {return selectionAnchor>=0 && selectionEnd>=0;}
+ void extendStepSelection(int delta);
+ void copySelectedSteps();
+ void pasteSelectedSteps();
+ void eraseSelectedSteps(bool cut);
+ void resetCurrentStep();
+ void clearCurrentSection();
  TrackerPattern& currentPattern(){return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
  const TrackerParam* currentParameter() const;
  TrackerCell* selectedCell();

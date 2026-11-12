@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.18.1 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.18.2 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.18.1"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and extended native DSP TEST0.2.18.2"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -85,3 +85,11 @@ target_compile_features(SidDeepIdleCpuTest PRIVATE cxx_std_20)
 # Initial native Pattern bank: completely independent of JUCE and the audio DSP.
 add_executable(TrackerPatternBankTest Tests/TrackerPatternBankTest.cpp)
 target_compile_features(TrackerPatternBankTest PRIVATE cxx_std_20)
+
+# Regressions of F2 multi-character/word search, reverse cycling, and F1
+# step clipboard that copies all three sections without shared references.
+add_executable(TrackerSearchStepTest Tests/TrackerSearchStepTest.cpp)
+target_compile_features(TrackerSearchStepTest PRIVATE cxx_std_20)
+if(WIN32)
+  target_link_libraries(TrackerSearchStepTest PRIVATE User32)
+endif()

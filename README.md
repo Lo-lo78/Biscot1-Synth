@@ -1,4 +1,14 @@
-# Biscot1 Synth VST3 — TEST0.2.18.1
+# Biscot1 Synth VST3 — TEST0.2.18.2
+
+**Tracker Alt+Q navigation and F1 editing enhancements:** F1 Home/End
+reversed as requested; F2 Home/End unchanged, with Ctrl+Home/End added for
+first/last parameter. F2 now has multi-character, word-prefix and reverse
+incremental search. F1 gains Shift+arrows step selection, multi-step
+copy/cut/paste, step reset, and section clearing. All three LFOs are listed
+consecutively in the F2 LFO section, exactly as in the supplied Lua tracker.
+See `RELEASE_NOTES_TEST0.2.18.2.md`. No native playback or Song editor yet.
+
+# Biscot1 Synth VST3 — TEST0.2.18.2
 
 Compiler-only hotfix for TEST0.2.18: JUCE `juce::Identifier` cannot be initialized as `constexpr` with MSVC 19.44 / JUCE 8.0.15. The tracker state key is now an immutable ordinary `const juce::Identifier`, with unchanged text `trackerPatternsV1`. The VST3 project/Pattern serialization format is unchanged. This fixes GitHub Actions error C2131 in Source/PluginProcessor.cpp. No changes to MIDI, DSP, CPU idle, accessible editor behavior, or tracker data.
 
