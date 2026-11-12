@@ -565,3 +565,17 @@ No DSP, MIDI transport, Curve, Pattern persistence or `.biscot` format changes.
 ### Native tracker TEST0.2.21
 
 F1 announces the concise section/step/value on arrows or 1/2/3; Tab gives the full Pattern number. Header items include Length, MIDI Note, Step Recording and Release Arpeggio. Step Recording captures MIDI Note On and sustain pedal-down as Pause, without passing recorded input to the synth. MIDI Note assignment launches a Pattern while consuming its trigger note. Sub Note and first pitch-only Release Arpeggio execution are integrated; see `RELEASE_NOTES_TEST0.2.21.md`. F2 is reserved for the future Song page.
+
+
+## TEST0.2.21.1 — Native arp Release chord and F1 direct keys
+
+- A normal, manually released three-note chord now preserves the **complete** arp Release pool. Previous builds shrank it with each MIDI Note Off, yielding only the last note. CC64-held phrases retain their behavior; the VCA Release and audio DSP are unchanged.
+- F1: L=Length, M=MIDI Note, S=Step Recording, R=Release Arpeggio, P=Repeat. D/T move to successive Speed/Transpose values; Shift+D/T cycle backwards, including across repeat rows.
+- Going Up or Home from Repeat remembers the last visited step, rather than jumping to the final step. Alt+S preset saving and Enter's parameter picker are unaffected.
+- Tested with `SidArpReleaseLatchTest`, `TrackerHeaderNavigationTest`, and existing C++ and Python suites. Windows JUCE compilation and NVDA remain to be checked in REAPER.
+
+To push this source from an existing repository (preserve its `.git` folder):
+
+```cmd
+git add . && git commit -m "Biscot1 VST3 TEST0.2.21.1 fix manual arp release chord and add F1 header shortcuts" && git push
+```

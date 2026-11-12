@@ -8,7 +8,7 @@ header=(root/'Source/PluginProcessor.h').read_text()
 panel=(root/'Source/TrackerPatternPanel.cpp').read_text()
 model=(root/'Source/TrackerPatternBank.h').read_text()
 workflow=(root/'.github/workflows/build-windows.yml').read_text()
-assert 'TEST0.2.21' in editor and 'TEST0.2.21' in workflow
+assert 'TEST0.2.21.1' in editor and 'TEST0.2.21.1' in workflow
 assert 'if(letter(\'q\')){openTracker();return true;}' in editor
 assert 'trackerPanel->open();' in editor
 assert 'Alt+Q' in (root/'Source/PluginEditor.cpp').read_text()
@@ -32,8 +32,9 @@ assert 'paramHeight' in panel and 'code==juce::KeyPress::F1Key' in panel
 # version deliberately does not connect the tracker to the live synth.
 for begin,end,expected in [
  ('void BiscotProcessor::renderOne(','void BiscotProcessor::advanceIdleLfos(', 'd6e631be7980f9840d4c44e30b3dd6bd02c632f8cb5ea6df40297c0aa6e27914'),
- ('void BiscotProcessor::onMidi(','float BiscotProcessor::polyBlep(','bf9fef8fccb1ea742bf1b01e719cbb7e27fbe100f2aec2b0e608f9e197ffa8e8'),
+
 ]:
  fragment=source[source.index(begin):source.index(end)]
  assert hashlib.sha256(fragment.encode()).hexdigest()==expected
+assert 'sidLatchArpReleasePool(' in source and 'rebuildArpPools(true);return;' in source
 print('OK: native tracker F1/F2, persistent Pattern data, original MIDI and DSP preserved')

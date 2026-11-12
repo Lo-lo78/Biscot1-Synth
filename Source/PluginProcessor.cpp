@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "PitchBendRouting.h"
+#include "SidArpReleasePool.h"
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -196,9 +197,9 @@ void BiscotProcessor::refreshArpPoolsIfNeeded(){
  // APVTS automation of MIDI mode, octaves, arp mode and pedal enable must
  // still take effect at the next block, without rebuilding on every block.
  const auto settings=currentArpPoolSettings();
- if(arpPoolCache.needsRefresh(settings))rebuildArpPools();
+ if(arpPoolCache.needsRefresh(settings))rebuildArpPools(true);
 }
-void BiscotProcessor::rebuildArpPools(){
+void BiscotProcessor::rebuildArpPools(bool captureRelease){
  const auto settings=currentArpPoolSettings();
  const int mode=settings.midiMode;
  for(int i=0;i<3;++i){
@@ -232,10 +233,8 @@ void BiscotProcessor::rebuildArpPools(){
   }
   for(int n=0;n<count;++n)pool[(size_t)n]=ordered[(size_t)n].second;
   arpPoolCounts[(size_t)i]=count;
-  if(count>0){
-   arpReleaseCounts[(size_t)i]=count;
-   std::copy(pool.begin(),pool.begin()+count,arpReleasePools[(size_t)i].begin());
-  }
+  sidLatchArpReleasePool(pool,count,arpReleasePools[(size_t)i],
+                         arpReleaseCounts[(size_t)i],captureRelease);
  }
  arpPoolCache.didRefresh(settings);
 }
@@ -263,19 +262,8 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
  if(m.isController()){
   if(m.getControllerNumber()==64){
    const bool down=m.getControllerValue()>=64;
-   // Preserve the exact live note pool for the Release tail before
-   // removing CC64-held notes.  The clock and current arp pitch are
-   // intentionally untouched: changing the VCA gate must be as smooth
-   // as letting go of the same notes by hand.
-   if(!down){
-    for(int i=0;i<3;++i){
-     const int count=arpPoolCounts[(size_t)i];
-     if(count>0){
-      arpReleaseCounts[(size_t)i]=count;
-      std::copy_n(arpPools[(size_t)i].begin(),count,arpReleasePools[(size_t)i].begin());
-     }
-    }
-   }
+   // The full release chord was latched during Note On. CC64-up changes
+   // the amplitude gate only; never replace its note memory here.
    pedalDown[(size_t)(ch-1)]=down;
    if(!down)sustainedArp.clearChannel(ch);
    releasePedalLatches(); // same ADSR noteOff transition as a manual key release
@@ -356,7 +344,7 @@ void BiscotProcessor::onMidi(const juce::MidiMessage& m){
     else voices[(size_t)i].quantizedArp.requestRestart();
    }
   }
-  rebuildArpPools();return;
+  rebuildArpPools(true);return;
  }
  if(m.isNoteOff()){
   const int note=m.getNoteNumber();

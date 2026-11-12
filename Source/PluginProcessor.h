@@ -131,7 +131,7 @@ private:
  bool chordMaster() const noexcept {return chordMasterEnabled((int)param(3),param(230)>0.5f);}
  float opSharedParam(int base,int op) const noexcept {return param(base+(chordMaster()?0:op));}
  bool opPedalEnabled(int op) const noexcept {return opSharedParam(227,op)>0.5f;}
- void rebuildArpPools();
+ void rebuildArpPools(bool captureRelease=false);
  void refreshArpPoolsIfNeeded();
  SidArpPoolSettings currentArpPoolSettings() const noexcept;
  double sampleRateHz=44100.,tempoBpm=120.;bool lastPlaying=false;

@@ -7,10 +7,10 @@ labels=(root/'Source/TrackerCellPresentation.h').read_text()
 workflow=(root/'.github/workflows/build-windows.yml').read_text()
 assert 'logicalCell' in header and 'lastLogicalCell' in header
 assert 'cell=trackerVisibleCell(logicalCell,navigator.getNumItems())' in ui
-assert 'if(to==row)return;row=to;if(row>=0&&row<currentPattern().length)lastRealStep=row;refresh(true);auditionCurrentStep();' in ui
+assert 'trackerReturnToLastStep(row,pat.length,lastRealStep)' in ui and 'lastRealStep=row' in ui
 assert 'return juce::String(trackerCellLabel(c).c_str());' in ui
 assert 'tracker->synthIndex' in labels and 'synth.choices' in labels
 assert 'trackerCellValue(cell.id,cell.value)' in labels
 assert 'TrackerCellPresentationTest.exe' in workflow
-assert 'VERSION 0.2.21' in (root/'CMakeLists.txt').read_text()
+assert 'VERSION 0.2.21.1' in (root/'CMakeLists.txt').read_text()
 print('OK: synth-native choice labels and persistent F1 logical cell')

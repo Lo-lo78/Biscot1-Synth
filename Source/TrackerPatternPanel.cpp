@@ -11,6 +11,7 @@
 #include "TrackerCellNavigation.h"
 #include "TrackerPatternInsert.h"
 #include "TrackerStepRecording.h"
+#include "TrackerHeaderNavigation.h"
 
 namespace biscot {
 namespace {
@@ -203,8 +204,17 @@ void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
  else cell=0;
  refresh(true);
 }
-void TrackerPatternPanel::changeRow(int delta){clearSelection();const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
- if(to==row)return;row=to;if(row>=0&&row<currentPattern().length)lastRealStep=row;refresh(true);auditionCurrentStep();
+void TrackerPatternPanel::changeRow(int delta){
+ clearSelection();const auto& pat=currentPattern();
+ const int maxRow=pat.length+(pat.repeat+4)/5;
+ // Lua F1 remembers the edit step when crossing into Repeat/Speed rows.
+ // Up from Repeat returns to that exact step, NOT to Length-1.
+ const int to=(delta==-1 && row==pat.length)
+    ? trackerReturnToLastStep(row,pat.length,lastRealStep)
+    : juce::jlimit(-1,maxRow,row+delta);
+ if(to==row)return;
+ row=to;if(row>=0&&row<pat.length)lastRealStep=row;
+ refresh(true);auditionCurrentStep();
 }
 // Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
 // selects the current step, subsequent Shift+arrows extend the inclusive range.
@@ -322,7 +332,7 @@ void TrackerPatternPanel::jumpToPattern(int target){
  if(target<0||target>=TrackerPatternBank::maxPatterns){announce("Invalid pattern number");return;}
  auto& bank=processor.trackerPatterns;
  if(target==bank.activePattern){announce("Pattern "+juce::String(target));return;}
- clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};
+ clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastRealStep=0;lastLogicalCell={0,0,0};
  processor.commitTrackerState();
  if(page==2){refresh(false);announce("Pattern "+juce::String(target)+". "+positionText());}
  else {refresh(false);announce(positionText(true));}
@@ -588,6 +598,20 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   const int section=trackerShortcutSectionIndex(code,(int)k.getTextCharacter());
   if(section>=0){setTab(section);return true;}
  }
+ // F1 quick navigation to Pattern header/repeat cells.
+ // D/T cycle forward; Shift+D/T cycle backward across every repeat row.
+ // These are plain letter shortcuts only: Alt+E and Ctrl combinations remain untouched.
+ if(!m.isAltDown() && !m.isCtrlDown()){
+  for(const char command : {'l','m','s','r','p','d','t'}){
+   if(letter(command)){
+    const auto target=trackerHeaderShortcut(command,m.isShiftDown(),
+      currentPattern().length,currentPattern().repeat,row,cell);
+    if(target.valid){clearSelection();row=target.row;cell=target.cell;
+     refresh(true);}
+    return true;
+   }
+  }
+ }
  if(m.isCtrlDown() && m.isShiftDown() && !m.isAltDown() &&
     (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   jumpToStep(juce::jlimit(0,currentPattern().length-1,
@@ -596,7 +620,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(false);announce(positionText(true));}return true;
+  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastRealStep=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(false);announce(positionText(true));}return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -681,14 +705,14 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(code==juce::KeyPress::homeKey){
   clearSelection();
   if(row>currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
-  else if(row==currentPattern().length){row=currentPattern().length-1;cell=0;refresh(true);}
+  else if(row==currentPattern().length){row=juce::jlimit(0,currentPattern().length-1,lastRealStep);cell=0;refresh(true);auditionCurrentStep();}
   else if(row>=0){row=-1;cell=0;refresh(true);}
   return true;
  }
  if(code==juce::KeyPress::endKey){
   clearSelection();
   if(row==-1)changeRow(1);
-  else if(row<currentPattern().length){row=currentPattern().length;cell=0;refresh(true);}
+  else if(row<currentPattern().length){lastRealStep=row;row=currentPattern().length;cell=0;refresh(true);}
   else if(row==currentPattern().length)changeRow(1);
   return true;
  }
