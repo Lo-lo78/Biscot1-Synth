@@ -37,7 +37,8 @@ private:
  } numeric;
  BiscotProcessor& processor;
  juce::Label header,help;
- int page=1,tab=0,row=-1,cell=0,parameterIndex=0,paramHeight=8;
+ int page=1,tab=0,row=-1,cell=0,logicalCell=0,parameterIndex=0,paramHeight=8;
+ std::array<int,3> lastLogicalCell{0,0,0};
  enum class NumericPurpose { value, patternNumber, stepNumber };
  NumericPurpose numericPurpose=NumericPurpose::value;
  std::array<int,5> jumpSizes{1,5,10,15,20};
@@ -66,6 +67,7 @@ private:
  void jumpToPattern(int);
  void jumpToStep(int);
  void jumpToNonemptyStep(int);
+ void jumpToSameParameter(int);
  void resetCurrentCell();
  void setCurrentValueExtreme(bool);
  void resetWholePattern();

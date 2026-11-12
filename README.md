@@ -1,8 +1,23 @@
-# Biscot1 Synth VST3 — TEST0.2.19
+# Biscot1 Synth VST3 — TEST0.2.19.3
+
+**Lua 0.166 audition parity for F1 value edits.** When you change the value
+of Note, Gate, OP, Filter or LFO in a step containing a Note, that step now
+previews again immediately after the edited data are published to the immutable
+audio snapshot. Works with Alt+Up/Down, Alt+PageUp/PageDown, Alt+E and
+Alt+Home/End. Backspace reset also previews the restored value. Reaching a
+minimum/maximum without a real value change does not retrigger. A step without
+Note remains silent on isolated preview, as in Lua; editing does **not**
+interrupt a Pattern already playing via Space. No changes to the DSP,
+MIDI, preset/REAPER bank format or Song features. See
+`RELEASE_NOTES_TEST0.2.19.3.md`.
+
+---
+
+# Biscot1 Synth VST3 — TEST0.2.19.2
 
 First audible native Pattern test (Alt+Q, F1/F2): **Space** starts/stops from the edit cursor, **Ctrl+Space** pauses on the currently sounding step, and vertical F1 movement auditions one step as in TrackerControl Lua 0.166. Note/Gate/Pause, per-repeat speed/transpose and direct F2 OP1/Filter/LFO parameter changes are implemented using the existing SID sound engine. REAPER host and `.biscot` Pattern persistence are maintained.
 
-**This is not the complete tracker:** Curve/Curve Resolution, Sub Notes, full Previous Value semantics, Release Arpeggio, MIDI step recording, F1 Ctrl+S file export and F3–F6 Song/browser are still being migrated. See [`RELEASE_NOTES_TEST0.2.19.md`](RELEASE_NOTES_TEST0.2.19.md). Complete Windows VST3 build and NVDA audio tests have not yet been performed.
+**This is not the complete tracker:** Curve/Curve Resolution, Sub Notes, full Previous Value semantics, Release Arpeggio, MIDI step recording, F1 Ctrl+S file export and F3–F6 Song/browser are still being migrated. See [`RELEASE_NOTES_TEST0.2.19.2.md`](RELEASE_NOTES_TEST0.2.19.2.md). Complete Windows VST3 build and NVDA audio tests have not yet been performed.
 
 ---
 
@@ -501,3 +516,14 @@ step selection/recording, import/export to the agreed library directories,
 Ctrl+S standalone Pattern/Song export, Song editor and all Song routing.
 Those are subsequent stages; this build is intended to validate the native
 F1/F2 UI and project/preset persistence first.
+
+### TEST0.2.19.1: F1/F2 cell navigation and readable choice values
+- F1 announces the named options used in the synth for Mode, Wave, Arp, LFO and Off/On controls (not raw enum indices). Curve Ratio displays its original Lua labels.
+- F1 remembers the preferred horizontal cell separately from the actual visible cell. Moving through a step with fewer parameters no longer resets the chosen column; when the destination step has enough cells, the cursor returns to that column.
+- The three F1 sections retain independent preferred columns when switching. No change to synthesis, playback or preset data format.
+
+### TEST0.2.19.2: F1 true logical cursor, matching-parameter jumps
+
+- Keep the original Lua 0.166 `logical_cell` when crossing a step with fewer cells. A programmatic JUCE ComboBox selection of the currently visible item is NOT a horizontal move and must not override it. Intentional left/right movement (or a genuinely different direct ComboBox selection) does update the logical position.
+- In F1, **Ctrl+Alt+Down/Up** visits the next/previous step containing the exact same parameter ID in the current OP/Filter/LFO section. It skips steps without the parameter, focuses the matching cell, announces it and previews the step. No match leaves cursor unchanged. This shortcut is a native extension (not a pre-existing binding in Lua 0.166).
+- Existing **Ctrl+PageUp/PageDown** continues to navigate any nonempty step, as before. The DSP, transport, preset format and F2 remain unchanged.

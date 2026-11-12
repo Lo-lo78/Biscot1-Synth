@@ -6,6 +6,8 @@
 #include <utility>
 #include <string>
 #include "TrackerShortcutKey.h"
+#include "TrackerCellPresentation.h"
+#include "TrackerCellNavigation.h"
 
 namespace biscot {
 namespace {
@@ -25,7 +27,14 @@ TrackerPatternPanel::TrackerPatternPanel(BiscotProcessor& p):navigator(*this),nu
  navigator.setName("Tracker Grid");navigator.setDescription({});navigator.setWantsKeyboardFocus(true);
  navigator.setEditableText(false);navigator.setExplicitFocusOrder(1);
  navigator.onChange=[this]{if(!refreshing && navigator.getSelectedId()>0){
-  if(page==1){cell=navigator.getSelectedId()-1;announce(positionText());}
+  if(page==1){
+   const int requested=navigator.getSelectedId()-1;
+   // A synthetic notification for the selected item of a newly populated
+   // step is not a horizontal cursor move. Keep the Lua logical column.
+   if(!trackerCellSelectionWasChanged(requested,cell))return;
+   cell=requested;
+   if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}
+   announce(positionText());}
   else {parameterIndex=navigator.getSelectedId()-1;announce(positionText());}
  }};
  addAndMakeVisible(navigator);
@@ -53,7 +62,7 @@ void TrackerPatternPanel::open(){
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
 }
-void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;page=1;refresh();}
+void TrackerPatternPanel::restoreAfterPreset(){undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
 void TrackerPatternPanel::close(){
  processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
 }
@@ -72,12 +81,8 @@ TrackerCell* TrackerPatternPanel::selectedCell(){
  return &values[(size_t)cell];
 }
 juce::String TrackerPatternPanel::cellText(const TrackerCell& c) const{
- const auto* p=findTrackerParam(c.id);
- juce::String value=juce::String(c.value,4).trimCharactersAtEnd("0").trimCharactersAtEnd(".");
- if(c.id==1||c.id==7)value=noteName((int)std::round(c.value));
- if(c.id==3)value="Previous value";
- if(c.id==6)value="Pause";
- return juce::String(p?p->name:"Unknown parameter")+", "+value;
+ // Enumerations must speak their actual choice names, as the main synth does.
+ return juce::String(trackerCellLabel(c).c_str());
 }
 juce::String TrackerPatternPanel::positionText() const{
  const int n=processor.trackerPatterns.activePattern;
@@ -127,7 +132,10 @@ void TrackerPatternPanel::refresh(bool speakPosition){
    if(a.empty())navigator.addItem("step "+juce::String(row)+". empty",1);
    else for(int i=0;i<(int)a.size();++i)navigator.addItem("step "+juce::String(row)+". "+cellText(a[(size_t)i]),i+1);
   }
-  cell=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell);
+  if(row>=0 && row<pat.length)
+   cell=trackerVisibleCell(logicalCell,navigator.getNumItems());
+  else
+   cell=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell);
   navigator.setSelectedId(cell+1,juce::dontSendNotification);
  }
  refreshing=false;
@@ -146,7 +154,13 @@ void TrackerPatternPanel::changeValue(double v){
  if(row>p.length){const int idx=(row-p.length-1)*5+cell/2;if(idx>=0&&idx<p.repeat){recordUndo();if(cell%2==0)p.repeatSpeeds[(size_t)idx]=juce::jlimit(0.25,16.0,v);else p.repeatTransposes[(size_t)idx]=juce::jlimit(-96,96,(int)std::round(v));finishEdit();}return;}
  if(auto* c=selectedCell()){
   if(const auto* d=findTrackerParam(c->id)){
-   recordUndo();c->value=juce::jlimit(d->min,d->max,v);finishEdit();
+   const double adjusted=juce::jlimit(d->min,d->max,v);
+   // Exactly like Lua change_value(): no sound or undo entry at a value boundary.
+   if(std::abs(c->value-adjusted)<1.0e-12)return;
+   recordUndo();c->value=adjusted;finishEdit();
+   // Publish the fresh immutable snapshot first, then audition the edited
+   // Note/Gate/OP/Filter/LFO value through the existing audio-thread clock.
+   auditionCurrentStep();
   }
  }
 }
@@ -164,10 +178,16 @@ void TrackerPatternPanel::adjustValue(int direction,double multiplier){
 void TrackerPatternPanel::setTab(int next){if(next<0||next>=3||next==tab)return;
  parameterSearch.reset();clearSelection();
  if(page==2)lastParam[(size_t)tab]=parameterIndex;
- tab=next;cell=0;refresh(true);
+ if(page==1 && row>=0 && row<currentPattern().length)
+  lastLogicalCell[(size_t)tab]=logicalCell;
+ tab=next;
+ if(row>=0 && row<currentPattern().length)
+  logicalCell=lastLogicalCell[(size_t)tab];
+ else cell=0;
+ refresh(true);
 }
 void TrackerPatternPanel::changeRow(int delta){clearSelection();const int to=juce::jlimit(-1,currentPattern().length+(currentPattern().repeat+4)/5,row+delta);
- if(to==row)return;row=to;cell=0;refresh(true);auditionCurrentStep();
+ if(to==row)return;row=to;refresh(true);auditionCurrentStep();
 }
 // Pattern step selection follows TrackerControl 0.166: the first Shift+arrow
 // selects the current step, subsequent Shift+arrows extend the inclusive range.
@@ -181,7 +201,7 @@ void TrackerPatternPanel::extendStepSelection(int delta){
   if(next==selectionEnd)return;
   selectionEnd=next;row=next;
  }
- cell=0;refresh();
+ refresh();
  const int lo=juce::jmin(selectionAnchor,selectionEnd);
  const int hi=juce::jmax(selectionAnchor,selectionEnd);
  announce(lo==hi?"Step "+juce::String(lo)+" selected":
@@ -209,7 +229,7 @@ void TrackerPatternPanel::pasteSelectedSteps(){
  // Safe even when the source and destination belong to the same Pattern:
  // the clipboard owns complete, independent snapshots of all three sections.
  for(int i=0;i<n;++i)pat.steps[row+i]=stepClipboard[(size_t)i];
- clearSelection();cell=0;processor.commitTrackerState();refresh();
+ clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;processor.commitTrackerState();refresh();
  announce(n==1?"One step pasted":juce::String(n)+" steps pasted");
 }
 void TrackerPatternPanel::eraseSelectedSteps(bool cut){
@@ -220,7 +240,7 @@ void TrackerPatternPanel::eraseSelectedSteps(bool cut){
  recordUndo();
  auto& pat=currentPattern();
  for(int st=lo;st<=hi;++st)pat.steps.erase(st);
- clearSelection();cell=0;processor.commitTrackerState();refresh();
+ clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;processor.commitTrackerState();refresh();
  const int n=hi-lo+1;
  announce(juce::String(n==1?"One step ":"Steps ")+juce::String(cut?"cut":"deleted")+
   (n==1?juce::String():" ("+juce::String(n)+")"));
@@ -235,7 +255,7 @@ void TrackerPatternPanel::resetCurrentStep(){
   const TrackerPattern defaults;
   pat.steps[row].tabs[0]=defaults.view(0,0);
  }
- clearSelection();cell=0;finishEdit();announce("Step "+juce::String(row)+" "+sectionNames[tab]+" initialized");
+ clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;finishEdit();announce("Step "+juce::String(row)+" "+sectionNames[tab]+" initialized");
 }
 void TrackerPatternPanel::clearCurrentSection(){
  recordUndo();
@@ -246,7 +266,7 @@ void TrackerPatternPanel::clearCurrentSection(){
    it=pat.steps.erase(it);
   else ++it;
  }
- clearSelection();cell=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
+ clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
 }
 void TrackerPatternPanel::openNumericEditor(NumericPurpose purpose,const juce::String& label,
                                              const juce::String& initial){
@@ -260,12 +280,28 @@ void TrackerPatternPanel::jumpToPattern(int target){
  if(target<0||target>=TrackerPatternBank::maxPatterns){announce("Invalid pattern number");return;}
  auto& bank=processor.trackerPatterns;
  if(target==bank.activePattern){announce("Pattern "+juce::String(target));return;}
- clearSelection();bank.activePattern=target;row=-1;cell=0;
+ clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};
  processor.commitTrackerState();refresh(true);
 }
 void TrackerPatternPanel::jumpToStep(int target){
  if(target<0||target>=currentPattern().length){announce("Invalid step number");return;}
- clearSelection();row=target;cell=0;refresh(true);auditionCurrentStep();
+ clearSelection();row=target;refresh(true);auditionCurrentStep();
+}
+void TrackerPatternPanel::jumpToSameParameter(int direction){
+ if(row<0 || row>=currentPattern().length){announce("Select a step parameter first");return;}
+ const auto* selected=selectedCell();
+ if(selected==nullptr){announce("No parameter in this step");return;}
+ const int parameterId=selected->id;
+ const auto match=trackerFindMatchingParameter(currentPattern(),row,tab,parameterId,direction);
+ if(match.first<0){
+  const auto* d=findTrackerParam(parameterId);
+  announce(juce::String("No ")+(direction<0?"previous":"next")+
+           " occurrence of "+juce::String(d?d->name:"parameter"));
+  return;
+ }
+ clearSelection();row=match.first;cell=match.second;
+ logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
+ refresh(true);auditionCurrentStep();
 }
 void TrackerPatternPanel::jumpToNonemptyStep(int direction){
  if(row<0||row>=currentPattern().length)return;
@@ -274,7 +310,7 @@ void TrackerPatternPanel::jumpToNonemptyStep(int direction){
   const auto it=p.steps.find(next);
   if(it!=p.steps.end() && (!it->second.tabs[0].empty() || !it->second.tabs[1].empty()
                            || !it->second.tabs[2].empty())){
-   clearSelection();row=next;cell=0;refresh(true);return;
+   clearSelection();row=next;refresh(true);return;
   }
  }
 }
@@ -284,6 +320,8 @@ void TrackerPatternPanel::resetCurrentCell(){
  const auto* def=findTrackerParam(c->id);if(!def)return;
  if(c->value==def->initial)return;
  recordUndo();c->value=def->initial;finishEdit();
+ // Resetting a parameter with Backspace is an audible value edit too.
+ auditionCurrentStep();
 }
 void TrackerPatternPanel::setCurrentValueExtreme(bool maximum){
  if(row<0){changeValue(maximum?(cell==0?1024.0:127.0):(cell==0?1.0:-1.0));return;}
@@ -298,7 +336,8 @@ void TrackerPatternPanel::auditionCurrentStep(){
  // As in the Lua tracker, visiting an actual step auditions just that step;
  // do not interrupt an intentionally running full Pattern.
  const int status=processor.trackerPlaybackStatus.load(std::memory_order_relaxed);
- if(status!=1)processor.requestTrackerStart(row,true);
+ if(trackerCanAuditionStep(currentPattern(),row,status))
+  processor.requestTrackerStart(row,true);
 }
 void TrackerPatternPanel::playFromCursor(){
  const int status=processor.trackerPlaybackStatus.load(std::memory_order_relaxed);
@@ -322,7 +361,7 @@ void TrackerPatternPanel::pauseAtAudibleStep(){
      safe->processor.trackerPlaybackStatus.load(std::memory_order_relaxed)!=2)return;
   const int step=safe->processor.trackerAudibleStep.load(std::memory_order_relaxed);
   if(step>=0 && step<safe->currentPattern().length){
-   safe->row=step;safe->cell=0;safe->clearSelection();safe->page=1;
+   safe->row=step;safe->clearSelection();safe->page=1;
    safe->refresh(false);
    safe->announce("Paused at step "+juce::String(step));
   }else safe->announce("Pattern paused");
@@ -330,7 +369,7 @@ void TrackerPatternPanel::pauseAtAudibleStep(){
 }
 void TrackerPatternPanel::resetWholePattern(){
  recordUndo();currentPattern()=TrackerPattern{};
- clearSelection();row=-1;cell=0;finishEdit();announce("Pattern initialized");
+ clearSelection();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};finishEdit();announce("Pattern initialized");
 }
 bool TrackerPatternPanel::keyPressed(const juce::KeyPress& k){return handle(k,false);}
 bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
@@ -404,7 +443,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
     auto& pat=currentPattern();const int insertAt=juce::jlimit(0,(int)pat.view(row,tab).size(),cell+1);
     if(pat.totalCells(row)>=128){announce("Step is full, 128 cells");return true;}
     recordUndo();if(pat.insert(row,tab,insertAt,{def->id,def->initial})){
-     cell=insertAt;processor.commitTrackerState();announce(juce::String(def->name)+" inserted");
+     cell=insertAt;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;processor.commitTrackerState();announce(juce::String(def->name)+" inserted");
     }
    }
    if(!m.isCtrlDown()){page=1;refresh(true);}return true;
@@ -436,6 +475,13 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    "Go to step 0 to "+juce::String(currentPattern().length-1),
    juce::String(juce::jlimit(0,currentPattern().length-1,row)));
   return true;
+ }
+ // Native extension to Lua F1: jump to the next/previous step containing
+ // exactly the same parameter (same ID, current OP/Filter/LFO section).
+ // This is distinct from Ctrl+PageUp/PageDown, which visits ANY nonempty step.
+ if(m.isCtrlDown() && m.isAltDown() && !m.isShiftDown() &&
+    (code==juce::KeyPress::upKey || code==juce::KeyPress::downKey)){
+  jumpToSameParameter(code==juce::KeyPress::upKey?-1:1);return true;
  }
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::pageUpKey){
   jumpToNonemptyStep(-1);return true;
@@ -475,7 +521,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;processor.commitTrackerState();refresh(true);}return true;
+  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(true);}return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -500,7 +546,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && letter('v')){
   if(clipboardMode==ClipboardMode::pattern){
    recordUndo();currentPattern()=wholePatternClipboard;
-   row=-1;cell=0;clearSelection();finishEdit();announce("Entire Pattern pasted");return true;
+   row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};clearSelection();finishEdit();announce("Entire Pattern pasted");return true;
   }
   if(clipboardMode==ClipboardMode::steps){
    if(row<0||row>=currentPattern().length)announce("Select a step before pasting");
@@ -508,18 +554,18 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   }
   if(clipboardMode==ClipboardMode::parameter && hasClipboard && row>=0&&row<currentPattern().length){
    auto& pat=currentPattern();if(pat.totalCells(row)<128){recordUndo();const int at=cell+1;
-    pat.insert(row,tab,at,clipboard);cell=at;finishEdit();announce("Parameter pasted");}
+    pat.insert(row,tab,at,clipboard);cell=at;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();announce("Parameter pasted");}
    else announce("Step is full, 128 cells");
   }else announce(clipboardMode==ClipboardMode::none?
                 "Clipboard empty":"Select a step before pasting");return true;
  }
  if(m.isCtrlDown() && code==juce::KeyPress::leftKey && row>=0 && row<currentPattern().length){
   auto& a=currentPattern().cells(row,tab);if(cell>0&&cell<(int)a.size()){
-   recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell-1)]);--cell;finishEdit();}return true;
+   recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell-1)]);--cell;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();}return true;
  }
  if(m.isCtrlDown() && code==juce::KeyPress::rightKey && row>=0 && row<currentPattern().length){
   auto& a=currentPattern().cells(row,tab);if(cell>=0&&cell+1<(int)a.size()){
-   recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell+1)]);++cell;finishEdit();}return true;
+   recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell+1)]);++cell;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();}return true;
  }
  if(m.isAltDown()){
   if(letter('e')){double v=0;
@@ -556,7 +602,9 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(code==juce::KeyPress::pageDownKey){changeRow(juce::jmax(5,jumpSizes[(size_t)jumpIndex]));return true;}
  if(code==juce::KeyPress::leftKey||code==juce::KeyPress::rightKey){
   clearSelection();const int next=juce::jlimit(0,juce::jmax(0,navigator.getNumItems()-1),cell+(code==juce::KeyPress::leftKey?-1:1));
-  if(next!=cell){cell=next;refresh(true);}return true;
+  if(next!=cell || (row>=0 && row<currentPattern().length && logicalCell!=next)){
+   cell=next;if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}refresh(true);}
+  return true;
  }
  // User-preferred F1 direction: Home travels backward toward Length;
  // End travels forward toward Repeat and Speed. F2 is deliberately unchanged.

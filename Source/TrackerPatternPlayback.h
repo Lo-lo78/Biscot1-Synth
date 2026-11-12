@@ -49,6 +49,20 @@ inline TrackerPlayablePattern compileTrackerPattern(const TrackerPattern& patter
  }
  return result;
 }
+// Lua 0.166 previews a step only when that step has an explicit Note.
+// Previewing a parameter-only row must not restart an unrelated held note.
+inline bool trackerStepHasAuditionNote(const TrackerPattern& pattern,int step){
+ if(step<0 || step>=pattern.length)return false;
+ for(int tab=0;tab<3;++tab)
+  for(const auto& c:pattern.view(step,tab))
+   if(c.id==1)return true;
+ return false;
+}
+// Status 1 is a user-started complete Pattern: editing must not interrupt it.
+// Status 3 is a one-step audition, which an edit is allowed to restart.
+inline bool trackerCanAuditionStep(const TrackerPattern& pattern,int step,int status){
+ return status!=1 && trackerStepHasAuditionNote(pattern,step);
+}
 struct TrackerTransportTick {int startStep=-1; bool gateOff=false, finished=false;};
 class TrackerPatternTransport {
 public:
