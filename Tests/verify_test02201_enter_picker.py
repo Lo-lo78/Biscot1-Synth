@@ -6,7 +6,7 @@ workflow=(r/'.github/workflows/build-windows.yml').read_text()
 # Enter opens the picker only while on a real Pattern step.
 assert 'if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){\n  if(row>=0 && row<currentPattern().length){\n   clearSelection();page=2;parameterSearch.reset();refresh(true);' in s
 # No F2 branch can open the old parameter picker.
-assert 'if(code==juce::KeyPress::F2Key){announce("Song editor not yet implemented");return true;}' in s
+assert 'if(code==juce::KeyPress::F2Key){if(onOpenSong)onOpenSong();return true;}' in s
 assert "if(letter('e')){openSelectedValueEditor();return true;}" in s
 assert 'if(code==juce::KeyPress::homeKey){setCurrentValueExtreme(true);return true;}' in s
 assert 'if(code==juce::KeyPress::endKey){setCurrentValueExtreme(false);return true;}' in s
@@ -15,6 +15,6 @@ assert 'if(code==juce::KeyPress::returnKey){\n   if(const auto* def=currentParam
 assert 'if(!m.isCtrlDown()){page=1;refresh(true);}' in s
 assert 'if(code==juce::KeyPress::escapeKey && page==2)' in s
 assert 'NumericPurpose::patternNumber,"Go to Pattern 0 to 999"' in s
-assert 'Biscot1-TEST0.2.21.3-Windows-x64' in workflow
-assert 'VERSION 0.2.21.3' in (r/'CMakeLists.txt').read_text()
-print('OK: remapped Enter, Alt+E, Alt+Enter, F2 reserved, reversed value limits')
+assert 'Biscot1-TEST0.2.23-Windows-x64' in workflow
+assert 'VERSION 0.2.23' in (r/'CMakeLists.txt').read_text()
+print('OK: remapped Enter, Alt+E, Alt+Enter, F2 routed to Song, reversed value limits')

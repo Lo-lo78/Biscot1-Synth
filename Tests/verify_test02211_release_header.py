@@ -1,4 +1,4 @@
-"""TEST0.2.21.3: release-latch MIDI integration and F1 direct navigation wiring."""
+"""TEST0.2.23: release-latch MIDI integration and F1 direct navigation wiring."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 processor=(root/'Source/PluginProcessor.cpp').read_text(encoding='utf-8')
@@ -16,9 +16,9 @@ assert 'noteOff(ch,note);' in note_off and 'rebuildArpPools();return;' in note_o
 pedal=processor.split('if(m.getControllerNumber()==64){',1)[1].split('if(m.getControllerNumber()==123)',1)[0]
 assert 'std::copy_n(arpPools' not in pedal
 assert 'trackerMoveWithinF1Region(row,delta,pat.length,pat.repeat)' in ui
-assert 'trackerF1HomeTarget(row,currentPattern().length,lastRealStep)' in ui
+assert 'trackerF1HomeTarget(row,pat.length,lastRealStep)' in ui
 assert 'trackerHeaderShortcut(command,m.isShiftDown()' in ui
 assert "{'l','m','s','r','p','d','t'}" in ui
 assert 'SidArpReleaseLatchTest.exe' in workflow and 'TrackerHeaderNavigationTest.exe' in workflow
-assert 'VERSION 0.2.21.3' in cmake and 'TEST0.2.21.3' in workflow
+assert 'VERSION 0.2.23' in cmake and 'TEST0.2.23' in workflow
 print('OK release chord retained until ADSR idle, F1 direct header / D/T cycle wired')

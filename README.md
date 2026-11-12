@@ -1,3 +1,17 @@
+# Biscot1 Synth VST3 — TEST0.2.22 (first native F2 Song milestone)
+
+This version starts the Song migration from `Biscot1 TrackerControl` Lua 0.166.
+**F2** opens a separate native Song editor with three independent operator lanes;
+all 100 Song slots and Song data are stored with the complete preset in `.biscot`
+and the REAPER host state. Enter opens the 17-parameter Song picker.
+
+**Song playback and standalone Song Ctrl+S are not implemented yet.**
+F1 Pattern, DSP, MIDI/arp release, the Pattern library and audio playback remain
+as in TEST0.2.21.4. Read `RELEASE_NOTES_TEST0.2.22.md` for F2 keyboard controls
+and `SONG_MIGRATION_PLAN.md` for the four phases, including portable Song packages.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.20
 
 Fixes F1 numeric section shortcuts **1 = OP**, **2 = Filter**, **3 = LFO**. The Windows Ctrl+letter fix mistakenly reused an alphabet-only key matcher for digits; the new helper uses JUCE keyCode or text character and is covered by a Release regression test. F2 stays as in TrackerControl 0.166: Ctrl+Tab changes section; digits remain available to incremental search. F3 Song, the three concurrent operator lanes and routing of patterns to Op1/Op2/Op3 are **not yet migrated**.
@@ -602,3 +616,22 @@ Git: `git add . && git commit -m "Biscot1 TEST0.2.21.2 fix tracker parameter ins
 ## TEST0.2.21.3 — F1 fixed navigation regions and Release Arpeggio analysis
 
 Plain Up/Down/PageUp/PageDown stay strictly within Header, Steps or Repeat/Speed/Transpose. Only Home/End move between regions. **Release Arpeggio** is not an arp sustain toggle: Off leaves the ordinary chord arpeggiator cycling during Release; On tries to replace it with explicit Pattern Note cells (not Sub Notes). The user reports On can sound static; its audible Windows behavior remains to be diagnosed. This update leaves the audio code untouched. See `RELEASE_NOTES_TEST0.2.21.3.md`.
+
+## TEST0.2.21.4 — F1 local Home/End and independent Pattern library
+
+F1 navigation is now three coherent regions (Header, Steps, Repeat/Speed/Transpose):
+
+- **Home/End**: first/last item **within the current region**. On Header neither key moves vertically; on Steps they go to step 0 or Length-1, preserving the OP/Filter/LFO logical cell; on footer they go to Repeat or the last Transpose.
+- **Ctrl+Home / Ctrl+End**: navigate to the previous/next region. Footer -> Steps returns to the **last visited Step**, while Header -> Steps also resumes there. They no longer treat Repeat and Speed as separate regions.
+- Alt+Home/End still set maximum/minimum parameter values; in the Enter-opened parameter picker, Ctrl+Home/End still reach first/last parameter and Home/End still navigate the selected column.
+
+**Ctrl+S in F1** (including the parameter picker) now saves **only the active Pattern**, such as Pattern 4, as a UTF-8 text `.biscot1-pattern` in `Documents/Biscot1-Synth/Patterns/Singles/Pattern_004.biscot1-pattern`. This standalone library file includes all three OP/Filter/LFO step tables, order of cells, repeat speeds/transposes, MIDI Note, Release Arpeggio, name and length. It does not change the full `.biscot` preset or the REAPER project. The `Patterns/Singles` and `Songs` folders are created on the first export. A file of the same name from another preset is not silently overwritten; a numeric suffix is used when necessary. Re-saving the same Pattern within the same tracker session updates the file originally exported.
+
+**F2 Song is still reserved**. Planned export: `Songs/<SongName>.biscot1-song` plus the exact referenced Patterns in `Patterns/<SongName>/*.biscot1-pattern`, using **relative paths** and stable Pattern IDs. This will be added together with the F2 Song editor, not before it. The audio/sequence in the song package uses the currently loaded synth sound; only the `.biscot` preset includes the synth configuration. A portable Song package must include both the Songs file and the corresponding Patterns subfolder.
+
+Native `.biscot` format, tracker playback and DSP have **not changed** in this release.
+
+
+## TEST0.2.23 — Song F2 edit controls
+
+Song F2 now has step-range selection (Shift+arrows/Page), cell and step clipboard (Ctrl+C/X/V), independent Undo/Redo (Ctrl+Z/Ctrl+Shift+Z), Song name (Ctrl+R), ordering (Ctrl+Left/Right), Mute/Solo (M/S) and Song volume (+/-). Mixer changes are stored but will take audible effect only after the Phase 3 Song audio engine. F2 Ctrl+S standalone Song export remains Phase 4; Alt+S saves the complete preset including the Song bank. See RELEASE_NOTES_TEST0.2.23.md and SONG_MIGRATION_PLAN.md.

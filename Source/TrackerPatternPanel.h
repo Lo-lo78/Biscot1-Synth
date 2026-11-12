@@ -21,8 +21,10 @@ public:
  std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
  bool keyPressed(const juce::KeyPress&) override;
  void open();
+ void suspendForSong();
  void restoreAfterPreset();
  std::function<void()> onClose;
+ std::function<void()> onOpenSong;
  std::function<void(bool)> onPresetBrowser;
 private:
  struct Navigator : juce::ComboBox {
@@ -52,6 +54,9 @@ private:
  void setStepRecording(bool enable);
  std::vector<const TrackerParam*> parameterList;
  std::map<int,std::vector<TrackerPattern>> undo,redo;
+ // Reuse this editor session's export target, but never overwrite an
+ // unrelated saved Pattern merely because it uses the same slot number.
+ std::map<int,juce::File> patternExportFiles;
  TrackerCell clipboard{};
  bool hasClipboard=false;
  enum class ClipboardMode { none, parameter, steps, pattern };
@@ -95,6 +100,7 @@ private:
  bool handle(const juce::KeyPress&,bool editing);
  void setTab(int);
  void changeRow(int);
+ void saveCurrentPattern();
  void close();
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackerPatternPanel)
 };

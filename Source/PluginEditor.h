@@ -6,6 +6,7 @@
 #include "PresetManager.h"
 #include "PresetBrowser.h"
 #include "TrackerPatternPanel.h"
+#include "TrackerSongPanel.h"
 #include <array>
 #include <vector>
 #include <memory>
@@ -44,6 +45,8 @@ private:
  PresetManager presetManager;
  std::unique_ptr<PresetBrowser> presetBrowser;
  std::unique_ptr<TrackerPatternPanel> trackerPanel;
+ std::unique_ptr<TrackerSongPanel> songPanel;
+ bool songBrowserReturn=false;
  bool trackerBrowserReturn=false;
  Control presetReturnControl=Control::grid;
  int presetReturnGroup=0, presetReturnSelection=0;

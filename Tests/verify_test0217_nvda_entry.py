@@ -17,5 +17,5 @@ assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in source
 assert 'announce(grid,labelFor(selected));' in source
 assert 'createIgnoredAccessibilityHandler(*this)' not in (root/'Source/PresetBrowser.cpp').read_text()
 assert 'verify_test0217_nvda_entry.py' in workflow
-assert 'TEST0.2.21.3' in source and 'TEST0.2.21.3' in workflow
+assert 'TEST0.2.23' in source and 'TEST0.2.23' in workflow
 print('OK: ignored root like LB-303, native Grid/Value/Edit focus preserved')

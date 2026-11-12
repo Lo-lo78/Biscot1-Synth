@@ -1,3 +1,4 @@
+#include "TrackerSongParameters.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "PitchBendRouting.h"
@@ -963,6 +964,7 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
 // Nothing in this serializer is called from processBlock() or renderOne().
 namespace {
 const juce::Identifier trackerStateKey{"trackerPatternsV1"};
+const juce::Identifier trackerSongStateKey{"trackerSongsV1"};
 constexpr int trackerMagic=0x42545031; // BTP1
 void writeTrackerBank(const TrackerPatternBank& b,juce::MemoryOutputStream& o){
  o.writeInt(trackerMagic);o.writeInt(b.activePattern);o.writeInt((int)b.patterns.size());
@@ -1030,6 +1032,114 @@ bool readTrackerBank(const juce::String& text,TrackerPatternBank& result){
  result=std::move(fresh);return true;
 }
 }
+// Song serialization is independent of Pattern V1. Old .biscot files remain
+// readable; missing trackerSongsV1 means an empty Song bank. No audio thread IO.
+namespace {
+constexpr int trackerSongMagic=0x42545331; // BTS1
+void writeSongBank(const TrackerSongBank& b,juce::MemoryOutputStream& out){
+ out.writeInt(trackerSongMagic);out.writeInt(b.activeSong);out.writeInt((int)b.songs.size());
+ for(const auto& [slot,s]:b.songs){
+  out.writeInt(slot);out.writeString(juce::String::fromUTF8(s.name.c_str()));
+  out.writeInt(s.midiNote);out.writeInt(s.songEnd);out.writeInt(s.loopTarget);out.writeInt(s.chainLoop?1:0);
+  out.writeInt(s.filterOwner);out.writeInt(s.filterMask);
+  for(int owner:s.lfoOwners)out.writeInt(owner);
+  for(int volume:s.mixerVolumes)out.writeInt(volume);
+  out.writeInt(s.mixerMuteMask);out.writeInt(s.mixerSoloLane);
+  for(int lane=0;lane<3;++lane){
+   out.writeInt(s.laneLengths[(size_t)lane]);
+   const int repeats=s.laneRepeats[(size_t)lane];out.writeInt(repeats);
+   for(int i=0;i<repeats;++i)
+    out.writeDouble(i<(int)s.laneSpeeds[(size_t)lane].size()?s.laneSpeeds[(size_t)lane][(size_t)i]:1.0);
+   const auto& a=s.lanes[(size_t)lane];
+   int count=0;for(const auto& [step,entry]:a)if(step>=0&&step<4096&&!entry.empty())++count;
+   out.writeInt(count);
+   for(const auto& [step,entry]:a){
+    if(step<0||step>=4096||entry.empty())continue;
+    out.writeInt(step);out.writeInt((int)entry.order.size());
+    for(int id:entry.order){out.writeInt(id);out.writeDouble(entry.values[(size_t)id]);}
+    // Pattern range Start and Play Length belong to the Pattern group.
+    if(entry.contains(1)){
+     out.writeDouble(entry.values[5]);out.writeDouble(entry.values[6]);
+    }
+   }
+  }
+ }
+}
+bool readSongBank(const juce::String& text,TrackerSongBank& result){
+ juce::MemoryBlock binary;
+ if(text.isEmpty()||!binary.fromBase64Encoding(text)||binary.getSize()>128u*1024u*1024u)return false;
+ juce::MemoryInputStream in(binary,false);
+ const auto available=[&](int64_t n){return n>=0 && in.getPosition()<=in.getDataSize() &&
+    n<=(int64_t)(in.getDataSize()-in.getPosition());};
+ if(!available(12)||in.readInt()!=trackerSongMagic)return false;
+ TrackerSongBank fresh;fresh.songs.clear();
+ const int current=in.readInt(),count=in.readInt();
+ if(current<0||current>=100||count<0||count>100)return false;
+ for(int x=0;x<count;++x){
+  if(!available(4))return false;
+  const int slot=in.readInt();
+  if(slot<0||slot>=100||fresh.songs.count(slot))return false;
+  const auto name=in.readString();
+  if(name.length()>1024||!available(4*15))return false;
+  TrackerSong song;song.name=name.toStdString();
+  song.midiNote=in.readInt();song.songEnd=in.readInt();song.loopTarget=in.readInt();song.chainLoop=in.readInt()!=0;
+  song.filterOwner=in.readInt();song.filterMask=in.readInt();
+  for(auto& v:song.lfoOwners)v=in.readInt();
+  for(auto& v:song.mixerVolumes)v=in.readInt();
+  song.mixerMuteMask=in.readInt();song.mixerSoloLane=in.readInt();
+  if(song.midiNote< -1||song.midiNote>127||song.songEnd< -1||song.songEnd>99||
+     song.loopTarget< -1||song.loopTarget>99||song.filterOwner<1||song.filterOwner>3||
+     song.filterMask<0||song.filterMask>7||song.mixerMuteMask<0||song.mixerMuteMask>7||
+     song.mixerSoloLane<0||song.mixerSoloLane>3)return false;
+  for(int v:song.lfoOwners)if(v<1||v>3)return false;
+  for(int v:song.mixerVolumes)if(v<0||v>100)return false;
+  for(int lane=0;lane<3;++lane){
+   if(!available(8))return false;
+   const int len=in.readInt(),repeats=in.readInt();
+   if(len<1||len>4096||repeats<1||repeats>1000||!available((int64_t)repeats*8+4))return false;
+   song.laneLengths[(size_t)lane]=len;song.laneRepeats[(size_t)lane]=repeats;
+   auto& speeds=song.laneSpeeds[(size_t)lane];speeds.clear();
+   for(int i=0;i<repeats;++i){
+    const double speed=in.readDouble();
+    if(!std::isfinite(speed)||speed<0.25||speed>16.)return false;
+    speeds.push_back(speed);
+   }
+   const int rows=in.readInt();if(rows<0||rows>4096)return false;
+   auto& a=song.lanes[(size_t)lane];
+   for(int r=0;r<rows;++r){
+    if(!available(8))return false;
+    const int step=in.readInt(),entries=in.readInt();
+    if(step<0||step>=4096||entries<1||entries>17||a.count(step)||!available((int64_t)entries*12))return false;
+    TrackerSongStep entry;
+    for(int k=0;k<entries;++k){
+     const int id=in.readInt();const double value=in.readDouble();
+     if(!std::isfinite(value)||!entry.insert(id))return false;
+     if(const auto* def=songParam(id)){
+      if(value<def->min-1.0e-7||value>def->max+1.0e-7)return false;
+     }
+     entry.values[(size_t)id]=value;
+    }
+    if(entry.contains(1)){
+     if(!available(16))return false;
+     entry.values[5]=in.readDouble();entry.values[6]=in.readDouble();
+     if(!std::isfinite(entry.values[5])||!std::isfinite(entry.values[6])||
+        entry.values[5]<0||entry.values[5]>1023||entry.values[6]<1||entry.values[6]>1024)return false;
+    }
+    a.emplace(step,std::move(entry));
+   }
+  }
+  fresh.songs.emplace(slot,std::move(song));
+ }
+ if(!available(0)||in.getPosition()!=in.getDataSize())return false;
+ fresh.activeSong=current;
+ if(!fresh.songs.count(current))fresh.songs.try_emplace(current);
+ result=std::move(fresh);return true;
+}
+}
+void BiscotProcessor::commitSongState(){
+ juce::MemoryOutputStream stream;writeSongBank(trackerSongs,stream);
+ state.state.setProperty(trackerSongStateKey,stream.getMemoryBlock().toBase64Encoding(),nullptr);
+}
 void BiscotProcessor::commitTrackerState(){
  juce::MemoryOutputStream stream;writeTrackerBank(trackerPatterns,stream);
  trackerMidiMap.store(std::make_shared<const TrackerMidiMap>(compileTrackerMidiMap(trackerPatterns)),std::memory_order_release);
@@ -1044,8 +1154,11 @@ void BiscotProcessor::setStateInformation(const void* ptr,int length){
   auto tree=juce::ValueTree::fromXml(*xml);
   TrackerPatternBank restored;
   if(!readTrackerBank(tree.getProperty(trackerStateKey).toString(),restored))restored.reset();
+  TrackerSongBank restoredSongs;
+  if(!readSongBank(tree.getProperty(trackerSongStateKey).toString(),restoredSongs))restoredSongs.reset();
   state.replaceState(tree);
   trackerPatterns=std::move(restored);
+  trackerSongs=std::move(restoredSongs);
   trackerMidiMap.store(std::make_shared<const TrackerMidiMap>(compileTrackerMidiMap(trackerPatterns)),std::memory_order_release);
   if(const auto* pat=trackerPatterns.find(trackerPatterns.activePattern))
    trackerPlayable.store(std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(*pat)),

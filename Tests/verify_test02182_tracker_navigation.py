@@ -13,8 +13,8 @@ assert 'if(code==juce::KeyPress::homeKey){move=-parameterIndex%paramHeight;}' in
 assert 'if(code==juce::KeyPress::endKey){move=juce::jmin(count-1-parameterIndex,paramHeight-1-parameterIndex%paramHeight);}' in panel
 assert panel.count('if(code==juce::KeyPress::homeKey)')>=2
 assert 'trackerMoveWithinF1Region(row,delta,pat.length,pat.repeat)' in panel
-assert 'trackerF1HomeTarget(row,currentPattern().length,lastRealStep)' in panel
-assert 'trackerF1EndTarget(row,currentPattern().length,currentPattern().repeat,lastRealStep)' in panel
+assert 'trackerF1HomeTarget(row,pat.length,lastRealStep)' in panel
+assert 'trackerF1EndTarget(row,pat.length,pat.repeat,lastRealStep)' in panel
 assert 'biscotParameterSearchCharacter(k)' in panel
 assert 'parameterSearch.next(' in panel
 assert 'm.isShiftDown()?-1:1' in panel

@@ -2,6 +2,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ParameterCatalog.h"
 #include "TrackerPatternBank.h"
+#include "TrackerSongBank.h"
 #include "TrackerPatternPlayback.h"
 #include <memory>
 #include "SidOutputStage.h"
@@ -49,10 +50,12 @@ public:
  void setStateInformation(const void*,int) override;
  juce::AudioProcessorValueTreeState state;
  TrackerPatternBank trackerPatterns;
+ TrackerSongBank trackerSongs; // 100 independent three-lane Songs, stored in .biscot and host state
  using TrackerRecordedMidiEvent=biscot::TrackerRecordedMidiEvent;
  std::atomic<bool> trackerStepRecording{false};
  bool popTrackerRecordedMidi(TrackerRecordedMidiEvent& e) noexcept {return trackerMidiQueue.pop(e);}
  void commitTrackerState(); // UI thread: serialize and publish an immutable Pattern snapshot
+ void commitSongState(); // UI thread: Song data only, never read by audio thread yet
  void requestTrackerStart(int step,bool audition=false) noexcept;
  void requestTrackerPause() noexcept;
  void requestTrackerStop() noexcept;

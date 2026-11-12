@@ -32,7 +32,7 @@ inline TrackerHeaderLocation trackerHeaderShortcut(char key, bool backwards,
 }
 // F1 has three independent vertical navigation regions: Pattern header,
 // actual steps, and Repeat/Speed/Transpose. Plain Up/Down and PageUp/Down
-// must NEVER silently cross a boundary; only explicit Home/End can.
+// must NEVER silently cross a boundary; only explicit Ctrl+Home/End can.
 inline int trackerMoveWithinF1Region(int row,int delta,int length,int repeats) noexcept {
  length=std::clamp(length,1,1024);
  repeats=std::clamp(repeats,1,1000);
@@ -49,8 +49,20 @@ inline int trackerF1HomeTarget(int row,int length,int savedStep) noexcept {
 inline int trackerF1EndTarget(int row,int length,int repeats,int savedStep) noexcept {
  if(row<0)return std::clamp(savedStep,0,std::max(0,length-1)); // Header -> steps.
  if(row<length)return length; // Steps -> Repeat.
- if(row==length && repeats>0)return length+1; // Repeat -> first Speed/Transpose.
- return row; // Last group: no additional navigation region.
+ return row; // Footer (Repeat/Speed/Transpose) is ONE area.
+}
+// Plain Home/End visit the first/last position WITHIN the current area.
+// They never cross between Header, Steps or Repeat/Speed/Transpose.
+// In the footer, End selects the last available Transpose, not an
+// invalid item in the final partially populated row.
+inline TrackerHeaderLocation trackerF1AreaEdge(int row, int cell, int length, int repeats, bool toEnd) noexcept {
+ length=std::clamp(length,1,1024);
+ repeats=std::clamp(repeats,1,1000);
+ if(row<0)return {-1,cell,true}; // Header: no vertical movement.
+ if(row<length)return {toEnd?length-1:0,cell,true};
+ if(!toEnd)return {length,0,true}; // First footer item = Repeat.
+ const int idx=repeats-1;
+ return {length+1+idx/5, (idx%5)*2+1, true};
 }
 inline int trackerReturnToLastStep(int currentRow,int length,int previousStep) noexcept {
  // Only the transition from Repeat -> real steps restores the remembered

@@ -47,15 +47,37 @@ int main(){
  CHECK(trackerMoveWithinF1Region(length+3,-1,length,repeats)==length+2);
  CHECK(trackerMoveWithinF1Region(length+3,1,length,repeats)==length+3);
  CHECK(trackerMoveWithinF1Region(length+3,25,length,repeats)==length+3);
- // Only Home/End cross areas; the remembered step survives footer navigation.
+ // Ctrl+Home/End cross areas; the remembered step survives footer navigation.
  CHECK(trackerF1HomeTarget(5,length,5)==-1);
  CHECK(trackerF1HomeTarget(length,length,5)==5);
  CHECK(trackerF1HomeTarget(length+3,length,5)==5);
  CHECK(trackerF1HomeTarget(-1,length,5)==-1);
  CHECK(trackerF1EndTarget(-1,length,repeats,5)==5);
  CHECK(trackerF1EndTarget(5,length,repeats,5)==length);
- CHECK(trackerF1EndTarget(length,length,repeats,5)==length+1);
+ CHECK(trackerF1EndTarget(length,length,repeats,5)==length);
  CHECK(trackerF1EndTarget(length+2,length,repeats,5)==length+2);
+ // Plain Home and End remain in the current area, even if footer
+ // spans several rows and its last row has fewer than five repeats.
+ for(int headerCell=0;headerCell<4;++headerCell){
+  const auto h=trackerF1AreaEdge(-1,headerCell,length,repeats,false);
+  const auto e=trackerF1AreaEdge(-1,headerCell,length,repeats,true);
+  CHECK(h.row==-1 && h.cell==headerCell);
+  CHECK(e.row==-1 && e.cell==headerCell);
+ }
+ CHECK(trackerF1AreaEdge(5,3,length,repeats,false).row==0);
+ CHECK(trackerF1AreaEdge(5,3,length,repeats,true).row==15);
+ CHECK(trackerF1AreaEdge(5,3,length,repeats,false).cell==3);
+ CHECK(trackerF1AreaEdge(length+2,2,length,repeats,false).row==length);
+ CHECK(trackerF1AreaEdge(length+2,2,length,repeats,false).cell==0);
+ const auto last=trackerF1AreaEdge(length,0,length,repeats,true);
+ CHECK(last.row==length+3 && last.cell==5);  // Transpose 13.
+ CHECK(trackerF1AreaEdge(length+3,5,length,repeats,true).cell==5);
+ CHECK(trackerF1EndTarget(-1,length,repeats,5)==5);
+ CHECK(trackerF1HomeTarget(length+3,length,5)==5);
+ CHECK(trackerF1AreaEdge(1,0,1,1,false).row==1);
+ CHECK(trackerF1AreaEdge(0,0,1,1,true).row==0);
+ CHECK(trackerF1AreaEdge(1,0,1,1,true).row==2);
+ CHECK(trackerF1AreaEdge(1,0,1,1,true).cell==1);
  // Dynamic Pattern bounds / one repeat and one step.
  CHECK(trackerMoveWithinF1Region(0,1,1,1)==0);
  CHECK(trackerMoveWithinF1Region(1,-1,1,1)==1);

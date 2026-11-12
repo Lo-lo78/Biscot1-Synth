@@ -12,6 +12,7 @@
 #include "TrackerPatternInsert.h"
 #include "TrackerStepRecording.h"
 #include "TrackerHeaderNavigation.h"
+#include "TrackerPatternText.h"
 
 namespace biscot {
 namespace {
@@ -26,7 +27,7 @@ TrackerPatternPanel::TrackerPatternPanel(BiscotProcessor& p):navigator(*this),nu
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  header.setText("Biscot1 Tracker - F1 Patterns",juce::dontSendNotification);
- help.setText("F1 Pattern | Enter: parameters | Alt+E: edit value | Alt+Enter: Pattern | F2: Song (planned) | Space: play | Esc: back",juce::dontSendNotification);
+ help.setText("F1 Pattern | Enter: parameters | Alt+E: edit value | Alt+Enter: Pattern | F2: Song | Space: play | Esc: back",juce::dontSendNotification);
  for(auto* label:{&header,&help}){label->setAccessible(false);label->setColour(juce::Label::textColourId,fg);addAndMakeVisible(*label);}
  navigator.setName("Tracker Grid");navigator.setDescription({});navigator.setWantsKeyboardFocus(true);
  navigator.setEditableText(false);navigator.setExplicitFocusOrder(1);
@@ -66,7 +67,10 @@ void TrackerPatternPanel::open(){
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
 }
-void TrackerPatternPanel::restoreAfterPreset(){setStepRecording(false);undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
+void TrackerPatternPanel::suspendForSong(){
+ stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);
+}
+void TrackerPatternPanel::restoreAfterPreset(){setStepRecording(false);patternExportFiles.clear();undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
 void TrackerPatternPanel::close(){
  stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
 }
@@ -151,6 +155,48 @@ void TrackerPatternPanel::refresh(bool speakPosition){
  }
  refreshing=false;
  repaint();if(speakPosition)announce(positionText());
+}
+// Explicit library export only. Alt+S keeps the entire synth/Pattern state
+// inside the standalone .biscot preset; Ctrl+S does not alter that preset.
+void TrackerPatternPanel::saveCurrentPattern(){
+ const int slot=processor.trackerPatterns.activePattern;
+ const auto root=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                  .getChildFile("Biscot1-Synth");
+ const auto singles=root.getChildFile("Patterns").getChildFile("Singles");
+ const auto songs=root.getChildFile("Songs");
+ const auto patternDir=singles.createDirectory();
+ const auto songDir=songs.createDirectory();
+ if(patternDir.failed() || songDir.failed()){
+  announce("Cannot create Biscot1 Pattern/Song library folders");return;
+ }
+ const auto baseName="Pattern_"+juce::String(slot).paddedLeft('0',3);
+ const auto payload=serializeTrackerPattern(currentPattern(),slot);
+ // A slot number is not unique across presets. A new preset must not
+ // silently overwrite another preset's exported Pattern_004. When a name
+ // already exists with different content, choose a collision-safe suffix.
+ juce::File file;
+ const auto saved=patternExportFiles.find(slot);
+ if(saved!=patternExportFiles.end() && saved->second.getParentDirectory()==singles)
+  file=saved->second;
+ else{
+  for(int suffix=1;suffix<=9999;++suffix){
+   const auto name=baseName+(suffix==1?juce::String{}:"_"+juce::String(suffix))+".biscot1-pattern";
+   const auto candidate=singles.getChildFile(name);
+   if(!candidate.existsAsFile() || candidate.loadFileAsString().toStdString()==payload){
+    file=candidate;break;
+   }
+  }
+ }
+ if(file==juce::File{}){announce("Pattern library has too many duplicate names");return;}
+ if(!file.existsAsFile() || file.loadFileAsString().toStdString()!=payload){
+  juce::TemporaryFile temporary(file);
+  if(!temporary.getFile().replaceWithText(juce::String::fromUTF8(payload.c_str())) ||
+     !temporary.overwriteTargetFileWithTemporary()){
+   announce("Could not save Pattern "+juce::String(slot));return;
+  }
+ }
+ patternExportFiles[slot]=file;
+ announce("Pattern "+juce::String(slot)+" saved to Patterns, Singles, "+file.getFileName());
 }
 void TrackerPatternPanel::recordUndo(){
  const int n=processor.trackerPatterns.activePattern;
@@ -458,6 +504,9 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  // Esc leaves Alt+Q. Alt+Q always returns directly to the synthesizer.
  if(code==juce::KeyPress::escapeKey && page==2){page=1;parameterSearch.reset();refresh(true);return true;}
  if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){parameterSearch.reset();clearSelection();close();return true;}
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('s')){
+  saveCurrentPattern();return true;
+ }
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
  if(code==juce::KeyPress::F1Key){page=1;parameterSearch.reset();refresh(true);return true;}
@@ -468,7 +517,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  }
  // F2 is reserved for the forthcoming Song page. The old F2 parameter
  // picker is now opened with Enter from an actual Pattern step.
- if(code==juce::KeyPress::F2Key){announce("Song editor not yet implemented");return true;}
+ if(code==juce::KeyPress::F2Key){if(onOpenSong)onOpenSong();return true;}
  if(code>=juce::KeyPress::F3Key&&code<=juce::KeyPress::F6Key){announce("Song, browser and diagnostics arrive in later tracker versions");return true;}
  if(m.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2){setTab((tab+(m.isShiftDown()?2:1))%3);return true;}
  if(!m.isCtrlDown() && code==juce::KeyPress::tabKey){
@@ -712,18 +761,36 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    cell=next;if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}refresh(true);}
   return true;
  }
- // Home/End are the only vertical keys which explicitly change F1
- // regions. Returning from Repeat/Speed restores the remembered edit step.
- if(code==juce::KeyPress::homeKey){
-  const int next=trackerF1HomeTarget(row,currentPattern().length,lastRealStep);
-  if(next!=row){clearSelection();row=next;cell=0;refresh(true);auditionCurrentStep();}
+ // Ctrl+Home/End alone cross between the three F1 regions.
+ // Header <-> remembered Step <-> Repeat/Speed/Transpose.
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+    (code==juce::KeyPress::homeKey || code==juce::KeyPress::endKey)){
+  const auto& pat=currentPattern();
+  const int next=code==juce::KeyPress::homeKey
+   ?trackerF1HomeTarget(row,pat.length,lastRealStep)
+   :trackerF1EndTarget(row,pat.length,pat.repeat,lastRealStep);
+  if(next!=row){
+   clearSelection();
+   if(row>=0 && row<pat.length)lastRealStep=row;
+   row=next;
+   if(row<0 || row>=pat.length)cell=0;
+   refresh(true);auditionCurrentStep();
+  }
   return true;
  }
- if(code==juce::KeyPress::endKey){
-  const int next=trackerF1EndTarget(row,currentPattern().length,currentPattern().repeat,lastRealStep);
-  if(next!=row){clearSelection();
-   if(row>=0 && row<currentPattern().length)lastRealStep=row;
-   row=next;cell=0;refresh(true);auditionCurrentStep();}
+ // Plain Home/End move only to the beginning/end of the CURRENT region.
+ // Header stays put, Step range is 0..Length-1, footer is Repeat..last
+ // Transpose. Preserve each OP/Filter/LFO logical column between steps.
+ if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+    (code==juce::KeyPress::homeKey || code==juce::KeyPress::endKey)){
+  const auto& pat=currentPattern();
+  const auto target=trackerF1AreaEdge(row,cell,pat.length,pat.repeat,
+                                    code==juce::KeyPress::endKey);
+  if(target.row!=row || target.cell!=cell){
+   clearSelection();row=target.row;cell=target.cell;
+   if(row>=0 && row<pat.length)lastRealStep=row;
+   refresh(true);auditionCurrentStep();
+  }
   return true;
  }
  return true; // All keys are owned by Alt+Q; never leak into REAPER shortcuts.
