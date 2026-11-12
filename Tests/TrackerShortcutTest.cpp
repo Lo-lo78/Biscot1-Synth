@@ -9,6 +9,18 @@ int main(){using namespace biscot;
   CHECK(trackerShortcutLetterMatches(c,c,c,false));
   CHECK(!trackerShortcutLetterMatches('D',4,c,false));
  }
+ // F1 section numbers must remain functional on both JUCE key paths.
+ // Previously a letters-only helper rejected '1', '2' and '3'.
+ for(int i=0;i<3;++i){
+  const int digit='1'+i;
+  CHECK(trackerShortcutSectionIndex(digit,0)==i);
+  CHECK(trackerShortcutSectionIndex(0,digit)==i);
+  CHECK(trackerShortcutSectionIndex(digit,digit)==i);
+  CHECK(!trackerShortcutLetterMatches(digit,digit,'c',false));
+ }
+ CHECK(trackerShortcutSectionIndex('0','0')==-1);
+ CHECK(trackerShortcutSectionIndex('4','4')==-1);
+ CHECK(trackerShortcutSectionIndex('c','c')==-1);
  TrackerPatternBank bank;auto& source=bank.at(0);
  CHECK(source.insert(3,2,0,{1231,0.7}));
  const TrackerPattern copy=source;

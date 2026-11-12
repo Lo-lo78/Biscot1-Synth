@@ -3,11 +3,13 @@
 #include "ScreenReaderAnnouncer.h"
 #include <algorithm>
 #include <cmath>
+#include "TrackerManualNumeric.h"
 #include <utility>
 #include <string>
 #include "TrackerShortcutKey.h"
 #include "TrackerCellPresentation.h"
 #include "TrackerCellNavigation.h"
+#include "TrackerPatternInsert.h"
 
 namespace biscot {
 namespace {
@@ -67,7 +69,9 @@ void TrackerPatternPanel::close(){
  processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
 }
 void TrackerPatternPanel::refreshParameterList(){
- parameterList.clear();for(const auto& p:trackerCatalog)if(p.tab==tab+1)parameterList.push_back(&p);
+ parameterList.clear();
+ if(tab>0)for(const int shared:{3,4,6})if(const auto* d=findTrackerParam(shared))parameterList.push_back(d);
+ for(const auto& p:trackerCatalog)if(p.tab==tab+1)parameterList.push_back(&p);
  parameterIndex=juce::jlimit(0,juce::jmax(0,(int)parameterList.size()-1),lastParam[(size_t)tab]);
 }
 const TrackerParam* TrackerPatternPanel::currentParameter() const{
@@ -268,6 +272,29 @@ void TrackerPatternPanel::clearCurrentSection(){
  }
  clearSelection();cell=0;logicalCell=0;lastLogicalCell[(size_t)tab]=0;finishEdit();announce(juce::String(sectionNames[tab])+" table cleared");
 }
+void TrackerPatternPanel::openSelectedValueEditor(){
+ if(page!=1)return; // F2 Enter must keep its parameter-insertion function.
+ const auto& pat=currentPattern();
+ double value=0;
+ juce::String name;
+ if(row==-1){
+  if(cell==0){value=pat.length;name="Length";}
+  else {value=pat.midiNote;name="MIDI Note";}
+ }else if(row==pat.length){value=pat.repeat;name="Repeat";}
+ else if(row>pat.length){
+  const int idx=(row-pat.length-1)*5+cell/2;
+  if(idx<0 || idx>=pat.repeat){announce("No parameter to edit");return;}
+  if(cell%2==0){value=pat.repeatSpeeds[(size_t)idx];name="Speed "+juce::String(idx+1);}
+  else {value=pat.repeatTransposes[(size_t)idx];name="Transpose "+juce::String(idx+1);}
+ }else{
+  const auto* selected=selectedCell();
+  if(selected==nullptr){announce("Empty step. Use F2 to insert a parameter");return;}
+  value=selected->value;
+  const auto* definition=findTrackerParam(selected->id);
+  name=definition!=nullptr?juce::String(definition->name):juce::String("Parameter");
+ }
+ openNumericEditor(NumericPurpose::value,"Edit "+name,juce::String(value,4));
+}
 void TrackerPatternPanel::openNumericEditor(NumericPurpose purpose,const juce::String& label,
                                              const juce::String& initial){
  numericPurpose=purpose;
@@ -281,7 +308,9 @@ void TrackerPatternPanel::jumpToPattern(int target){
  auto& bank=processor.trackerPatterns;
  if(target==bank.activePattern){announce("Pattern "+juce::String(target));return;}
  clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};
- processor.commitTrackerState();refresh(true);
+ processor.commitTrackerState();
+ if(page==2){refresh(false);announce("Pattern "+juce::String(target)+". "+positionText());}
+ else refresh(true);
 }
 void TrackerPatternPanel::jumpToStep(int target){
  if(target<0||target>=currentPattern().length){announce("Invalid step number");return;}
@@ -382,7 +411,11 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    const auto purpose=numericPurpose;
    numeric.setVisible(false);navigator.grabKeyboardFocus();
    if(purpose==NumericPurpose::value){
-    if(txt.isNotEmpty())changeValue(txt.replaceCharacter(',','.').getDoubleValue());
+    if(txt.isNotEmpty()){
+     double newValue=0;
+     if(parseTrackerManualNumeric(txt.toStdString(),newValue))changeValue(newValue);
+     else announce("Invalid numeric value");
+    }
    }else if(txt.isNotEmpty() && [&]{
     const auto digits=txt.toStdString();
     return std::all_of(digits.begin(),digits.end(),
@@ -416,6 +449,12 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   announce(positionText());return true;
  }
  if(page==1 && m.isCtrlDown() && code==juce::KeyPress::tabKey)return true;
+ // Alt+Enter preserves the old Enter shortcut for choosing Pattern 0..999.
+ // It also works in F2 without replacing F2's insert-parameter Enter command.
+ if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
+  openNumericEditor(NumericPurpose::patternNumber,"Go to Pattern 0 to 999",
+                    juce::String(processor.trackerPatterns.activePattern));return true;
+ }
  if(page==2){
   if(m.isCtrlDown() && code==juce::KeyPress::homeKey){
    parameterSearch.reset();parameterIndex=0;lastParam[(size_t)tab]=parameterIndex;refresh(true);return true;
@@ -440,11 +479,20 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(move!=0){const int next=juce::jlimit(0,count-1,parameterIndex+move);if(next!=parameterIndex){parameterIndex=next;lastParam[(size_t)tab]=next;refresh(true);}return true;}
   if(code==juce::KeyPress::returnKey){
    if(const auto* def=currentParameter()){
-    auto& pat=currentPattern();const int insertAt=juce::jlimit(0,(int)pat.view(row,tab).size(),cell+1);
-    if(pat.totalCells(row)>=128){announce("Step is full, 128 cells");return true;}
-    recordUndo();if(pat.insert(row,tab,insertAt,{def->id,def->initial})){
-     cell=insertAt;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;processor.commitTrackerState();announce(juce::String(def->name)+" inserted");
+    if(row<0 || row>=currentPattern().length){announce("Select a pattern step first");return true;}
+    auto& pat=currentPattern();
+    // A cheap scratch copy avoids adding an Undo entry if the command is
+    // already present, invalid, or the row has reached its cell limit.
+    TrackerPattern candidate=pat;
+    const auto test=insertTrackerParameter(candidate,row,tab,*def);
+    if(test.status==TrackerInsertStatus::needsArpeggiator){announce("Sub Note requires OP Arp Mode");return true;}
+    if(test.status==TrackerInsertStatus::full){announce("Step is full, 128 cells");return true;}
+    if(test.status==TrackerInsertStatus::invalid){announce("Select a pattern step first");return true;}
+    if(test.status==TrackerInsertStatus::inserted){
+     recordUndo();pat=std::move(candidate);processor.commitTrackerState();
     }
+    cell=test.index;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
+    announce(juce::String(def->name)+(test.status==TrackerInsertStatus::inserted?" inserted":" already present"));
    }
    if(!m.isCtrlDown()){page=1;refresh(true);}return true;
   }
@@ -465,10 +513,9 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   parameterSearch.reset();
   return true;
  }
- // F1: Enter opens the original Lua Pattern 0..999 number dialog.
+ // F1: Enter directly edits the selected value, including Pattern metadata.
  if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
-  openNumericEditor(NumericPurpose::patternNumber,"Go to Pattern 0 to 999",
-                    juce::String(processor.trackerPatterns.activePattern));return true;
+  openSelectedValueEditor();return true;
  }
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('j')){
   openNumericEditor(NumericPurpose::stepNumber,
@@ -510,8 +557,12 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::pageUpKey){extendStepSelection(-5);return true;}
   if(code==juce::KeyPress::pageDownKey){extendStepSelection(5);return true;}
  }
+ // Lua F1: unmodified 1/2/3 switches OP / Filter / LFO sections.
+ // These are NUMBER keys, so do not call the Ctrl+letter helper here.
+ // F2 intentionally retains 1/2/3 for parameter-list search, like the Lua.
  if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
-  if(letter('1')||letter('2')||letter('3')){setTab(k.getTextCharacter()-'1');return true;}
+  const int section=trackerShortcutSectionIndex(code,(int)k.getTextCharacter());
+  if(section>=0){setTab(section);return true;}
  }
  if(m.isCtrlDown() && m.isShiftDown() && !m.isAltDown() &&
     (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
@@ -568,14 +619,8 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    recordUndo();std::swap(a[(size_t)cell],a[(size_t)(cell+1)]);++cell;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;finishEdit();}return true;
  }
  if(m.isAltDown()){
-  if(letter('e')){double v=0;
-   if(row==currentPattern().length)v=currentPattern().repeat;
-   else if(row==-1)v=cell==0?currentPattern().length:currentPattern().midiNote;
-   else if(row>currentPattern().length){const int idx=(row-currentPattern().length-1)*5+cell/2;
-    if(idx<currentPattern().repeat)v=cell%2==0?currentPattern().repeatSpeeds[(size_t)idx]:currentPattern().repeatTransposes[(size_t)idx];
-   }else if(auto* c=selectedCell())v=c->value;
-   openNumericEditor(NumericPurpose::value,"Tracker numeric edit",juce::String(v,4));
-  return true;}
+  // Preserve Alt+E as a backwards-compatible alias of F1 Enter.
+  if(letter('e')){openSelectedValueEditor();return true;}
   if(code==juce::KeyPress::upKey){adjustValue(1);return true;}
   if(code==juce::KeyPress::downKey){adjustValue(-1);return true;}
   if(code==juce::KeyPress::pageUpKey){adjustValue(1,10);return true;}

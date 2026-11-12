@@ -2,6 +2,7 @@
 #pragma once
 #include "TrackerPatternBank.h"
 #include "TrackerParameterCatalog.h"
+#include "TrackerPatternAutomation.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -17,6 +18,8 @@ struct TrackerPlayableRow {
  bool pause=false;
  bool gateExplicit=false;
  bool holdIntoNext=false;
+ std::vector<TrackerAutomatedParameter> automation;
+ std::vector<int> curveIndices;
 };
 struct TrackerPlayablePattern {
  int length=16, repeat=1;
@@ -33,8 +36,14 @@ inline TrackerPlayablePattern compileTrackerPattern(const TrackerPattern& patter
  result.repeatTransposes=pattern.repeatTransposes;
  result.releaseArp=pattern.releaseArp;
  result.rows.resize((size_t)result.length);
+ std::vector<std::vector<TrackerCell>> flattened;flattened.reserve((size_t)result.length);
+ for(int i=0;i<result.length;++i)flattened.push_back(trackerFlatten(pattern,i));
+ auto automation=trackerCompileAllAutomation(pattern,flattened);
  for(int i=0;i<result.length;++i){
   auto& out=result.rows[(size_t)i];
+  out.automation=std::move(automation[(size_t)i]);
+  for(int a=0;a<(int)out.automation.size();++a)
+   if(out.automation[(size_t)a].active())out.curveIndices.push_back(a);
   for(int tab=0;tab<3;++tab)
    for(const auto& c:pattern.view(i,tab)){
     if(out.ordered.size()<128)out.ordered.push_back(c);
@@ -68,12 +77,12 @@ class TrackerPatternTransport {
 public:
  bool running=false, audition=false;
  int currentStep=-1, nextStep=0, repeatIndex=0, activeNote=-1;
- double stepRemaining=0,gateRemaining=-1;
+ double stepRemaining=0,stepLength=0,gateRemaining=-1;
  void start(int step,const TrackerPlayablePattern& p,bool onlyOne=false){
   running=true;audition=onlyOne;currentStep=-1;nextStep=std::clamp(step,0,p.length-1);
-  repeatIndex=0;activeNote=-1;stepRemaining=0;gateRemaining=-1;
+  repeatIndex=0;activeNote=-1;stepRemaining=0;stepLength=0;gateRemaining=-1;
  }
- void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;stepRemaining=0;gateRemaining=-1;}
+ void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;stepRemaining=0;stepLength=0;gateRemaining=-1;}
  double stepSamples(const TrackerPlayablePattern& p,double rate,double bpm)const{
   const double speed=repeatIndex<(int)p.repeatSpeeds.size()?p.repeatSpeeds[(size_t)repeatIndex]:1.;
   // Original JSFX division_value(slider3==4) = 16, i.e. 16th notes.
@@ -87,7 +96,7 @@ public:
   if(stepRemaining<=0){
    if(nextStep<0){ev.finished=true;running=false;return ev;}
    currentStep=nextStep;ev.startStep=currentStep;
-   stepRemaining=stepSamples(p,rate,bpm);
+   stepLength=stepSamples(p,rate,bpm);stepRemaining=stepLength;
    ++nextStep;
    if(audition)nextStep=-1;
    else if(nextStep>=p.length){

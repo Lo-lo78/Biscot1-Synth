@@ -88,6 +88,8 @@ private:
  void trackerSetOverride(int index,float value) noexcept;
  void trackerClearOverrides() noexcept;
  void trackerApplyStep(const TrackerPlayableRow& row,int transpose,double stepSamples);
+ void trackerRunCurveEvents(const TrackerPlayableRow& row) noexcept;
+ std::array<int,128> trackerCurveNextSegments{};
  void trackerReleaseNote() noexcept;
  SidMidiNoteState heldNotes;
  std::array<SidSeqMemory,3> sidSeq{};

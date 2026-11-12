@@ -694,10 +694,10 @@ void BiscotProcessor::trackerReleaseNote() noexcept {
 void BiscotProcessor::trackerApplyStep(const TrackerPlayableRow& row,int transpose,double samples){
  // Lua stores ordered commands: OP, then Filter, then LFO. These dynamic
  // overrides are private to the audio thread, never written into APVTS.
- for(const auto& c:row.ordered){
-  const auto* def=findTrackerParam(c.id);
-  if(def && def->synthIndex>0 && def->synthIndex<234)
-   trackerSetOverride(def->synthIndex,(float)std::clamp(c.value,def->min,def->max));
+ for(const auto& a:row.automation){
+  // A carried Curve must resume at its correct fractional value when a
+  // Pattern starts in the middle (Space from the editing cursor).
+  trackerSetOverride(a.synthIndex,(float)trackerCurveAt(a,trackerTransport.currentStep,0.0));
  }
  // Preview Pattern's generic OP maps to Op1, as in the old Tracker JSFX.
  // Don't change the user's saved MIDI Mode or the sound outside playback.
@@ -715,6 +715,25 @@ void BiscotProcessor::trackerApplyStep(const TrackerPlayableRow& row,int transpo
   trackerTransport.gateFor(samples*row.gate,row.holdIntoNext);
  // A newly reached step may activate an LFO that was previously unused.
  lfoUsedCached=determineUsedLfos([this](int index){return param(index);});
+}
+void BiscotProcessor::trackerRunCurveEvents(const TrackerPlayableRow& row) noexcept {
+ // Segment events are sample accurate, but when multiple events land on the
+ // same sample only the final value matters. Collapse them to one atomic write
+ // (important at high BPM / 1024-point Curve Resolution).
+ const double elapsed=trackerTransport.stepLength-trackerTransport.stepRemaining-1.;
+ bool anyChanged=false;
+ for(const int index:row.curveIndices){
+  const auto& a=row.automation[(size_t)index];
+  int& next=trackerCurveNextSegments[(size_t)index];
+  const int end=a.segments();
+  const int due=trackerCurveDueSegment(trackerTransport.stepLength,elapsed,end);
+  if(due<next)continue;
+  trackerSetOverride(a.synthIndex,(float)trackerCurveEventValue(a,trackerTransport.currentStep,due));
+  next=due+1;
+  anyChanged=true;
+ }
+ // Curves can activate previously unused LFO depth/routing at mid-step.
+ if(anyChanged)lfoUsedCached=determineUsedLfos([this](int index){return param(index);});
 }
 void BiscotProcessor::enterColdIdle() noexcept {
  // A transition occurs ONLY after the last VCA is idle and the output is
@@ -814,6 +833,11 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
       playback->repeatTransposes[(size_t)repeat]:0;
     trackerApplyStep(playback->rows[(size_t)step],transpose,
                      trackerTransport.stepSamples(*playback,sampleRateHz,tempoBpm));
+    trackerCurveNextSegments.fill(1);
+   }
+   if(trackerTransport.running && trackerTransport.currentStep>=0){
+    const auto& row=playback->rows[(size_t)trackerTransport.currentStep];
+    if(!row.curveIndices.empty())trackerRunCurveEvents(row);
    }
    if(event.finished){
     trackerReleaseNote();

@@ -11,5 +11,5 @@ assert 'jumpToSameParameter' in h and 'void TrackerPatternPanel::jumpToSameParam
 assert 'trackerFindMatchingParameter(currentPattern(),row,tab,parameterId,direction)' in s
 assert 'm.isCtrlDown() && m.isAltDown() && !m.isShiftDown()' in s
 assert 'TrackerCellNavigationTest.exe' in w
-assert 'VERSION 0.2.19.' in (r/'CMakeLists.txt').read_text()  # Preserve regression across later 0.2.19 fixes
+assert 'VERSION 0.2.20' in (r/'CMakeLists.txt').read_text()  # Preserve regression across later 0.2.19 fixes
 print('OK real F1 selection guard and matching-parameter shortcuts')

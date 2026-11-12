@@ -63,6 +63,7 @@ private:
  void eraseSelectedSteps(bool cut);
  void resetCurrentStep();
  void clearCurrentSection();
+ void openSelectedValueEditor();
  void openNumericEditor(NumericPurpose,const juce::String&,const juce::String&);
  void jumpToPattern(int);
  void jumpToStep(int);

@@ -1,3 +1,9 @@
+# Biscot1 Synth VST3 — TEST0.2.20
+
+Fixes F1 numeric section shortcuts **1 = OP**, **2 = Filter**, **3 = LFO**. The Windows Ctrl+letter fix mistakenly reused an alphabet-only key matcher for digits; the new helper uses JUCE keyCode or text character and is covered by a Release regression test. F2 stays as in TrackerControl 0.166: Ctrl+Tab changes section; digits remain available to incremental search. F3 Song, the three concurrent operator lanes and routing of patterns to Op1/Op2/Op3 are **not yet migrated**.
+
+Native F1/F2 parameter automation (Previous value, Curve, Resolution, Ratio) plus Lua-compatible F2 insertion rules. The core SID DSP and `.biscot` save format remain unchanged. See `RELEASE_NOTES_TEST0.2.20.md`.
+
 # Biscot1 Synth VST3 — TEST0.2.19.3
 
 **Lua 0.166 audition parity for F1 value edits.** When you change the value
@@ -527,3 +533,16 @@ F1/F2 UI and project/preset persistence first.
 - Keep the original Lua 0.166 `logical_cell` when crossing a step with fewer cells. A programmatic JUCE ComboBox selection of the currently visible item is NOT a horizontal move and must not override it. Intentional left/right movement (or a genuinely different direct ComboBox selection) does update the logical position.
 - In F1, **Ctrl+Alt+Down/Up** visits the next/previous step containing the exact same parameter ID in the current OP/Filter/LFO section. It skips steps without the parameter, focuses the matching cell, announces it and previews the step. No match leaves cursor unchanged. This shortcut is a native extension (not a pre-existing binding in Lua 0.166).
 - Existing **Ctrl+PageUp/PageDown** continues to navigate any nonempty step, as before. The DSP, transport, preset format and F2 remain unchanged.
+
+## TEST0.2.19.5 — F1 Enter and Alt+Enter
+
+In Alt+Q F1, Enter edits the current value (including Length, MIDI Note, Repeat, Speed, Transpose and populated step cells). Alt+Enter selects Pattern 0..999 from F1 or F2. Alt+E remains a legacy alias. F2 Enter/Ctrl+Enter preserve their existing insertion behavior.
+
+
+## TEST0.2.20 — Previous Value and Curve automation
+
+This is the first native Pattern automation pass, ported from `Biscot1 TrackerControl 0.166` and `Biscot1 Tracker.jsfx`. Previous Value only affects later parameter cells in the row, and traces the nearest actual value through consecutive inherited steps. Curve runs toward the next explicit occurrence of the same parameter, including across empty steps. Bipolar Curve -100..100, Resolution 2..1024 and Ratio Off / 1:1 ... 2:2 produce sample-clock automation during Pattern playback. Curve metadata belongs in front of the affected parameter, and Ctrl+Left/Right in F1 can reorder cells. Filter/LFO F2 now expose shared Previous Value, Curve and Pause commands.
+
+F2 Enter inserts (or moves the cursor to an existing parameter), Ctrl+Enter inserts and remains in F2, and Sub Note can be inserted more than once only after an active Arp Mode. Adding Resolution or Ratio without Curve automatically inserts Curve at +100. Playback uses a single-pass, immutable message-thread compiled automation snapshot; no file-format changes, no per-sample allocations.
+
+**Still pending:** live native Sub Note sound, Step Recording MIDI, MIDI Pattern triggers, Release Arpeggio and individual Pattern library exports. F3 Song editor has not yet been started. This test version is not a final parity claim.
