@@ -1,3 +1,7 @@
+# Biscot1 Synth VST3 — TEST0.2.18.1
+
+Compiler-only hotfix for TEST0.2.18: JUCE `juce::Identifier` cannot be initialized as `constexpr` with MSVC 19.44 / JUCE 8.0.15. The tracker state key is now an immutable ordinary `const juce::Identifier`, with unchanged text `trackerPatternsV1`. The VST3 project/Pattern serialization format is unchanged. This fixes GitHub Actions error C2131 in Source/PluginProcessor.cpp. No changes to MIDI, DSP, CPU idle, accessible editor behavior, or tracker data.
+
 # Biscot1 Synth VST3 — TEST0.2.18
 
 **Initial selection hotfix:** A brand-new instance starts on **Audio Mode, Stereo** (parameter s2) instead of **MIDI Mode** (s3). The previous bug came from the fallback in `restoreLocation()`: it used index 3 even if no last selection had been saved. Saved editor locations in existing projects remain respected. NVDA root/focus behaviour from TEST0.2.17 and the DSP, MIDI, arpeggiators, CPU optimizations, browser and presets are unchanged.

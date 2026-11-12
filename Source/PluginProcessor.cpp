@@ -760,7 +760,7 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
 // self-contained in REAPER .RPP projects and in existing Alt+S .biscot presets.
 // Nothing in this serializer is called from processBlock() or renderOne().
 namespace {
-constexpr juce::Identifier trackerStateKey{"trackerPatternsV1"};
+const juce::Identifier trackerStateKey{"trackerPatternsV1"};
 constexpr int trackerMagic=0x42545031; // BTP1
 void writeTrackerBank(const TrackerPatternBank& b,juce::MemoryOutputStream& o){
  o.writeInt(trackerMagic);o.writeInt(b.activePattern);o.writeInt((int)b.patterns.size());

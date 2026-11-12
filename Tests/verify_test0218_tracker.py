@@ -16,6 +16,8 @@ assert 'std::map<int,TrackerPattern> patterns;' in model
 assert 'maxPatterns=1000,maxSteps=1024,maxCells=128' in model
 assert 'return createIgnoredAccessibilityHandler(*this);' in panel
 assert 'trackerPatternsV1' in source
+assert 'const juce::Identifier trackerStateKey{"trackerPatternsV1"};' in source
+assert 'constexpr juce::Identifier' not in source # MSVC C2131: Identifier ctor is not constexpr
 assert 'void BiscotProcessor::commitTrackerState()' in source
 assert 'state.replaceState(tree)' in source and 'trackerPatterns=std::move(restored)' in source
 assert 'onPresetBrowser' in editor
