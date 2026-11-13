@@ -44,7 +44,12 @@ PresetBrowser::PresetBrowser (PresetManager& p) : manager (p)
         else close();
     };
     back.onClick = [this] { parentFolder(); };
-    for (auto* b : { &accept, &cancel, &back }) addAndMakeVisible (*b);
+    // MSVC requires the initializer-list elements to have one common type.
+    // accept/cancel are ConfirmationButton while back is a juce::TextButton.
+    // Register each component directly instead of deducing a mixed auto* list.
+    addAndMakeVisible (accept);
+    addAndMakeVisible (cancel);
+    addAndMakeVisible (back);
     showMode (Mode::closed);
 }
 PresetBrowser::~PresetBrowser() { close (true); }

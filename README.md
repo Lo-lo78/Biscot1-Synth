@@ -1,3 +1,11 @@
+# Biscot1 Synth VST3 — TEST0.2.41 (MSVC preset-browser fix)
+
+Corrects MSVC C3535/C2440/C2665 while registering the three preset-browser
+buttons; preserves all 0.2.40 tracker and accessibility behavior. See
+`RELEASE_NOTES_TEST0.2.41.md`. Full Windows VST3 build is awaiting CI verification.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.40 (silent Song parameter-picker borders)
 
 F2 Song: Enter opens the parameter list. At first/last parameter, blocked movement with the arrows, PageUp/PageDown, Home/End and Ctrl+Home/End now remains silent, just as in F1 Pattern. All other 0.2.39 features are preserved; see `RELEASE_NOTES_TEST0.2.40.md`. Windows/MSVC build and NVDA/OSARA testing are pending.
