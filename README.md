@@ -1,3 +1,14 @@
+# Biscot1 Synth VST3 — TEST0.2.42 (F1/F2 tracker navigation)
+
+In the native Alt+Q Pattern and Song grids, **Ctrl+Up/Down** moves among
+header, remembered steps and footer/repeat regions. **Ctrl+Shift+Up/Down**
+switches the active Pattern (F1) or Song (F2), keeping cursor region and
+position wherever possible. Ctrl+Home/End no longer switches regions in
+the grids. The parameter-picker shortcuts are unchanged. See
+`RELEASE_NOTES_TEST0.2.42.md`. Windows VST3 compilation is pending.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.41 (MSVC preset-browser fix)
 
 Corrects MSVC C3535/C2440/C2665 while registering the three preset-browser
@@ -573,7 +584,7 @@ The native tracker has no need for `gmem` or a Lua startup loader to retain Patt
 - `F1`: Pattern Editor; `Enter`: parameter picker on an actual Pattern step. `F2` is reserved for a future Song editor.
 - In F1, `1`, `2`, `3`: OP, Filter, LFO section; `Up/Down`: step;
   `Left/Right`: parameter cell; `PageUp/PageDown`: five steps.
-- `Ctrl+Up/Down`: previous/next Pattern (0–999), `Ctrl+Left/Right`: move a
+- `Ctrl+Shift+Up/Down`: previous/next Pattern (0–999), `Ctrl+Left/Right`: move a
   parameter one cell chronologically within its section.
 - `Alt+Up/Down`: change value; `Alt+PageUp/PageDown`: change by ten steps;
   `Alt+E`: exact numeric entry, Enter to accept, Esc to cancel. `Alt+Enter`: jump to a Pattern number.
@@ -683,7 +694,7 @@ Plain Up/Down/PageUp/PageDown stay strictly within Header, Steps or Repeat/Speed
 F1 navigation is now three coherent regions (Header, Steps, Repeat/Speed/Transpose):
 
 - **Home/End**: first/last item **within the current region**. On Header neither key moves vertically; on Steps they go to step 0 or Length-1, preserving the OP/Filter/LFO logical cell; on footer they go to Repeat or the last Transpose.
-- **Ctrl+Home / Ctrl+End**: navigate to the previous/next region. Footer -> Steps returns to the **last visited Step**, while Header -> Steps also resumes there. They no longer treat Repeat and Speed as separate regions.
+- **Ctrl+Up / Ctrl+Down**: navigate to the previous/next region. Footer -> Steps returns to the **last visited Step**, while Header -> Steps also resumes there. They no longer treat Repeat and Speed as separate regions.
 - Alt+Home/End still set maximum/minimum parameter values; in the Enter-opened parameter picker, Ctrl+Home/End still reach first/last parameter and Home/End still navigate the selected column.
 
 **Ctrl+S in F1** (including the parameter picker) now saves **only the active Pattern**, such as Pattern 4, as a UTF-8 text `.biscot1-pattern` in `Documents/Biscot1-Synth/Patterns/Singles/Pattern_004.biscot1-pattern`. This standalone library file includes all three OP/Filter/LFO step tables, order of cells, repeat speeds/transposes, MIDI Note, Release Arpeggio, name and length. It does not change the full `.biscot` preset or the REAPER project. The `Patterns/Singles` and `Songs` folders are created on the first export. A file of the same name from another preset is not silently overwritten; a numeric suffix is used when necessary. Re-saving the same Pattern within the same tracker session updates the file originally exported.

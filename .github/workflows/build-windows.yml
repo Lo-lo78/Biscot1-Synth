@@ -16,6 +16,9 @@ jobs:
       - name: Guard const-correct Pattern cursor access (MSVC C2662 regression)
         shell: pwsh
         run: python Tests/verify_test0238_pattern_const_correctness.py
+      - name: Verify unified Ctrl+arrow navigation in F1 Pattern and F2 Song
+        shell: pwsh
+        run: python Tests/verify_test0242_tracker_ctrl_arrows.py
       - name: Verify silent F2 Song parameter-picker borders
         shell: pwsh
         run: python Tests/verify_test0240_song_picker_silent_edges.py
@@ -279,9 +282,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.41-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.42-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-TEST0.2.41-Windows-x64
-          path: Biscot1-TEST0.2.41-Windows-x64.zip
+          name: Biscot1-TEST0.2.42-Windows-x64
+          path: Biscot1-TEST0.2.42-Windows-x64.zip
           if-no-files-found: error

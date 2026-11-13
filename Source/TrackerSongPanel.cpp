@@ -23,7 +23,7 @@ TrackerSongPanel::TrackerSongPanel(BiscotProcessor& p):navigator(*this),numeric(
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  title.setText("Biscot1 Tracker - F2 Song",juce::dontSendNotification);
- help.setText("F1 Pattern | 1/2/3: Operator | Ctrl+Up/Down: Song | Enter: Song parameters | Alt+E: edit | Tab: position | Esc: exit",juce::dontSendNotification);
+ help.setText("F1 Pattern | 1/2/3: Operator | Ctrl+Up/Down: region | Ctrl+Shift+Up/Down: Song | Enter: Song parameters | Alt+E: edit | Tab: position | Esc: exit",juce::dontSendNotification);
  for(auto* l:{&title,&help}){l->setAccessible(false);l->setColour(juce::Label::textColourId,fg);addAndMakeVisible(*l);}
  navigator.setName("Song Grid");navigator.setWantsKeyboardFocus(true);navigator.setEditableText(false);
  navigator.setExplicitFocusOrder(1);
@@ -613,8 +613,15 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
    return true;
   }
  }
- if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::upKey){changeSong(processor.trackerSongs.activeSong-1);return true;}
- if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::downKey){changeSong(processor.trackerSongs.activeSong+1);return true;}
+ // Match F1: Ctrl+Up/Down changes region; Ctrl+Shift+Up/Down changes Song.
+ // Keep the parameter picker independent of these tracker navigation keys.
+ if(!picker&&m.isCtrlDown()&&!m.isAltDown()&&
+    (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
+  const int direction=code==juce::KeyPress::upKey?-1:1;
+  if(m.isShiftDown())changeSong(processor.trackerSongs.activeSong+direction);
+  else navigateArea(direction);
+  return true;
+ }
  if(!picker&&!m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&code>='1'&&code<='4'){
   changeLane(code-'1');return true;
  }
@@ -694,8 +701,9 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   return true;
  }
  if(code==juce::KeyPress::deleteKey){if(selectionActive())clearSelected();else eraseCurrent();return true;}
- if(m.isCtrlDown()&&code==juce::KeyPress::homeKey){navigateArea(-1);return true;}
- if(m.isCtrlDown()&&code==juce::KeyPress::endKey){navigateArea(1);return true;}
+ // Region navigation moved to Ctrl+Up/Down; keep Ctrl+Home/End inert in F2 grid.
+ if(m.isCtrlDown()&&!m.isAltDown()&&
+    (code==juce::KeyPress::homeKey||code==juce::KeyPress::endKey))return true;
  if(code==juce::KeyPress::homeKey||code==juce::KeyPress::endKey){
   const bool first=code==juce::KeyPress::homeKey;
   if(lane==3)return true;

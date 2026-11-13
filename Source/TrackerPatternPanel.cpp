@@ -709,15 +709,29 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    }
   }
  }
- if(m.isCtrlDown() && m.isShiftDown() && !m.isAltDown() &&
+ // Unified F1/F2 tracker navigation:
+ // Ctrl+Up/Down moves among Header, remembered Steps and Repeat/Speed;
+ // Ctrl+Shift+Up/Down changes the active Pattern without moving the cursor.
+ if(m.isCtrlDown() && !m.isAltDown() &&
     (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
-  jumpToStep(juce::jlimit(0,currentPattern().length-1,
-    (row<0?0:row)+(code==juce::KeyPress::upKey?-1:1)));return true;
- }
- if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
-  auto& bank=processor.trackerPatterns;
-  const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){jumpToPattern(next);}return true;
+  if(m.isShiftDown()){
+   auto& bank=processor.trackerPatterns;
+   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
+   if(next!=bank.activePattern)jumpToPattern(next);
+  }else{
+   const auto& pat=currentPattern();
+   const int next=code==juce::KeyPress::upKey
+    ?trackerF1HomeTarget(row,pat.length,lastRealStep)
+    :trackerF1EndTarget(row,pat.length,pat.repeat,lastRealStep);
+   if(next!=row){
+    clearSelection();
+    if(row>=0 && row<pat.length)lastRealStep=row;
+    row=next;
+    if(row<0 || row>=pat.length)cell=0;
+    refresh(true);auditionCurrentStep();
+   }
+  }
+  return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -811,23 +825,9 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    cell=next;if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}refresh(true);}
   return true;
  }
- // Ctrl+Home/End alone cross between the three F1 regions.
- // Header <-> remembered Step <-> Repeat/Speed/Transpose.
- if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
-    (code==juce::KeyPress::homeKey || code==juce::KeyPress::endKey)){
-  const auto& pat=currentPattern();
-  const int next=code==juce::KeyPress::homeKey
-   ?trackerF1HomeTarget(row,pat.length,lastRealStep)
-   :trackerF1EndTarget(row,pat.length,pat.repeat,lastRealStep);
-  if(next!=row){
-   clearSelection();
-   if(row>=0 && row<pat.length)lastRealStep=row;
-   row=next;
-   if(row<0 || row>=pat.length)cell=0;
-   refresh(true);auditionCurrentStep();
-  }
-  return true;
- }
+ // Ctrl+Home/End no longer change tracker regions; Ctrl+Up/Down do.
+ if(m.isCtrlDown() && !m.isAltDown() &&
+    (code==juce::KeyPress::homeKey || code==juce::KeyPress::endKey))return true;
  // Plain Home/End move only to the beginning/end of the CURRENT region.
  // Header stays put, Step range is 0..Length-1, footer is Repeat..last
  // Transpose. Preserve each OP/Filter/LFO logical column between steps.
