@@ -1,4 +1,4 @@
-"""TEST0.2.30: source regressions for accessible Song End and step preview."""
+"""TEST0.2.31: source regressions for accessible Song End and step preview."""
 from pathlib import Path
 r=Path(__file__).resolve().parent.parent
 processor=(r/'Source/PluginProcessor.cpp').read_text()
@@ -8,8 +8,8 @@ song=(r/'Source/TrackerSongPanel.cpp').read_text()
 model=(r/'Source/TrackerSongBank.h').read_text()
 playback=(r/'Source/TrackerSongPlayback.h').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
-assert 'VERSION 0.2.30' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.30' in editor and 'TEST0.2.30' in workflow
+assert 'VERSION 0.2.31' in (r/'CMakeLists.txt').read_text()
+assert 'TEST0.2.31' in editor and 'TEST0.2.31' in workflow
 assert 'songPendingEndSong' in header and 'songPendingEndValue' in processor
 assert 'songChainNext()' in processor and 'songPendingEndValue.load' in processor
 assert 'compileTrackerSongRowPreview' in playback
@@ -23,4 +23,4 @@ assert 'safe->announce(safe->positionText(true))' in (r/'Source/TrackerPatternPa
 assert 'lastTrackerWasSong' in editor
 assert 'full?("Operator "' in song
 assert 'TrackerSongEndPreviewTest.exe' in workflow
-print('OK TEST0.2.30 Song End, preview, page focus and announcements')
+print('OK TEST0.2.31 Song End, preview, page focus and announcements')

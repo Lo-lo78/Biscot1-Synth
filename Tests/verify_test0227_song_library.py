@@ -1,4 +1,4 @@
-"""TEST0.2.30: Song/Pattern import-export does not regress TEST0.2.26."""
+"""TEST0.2.31: Song/Pattern import-export does not regress TEST0.2.26."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 package=(r/'Source/TrackerSongPackage.h').read_text()
@@ -15,4 +15,4 @@ assert 'patterns=std::move(newPatterns);songs=std::move(newSongs)' in package
 assert 'n>18' in package and 'id>23' in package  # Preview Steps stays portable
 assert 'compileTrackerSongRowPreview' in play and 'songPendingEndValue.load' in proc
 assert 'previewCurrentStep()' in sp
-print('OK TEST0.2.30 Song package and Pattern library integration; previews retained')
+print('OK TEST0.2.31 Song package and Pattern library integration; previews retained')

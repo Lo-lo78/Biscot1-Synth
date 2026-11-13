@@ -127,15 +127,24 @@ jobs:
       - name: Verify Song End chaining, blank-row FX and shared owner routing
         shell: pwsh
         run: python Tests/verify_test0225_song_engine.py
-      - name: Verify TEST0.2.30 Song End, previews and accessible return focus
+      - name: Verify TEST0.2.31 Song End, previews and accessible return focus
         shell: pwsh
         run: python Tests/verify_test0226_song_chain_preview.py
-      - name: Verify TEST0.2.30 Song and Pattern library import/export
+      - name: Verify TEST0.2.31 Song and Pattern library import/export
         shell: pwsh
         run: python Tests/verify_test0227_song_library.py
-      - name: Verify TEST0.2.30 self-contained Song bundles and library folders
+      - name: Verify TEST0.2.31 self-contained Song bundles and library folders
         shell: pwsh
         run: python Tests/verify_test0228_self_contained.py
+      - name: Verify TEST0.2.31 Song editor balanced C++ blocks
+        shell: pwsh
+        run: python Tests/verify_test0231_song_panel_syntax.py
+      - name: Verify independent single Song and fixed 100-Song bank packages
+        shell: pwsh
+        run: python Tests/verify_test0230_song_library_modes.py
+      - name: Verify all Song exports and embedded Patterns
+        shell: pwsh
+        run: python Tests/verify_test0229_all_songs.py
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
@@ -240,9 +249,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.30-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.31-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-TEST0.2.30-Windows-x64
-          path: Biscot1-TEST0.2.30-Windows-x64.zip
+          name: Biscot1-TEST0.2.31-Windows-x64
+          path: Biscot1-TEST0.2.31-Windows-x64.zip
           if-no-files-found: error

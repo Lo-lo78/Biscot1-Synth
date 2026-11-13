@@ -255,9 +255,12 @@ double TrackerSongPanel::valueNow()const{
 void TrackerSongPanel::currentValue(double value){
  if(!std::isfinite(value))return;
  auto& s=song();const TrackerSong before=s;double newValue=value;
- if(lane==3){const int n=juce::jlimit(-1,99,(int)std::round(value));if(n==s.songEnd)return;s.songEnd=n;
-  if(n>=0)processor.trackerSongs.at(n); // Song End target exists in the immutable graph}
- else if(row<0){
+ if(lane==3){
+  const int n=juce::jlimit(-1,99,(int)std::round(value));
+  if(n==s.songEnd)return;
+  s.songEnd=n;
+  if(n>=0)processor.trackerSongs.at(n); // Ensure the Song End target exists.
+ }else if(row<0){
   if(cell==0){
    const int n=juce::jlimit(1,4096,(int)std::round(value));if(n==length())return;
    s.laneLengths[(size_t)lane]=n;

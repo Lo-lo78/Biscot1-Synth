@@ -11,4 +11,4 @@ assert "songpkg::exportAllSongs(" in u
 assert "songpkg::exportSong(" in u
 assert '*.biscot1-song;*.biscot1-all-song' in u
 assert "onPresetBrowser(true)" not in u
-print('OK TEST0.2.30 song library modes')
+print('OK TEST0.2.31 song library modes')

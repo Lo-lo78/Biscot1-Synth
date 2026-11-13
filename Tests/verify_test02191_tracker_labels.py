@@ -12,5 +12,5 @@ assert 'return juce::String(trackerCellLabel(c).c_str());' in ui
 assert 'tracker->synthIndex' in labels and 'synth.choices' in labels
 assert 'trackerCellValue(cell.id,cell.value)' in labels
 assert 'TrackerCellPresentationTest.exe' in workflow
-assert 'VERSION 0.2.30' in (root/'CMakeLists.txt').read_text()
+assert 'VERSION 0.2.31' in (root/'CMakeLists.txt').read_text()
 print('OK: synth-native choice labels and persistent F1 logical cell')

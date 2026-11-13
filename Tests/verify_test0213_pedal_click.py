@@ -10,5 +10,5 @@ assert 'rebuildArpPools(true);return;' in p  # Snapshots on Note On only
 assert 'if(!down)sustainedArp.clearChannel(ch);' in p
 assert 'void latchCurrentChordRootForRelease(int lastLiveRoot)' in s
 assert 'v.amp.noteOff(opSharedParam(43,i),sampleRateHz)' in release
-assert 'TEST0.2.30' in (base/'CMakeLists.txt').read_text()
+assert 'TEST0.2.31' in (base/'CMakeLists.txt').read_text()
 print('Pedal release preserves arp root and note pool; VCA follows manual release.')
