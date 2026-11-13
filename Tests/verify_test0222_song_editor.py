@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """New F2 Song state, native accessibility, three lanes, and preservation of F1."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -31,5 +32,5 @@ assert 'songPanel->open();' in editor
 assert 'songPanel->restoreAfterPreset()' in editor
 assert 'Source/TrackerSongPanel.cpp' in cmake
 assert 'TrackerSongBankTest.exe' in workflow
-assert 'Biscot1-TEST0.2.35-Windows-x64' in workflow
+assert release_artifact in workflow
 print('OK: Song F2 sparse bank, UI routing, independent preset persistence, honest playback status')

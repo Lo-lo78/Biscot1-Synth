@@ -1,3 +1,16 @@
+# Biscot1 Synth VST3 — TEST0.2.37 (GitHub Actions release-test repair)
+
+The TEST0.2.36 GitHub Actions run failed before compilation because several
+Python regression scripts still asserted the old TEST0.2.35 version string.
+This release reads its version from CMake for all regression release checks and
+adds an early consistency guard for the editor title and GitHub artifact.
+All 53 Python structural checks and 33 standalone C++ tests passed locally.
+See `RELEASE_NOTES_TEST0.2.37.md`. The full JUCE/MSVC VST3 build must be
+verified on GitHub Actions. The separately reported Song library file-loading
+issue has not yet been confirmed resolved without an actual saved Song file.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.35 (faithful file-browser playback)
 
 **Current tracker library:** in Alt+Q, F1 Ctrl+S opens an accessible Pattern

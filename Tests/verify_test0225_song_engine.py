@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """TEST0.2.35: native Song End / owner / effects control integration."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -18,5 +19,5 @@ assert 'std::array<TrackerSongFxCore,3> songFx' in p
 assert 'std::vector<float> left,right' in fx
 assert 'clearDelay()noexcept' in fx
 assert 'TrackerSongAdvancedTest.exe' in w
-assert 'Biscot1-TEST0.2.35-Windows-x64' in w
+assert release_artifact in w
 print('OK: song chain, resource ownership, row-only fx, sidechain/delay and audio integration')

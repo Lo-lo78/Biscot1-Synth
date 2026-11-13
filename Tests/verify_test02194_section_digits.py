@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Regression for F1 numeric section selection and Lua F2 behavior."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -12,9 +13,9 @@ assert "digit='1';digit<='3'" in helper
 assert 'trackerShortcutSectionIndex(digit,0)==i' in test
 assert 'trackerShortcutSectionIndex(0,digit)==i' in test
 assert 'TrackerShortcutTest.exe' in workflow
-assert 'VERSION 0.2.35' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.35' in (r/'Source/PluginEditor.cpp').read_text()
-assert 'Biscot1-TEST0.2.35-Windows-x64' in workflow
+assert release_cmake in (r/'CMakeLists.txt').read_text()
+assert release_test in (r/'Source/PluginEditor.cpp').read_text()
+assert release_artifact in workflow
 # Do not alter F2's search/section behavior.
 assert 'm.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2' in source
 assert 'biscotParameterSearchCharacter(k)' in source

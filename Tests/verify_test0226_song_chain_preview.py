@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """TEST0.2.35: source regressions for accessible Song End and step preview."""
 from pathlib import Path
 r=Path(__file__).resolve().parent.parent
@@ -8,8 +9,8 @@ song=(r/'Source/TrackerSongPanel.cpp').read_text()
 model=(r/'Source/TrackerSongBank.h').read_text()
 playback=(r/'Source/TrackerSongPlayback.h').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
-assert 'VERSION 0.2.35' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.35' in editor and 'TEST0.2.35' in workflow
+assert release_cmake in (r/'CMakeLists.txt').read_text()
+assert release_test in editor and release_test in workflow
 assert 'songPendingEndSong' in header and 'songPendingEndValue' in processor
 assert 'songChainNext()' in processor and 'songPendingEndValue.load' in processor
 assert 'compileTrackerSongRowPreview' in playback

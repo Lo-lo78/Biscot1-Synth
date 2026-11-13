@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Regression guard for the three errors found in GitHub Actions TEST0.2.
 
 This is a source-level test and does not replace an MSVC/JUCE build.
@@ -14,5 +15,5 @@ assert 'labels[i].equalsIgnoreCase(entered)' in editor
 assert 'int n=-1;' in editor
 assert 'if(n<0)n=entered.getIntValue();' in editor
 assert 'labels.indexOfIgnoreCase(' not in editor
-assert 'TEST0.2.35' in editor
+assert release_test in editor
 print('OK: JUCE 8 build fixes for transport bool and choice-label lookup (static check)')

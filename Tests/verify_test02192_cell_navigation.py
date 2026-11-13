@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Guard the real ComboBox event path as well as the JUCE-free helper."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -11,5 +12,5 @@ assert 'jumpToSameParameter' in h and 'void TrackerPatternPanel::jumpToSameParam
 assert 'trackerFindMatchingParameter(currentPattern(),row,tab,parameterId,direction)' in s
 assert 'm.isCtrlDown() && m.isAltDown() && !m.isShiftDown()' in s
 assert 'TrackerCellNavigationTest.exe' in w
-assert 'VERSION 0.2.35' in (r/'CMakeLists.txt').read_text()  # Preserve regression across later 0.2.19 fixes
+assert release_cmake in (r/'CMakeLists.txt').read_text()  # Preserve regression across later 0.2.19 fixes
 print('OK real F1 selection guard and matching-parameter shortcuts')

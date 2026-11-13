@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """0.2.35: portable keyboard-first native library with immutable short audio previews."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -27,5 +28,5 @@ assert 'songPreviewPlayable.store' in processor
 assert 'previewLimit>0 && previewPlayed>=previewLimit' in transport
 assert 'if(audition || ' in transport
 assert 'Source/TrackerLibraryBrowser.cpp' in (r/'CMakeLists.txt').read_text()
-assert '0.2.36' in (r/'CMakeLists.txt').read_text()
+assert release_version in (r/'CMakeLists.txt').read_text()
 print('OK TEST0.2.35 native library browser and bounded preview protection')

@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Guard the two F1/F2 accessibility fixes before building on Windows."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
@@ -12,5 +13,5 @@ assert 'return juce::String(trackerCellLabel(c).c_str());' in ui
 assert 'tracker->synthIndex' in labels and 'synth.choices' in labels
 assert 'trackerCellValue(cell.id,cell.value)' in labels
 assert 'TrackerCellPresentationTest.exe' in workflow
-assert 'VERSION 0.2.35' in (root/'CMakeLists.txt').read_text()
+assert release_cmake in (root/'CMakeLists.txt').read_text()
 print('OK: synth-native choice labels and persistent F1 logical cell')

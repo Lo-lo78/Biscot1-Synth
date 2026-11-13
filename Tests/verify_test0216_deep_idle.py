@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 from audio_reference import without_native_song_fx
 from pathlib import Path
 import re
@@ -16,8 +17,8 @@ assert 'if(settings.arpMode[(size_t)i]<=1)' in p
 assert 'rebuildArpPools();return;' in p # keep event-accurate note on/off
 assert 'SidArpPoolCache arpPoolCache{};' in h
 assert 'SidDeepIdleCpuTest.exe' in w and 'verify_test0216_deep_idle.py' in w
-assert 'VERSION 0.2.35' in (r/'CMakeLists.txt').read_text()
-assert 'TEST0.2.35' in w
+assert release_cmake in (r/'CMakeLists.txt').read_text()
+assert release_test in w
 # Byte-for-byte regression: JSFX-derived DSP and the complete MIDI event
 # dispatch are unchanged from the audible TEST0.2.15 reference.
 dsp=p[p.index('void BiscotProcessor::renderOne('):p.index('void BiscotProcessor::advanceIdleLfos(')]

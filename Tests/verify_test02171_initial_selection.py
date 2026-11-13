@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """New instances start at Audio Mode; previously saved locations remain authoritative."""
 from pathlib import Path
 import re
@@ -15,5 +16,5 @@ assert '{2, "Audio Mode",' in cat and '{3, "MIDI Mode",' in cat
 assert 'grid.setSelectedId(selected+1,juce::dontSendNotification);' in src
 assert 'return createIgnoredAccessibilityHandler(*this);' in src
 assert 'verify_test02171_initial_selection.py' in workflow
-assert 'TEST0.2.35' in src and 'TEST0.2.35' in workflow
+assert release_test in src and release_test in workflow
 print('OK: fresh UI starts at Audio Mode, remembered parameter still restores, native accessibility focus retained')

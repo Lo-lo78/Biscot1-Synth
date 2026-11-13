@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """TEST0.2.35: faithful file playback, user-configurable cut, no data mutation."""
 from pathlib import Path
 p=Path(__file__).resolve().parents[1]
@@ -25,5 +26,5 @@ assert 'constexpr std::array<int,7> lengths' in b
 assert 'requestLibrarySongPreview(*s,slot,*previewPatterns,*previewSongs,previewSteps)' in b
 assert 'compileTrackerSongRowPreview(*live,lane,row,steps)' in c
 assert 'Biscot1' in (p/'Source/PresetBrowser.cpp').read_text()
-assert '0.2.36' in (p/'CMakeLists.txt').read_text()
+assert release_version in (p/'CMakeLists.txt').read_text()
 print('OK: faithful Pattern and Song library auditions, archive-only chaining and length limit')

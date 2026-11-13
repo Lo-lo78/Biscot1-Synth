@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Static guard for accessible preset browser. The Windows+NVDA run is still mandatory."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -9,7 +10,7 @@ c=(r/'CMakeLists.txt').read_text()
 processor=(r/'Source/PluginProcessor.cpp').read_text()
 for name in ['PresetBrowser.cpp','PresetManager.cpp','ScreenReaderAnnouncer.cpp']:
  assert name in c,name
-assert 'TEST0.2.35' in ed and 'VERSION 0.2.35' in c
+assert release_test in ed and release_cmake in c
 assert 'setAccessible(false)' in ed
 assert 'void BiscotEditor::rememberLocation()' in ed
 assert 'void BiscotEditor::restoreLocation()' in ed

@@ -7,6 +7,9 @@ jobs:
     runs-on: windows-2022 # VS 2022; windows-latest currently uses VS 2026
     steps:
       - uses: actions/checkout@v4
+      - name: Validate release-number consistency before the regression tests
+        shell: pwsh
+        run: python Tests/verify_release_version_consistency.py
       - name: Validate JSFX parameter map
         shell: pwsh
         run: python Tests/verify_catalog.py
@@ -127,16 +130,16 @@ jobs:
       - name: Verify Song End chaining, blank-row FX and shared owner routing
         shell: pwsh
         run: python Tests/verify_test0225_song_engine.py
-      - name: Verify TEST0.2.36 Song End, previews and accessible return focus
+      - name: Verify TEST0.2.37 Song End, previews and accessible return focus
         shell: pwsh
         run: python Tests/verify_test0226_song_chain_preview.py
-      - name: Verify TEST0.2.36 Song and Pattern library import/export
+      - name: Verify TEST0.2.37 Song and Pattern library import/export
         shell: pwsh
         run: python Tests/verify_test0227_song_library.py
-      - name: Verify TEST0.2.36 self-contained Song bundles and library folders
+      - name: Verify TEST0.2.37 self-contained Song bundles and library folders
         shell: pwsh
         run: python Tests/verify_test0228_self_contained.py
-      - name: Verify TEST0.2.36 Song editor balanced C++ blocks
+      - name: Verify TEST0.2.37 Song editor balanced C++ blocks
         shell: pwsh
         run: python Tests/verify_test0231_song_panel_syntax.py
       - name: Verify independent single Song and fixed 100-Song bank packages
@@ -256,7 +259,7 @@ jobs:
       - name: Test portable Pattern-only library encoding and validation
         shell: pwsh
         run: .\build\Release\TrackerPatternTextTest.exe
-      - name: Verify TEST0.2.36 native tracker library browser
+      - name: Verify TEST0.2.37 native tracker library browser
         shell: pwsh
         run: python Tests/verify_test0233_native_library_browser.py
       - name: Package VST3
@@ -264,9 +267,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.36-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-TEST0.2.37-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-TEST0.2.36-Windows-x64
-          path: Biscot1-TEST0.2.36-Windows-x64.zip
+          name: Biscot1-TEST0.2.37-Windows-x64
+          path: Biscot1-TEST0.2.37-Windows-x64.zip
           if-no-files-found: error

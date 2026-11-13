@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 from pathlib import Path
 base=Path(__file__).resolve().parents[1]
 p=(base/'Source/PluginProcessor.cpp').read_text(encoding='utf-8')
@@ -10,5 +11,5 @@ assert 'rebuildArpPools(true);return;' in p  # Snapshots on Note On only
 assert 'if(!down)sustainedArp.clearChannel(ch);' in p
 assert 'void latchCurrentChordRootForRelease(int lastLiveRoot)' in s
 assert 'v.amp.noteOff(opSharedParam(43,i),sampleRateHz)' in release
-assert 'TEST0.2.35' in (base/'CMakeLists.txt').read_text()
+assert release_test in (base/'CMakeLists.txt').read_text()
 print('Pedal release preserves arp root and note pool; VCA follows manual release.')

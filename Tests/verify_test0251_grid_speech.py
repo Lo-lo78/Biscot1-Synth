@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Regression: keyboard Grid selection must speak, while focus entry remains quiet."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
@@ -24,5 +25,5 @@ assert 'source.setDescription(text);' not in s
 assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in s
 assert 'if(focused!=nullptr && focused!=safe.getComponent())return;' in s
 assert 'grid.setTitle({});grid.setDescription({});' in s
-assert 'TEST0.2.35' in s
+assert release_test in s
 print('OK: Grid speech restored once per effective selection; entry focus still quiet')

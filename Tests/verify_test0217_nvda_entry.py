@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """Static regression of LB-303's accessible root/focus pattern."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
@@ -17,5 +18,5 @@ assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in source
 assert 'announce(grid,labelFor(selected));' in source
 assert 'createIgnoredAccessibilityHandler(*this)' not in (root/'Source/PresetBrowser.cpp').read_text()
 assert 'verify_test0217_nvda_entry.py' in workflow
-assert 'TEST0.2.35' in source and 'TEST0.2.35' in workflow
+assert release_test in source and release_test in workflow
 print('OK: ignored root like LB-303, native Grid/Value/Edit focus preserved')

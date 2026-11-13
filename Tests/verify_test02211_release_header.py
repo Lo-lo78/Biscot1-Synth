@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 """TEST0.2.35: release-latch MIDI integration and F1 direct navigation wiring."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
@@ -20,5 +21,5 @@ assert 'trackerF1HomeTarget(row,pat.length,lastRealStep)' in ui
 assert 'trackerHeaderShortcut(command,m.isShiftDown()' in ui
 assert "{'l','m','s','r','p','d','t'}" in ui
 assert 'SidArpReleaseLatchTest.exe' in workflow and 'TrackerHeaderNavigationTest.exe' in workflow
-assert 'VERSION 0.2.35' in cmake and 'TEST0.2.35' in workflow
+assert release_cmake in cmake and release_test in workflow
 print('OK release chord retained until ADSR idle, F1 direct header / D/T cycle wired')

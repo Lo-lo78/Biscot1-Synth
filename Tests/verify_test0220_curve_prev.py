@@ -1,3 +1,4 @@
+from release_version_guard import release_version, release_test, release_cmake, release_artifact
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 panel=(r/'Source/TrackerPatternPanel.cpp').read_text()
@@ -6,9 +7,9 @@ playback=(r/'Source/TrackerPatternPlayback.h').read_text()
 cat=(r/'Source/TrackerPatternAutomation.h').read_text()
 cmake=(r/'CMakeLists.txt').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
-assert 'VERSION 0.2.35' in cmake
-assert 'TEST0.2.35' in (r/'Source/PluginEditor.cpp').read_text()
-assert 'Biscot1-TEST0.2.35-Windows-x64.zip' in workflow
+assert release_cmake in cmake
+assert release_test in (r/'Source/PluginEditor.cpp').read_text()
+assert (release_artifact + '.zip') in workflow
 assert 'TrackerCurvePreviousTest Tests/TrackerCurvePreviousTest.cpp' in cmake
 assert 'TrackerPatternAutomation.h' in playback
 assert 'trackerCompileAllAutomation(pattern,flattened)' in playback
