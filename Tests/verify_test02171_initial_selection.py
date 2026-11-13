@@ -15,5 +15,5 @@ assert '{2, "Audio Mode",' in cat and '{3, "MIDI Mode",' in cat
 assert 'grid.setSelectedId(selected+1,juce::dontSendNotification);' in src
 assert 'return createIgnoredAccessibilityHandler(*this);' in src
 assert 'verify_test02171_initial_selection.py' in workflow
-assert 'TEST0.2.25' in src and 'TEST0.2.25' in workflow
+assert 'TEST0.2.30' in src and 'TEST0.2.30' in workflow
 print('OK: fresh UI starts at Audio Mode, remembered parameter still restores, native accessibility focus retained')

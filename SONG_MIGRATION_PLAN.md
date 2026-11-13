@@ -41,3 +41,27 @@ Phase 3 is staged: TEST0.2.24 plays three operator lanes, but more advanced orig
 - Native Sidechain and Delay DSP, plus live F2 mixer update implemented for REAPER testing.
 - Phase 4 remains: per-Song Ctrl+S, dependent Pattern folder export/import, collision-safe Song package management.
 - Exact legacy JSFX effect response and advanced continuous pause/resume remain subject to listening tests.
+
+## TEST0.2.26 — Song-End UI synchronization and operator audition
+
+- Fixed live Song End updates and visible F2 follow-on when Song End starts the next Song. Song End waits for all three lane lengths/repeats, including blank Song rows.
+- Ported the Lua F3 short Pattern preview to native F2: selected lane only, default three steps, now configurable independently per Song row via optional `Preview Steps` (ID 23).
+- F1/F2 entry announcements, compact F2 parameter speech and persistent last-opened Alt+Q page; each pane retains its own edit cursor.
+- Native Windows VST3/NVDA listening tests remain necessary. Phase 4 standalone Song/Pattern package export remains not implemented.
+
+
+## TEST0.2.27 — Phase 4 (first integration)
+
+- Based on verified TEST0.2.26 **Song Chain Preview Focus**, preserving Song End, per-step Preview Steps, independent Pattern/Song navigation and NVDA speech.
+- F2 Ctrl+S exports Song and referenced Pattern dependencies to separate, relative library directories.
+- F1/F2 Ctrl+O use native file chooser to import a Pattern/Song and allocate free IDs for collisions without replacing synthesis settings.
+- The package parser also supports new Song Preview Steps field (ID 23).
+- **Remaining:** custom accessible browser with audio audition; multi-Song Song End chain packages; full JUCE Windows/NVDA end-to-end testing.
+
+## TEST0.2.28 — Phase 4 revised: portable self-contained Song bundles
+
+The previous Phase 4 multi-file proposal above is superseded. `Ctrl+S` in F1 saves only the selected Pattern in `Documents/Biscot1-Synth/patterns`. `Ctrl+S` in F2 saves a **single** `.biscot1-song` file in `Documents/Biscot1-Synth/songs`, embedding all referenced Patterns plus chained Songs reachable through Song End / Loop Target and their referenced Patterns. No file under `patterns` is required to reload a Song. F2 `Ctrl+O` imports the bundle and remaps occupied Song/Pattern numbers and internal links. No synthesis parameters are changed. Native file chooser is temporary until the complete accessible library browser is implemented.
+
+## TEST0.2.29 — Save all Songs in one package
+
+F2 Ctrl+S exports all instantiated Songs in the bank and embeds all their referenced Patterns, whether or not linked by Song End. F2 Ctrl+O imports the whole package and retains active Song selection. See RELEASE_NOTES_TEST0.2.29.md.

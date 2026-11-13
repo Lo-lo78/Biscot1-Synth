@@ -12,7 +12,7 @@
 namespace biscot {
 // F2 Song: native three-lane editing and first audible playback milestone.
 // Standalone Song exports and advanced Song effects remain separate phases.
-class TrackerSongPanel final:public juce::Component {
+class TrackerSongPanel final:public juce::Component,private juce::Timer {
 public:
  explicit TrackerSongPanel(BiscotProcessor&);
  void resized() override;
@@ -21,6 +21,7 @@ public:
  bool keyPressed(const juce::KeyPress&) override;
  void open();
  void restoreAfterPreset();
+ void close();
  std::function<void()> onPattern, onExit;
  std::function<void(bool)> onPresetBrowser;
 private:
@@ -39,6 +40,9 @@ private:
  // lane 0..2 => operators, lane 3 => Song global.
  int lane=0,row=-1,cell=0,logicalCell=0,rememberedRow=0,lastOperatorLane=0;
  int pickerIndex=0;bool picker=false,refreshing=false;
+ int lastObservedPlayingSong=-1;
+ void timerCallback()override;
+ void previewCurrentStep();
  TrackerSongHistory history;
  TrackerSongClipboard clipboard;
  int selectionAnchor=-1,selectionEnd=-1;

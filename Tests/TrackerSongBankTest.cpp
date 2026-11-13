@@ -18,7 +18,7 @@ int main(){
  auto& op3=s.atStep(2,4095);check(op3.insert(2));
  check(s.lanes[0].size()==1&&s.lanes[1].empty()&&s.lanes[2].size()==1);
  check(b.at(23).laneRepeats[2]==5&&b.at(24).lanes[0].empty());
- check(songParameters.size()==17&&songParam(1)!=nullptr&&songParam(21)==nullptr);
+ check(songParameters.size()==18&&songParam(1)!=nullptr&&songParam(21)==nullptr&&songParam(23)!=nullptr);
  check(songClampValue(1,9999)==999&&songClampValue(22,38)==31);
  check(songClampValue(3,-120)==-96&&songClampValue(2,1.17)==1.25);
  b.reset();check(b.songs.size()==1&&b.find(23)==nullptr);

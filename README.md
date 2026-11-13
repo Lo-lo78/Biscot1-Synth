@@ -633,3 +633,11 @@ Native `.biscot` format, tracker playback and DSP have **not changed** in this r
 ## TEST0.2.23 — Song F2 edit controls
 
 Song F2 now has step-range selection (Shift+arrows/Page), cell and step clipboard (Ctrl+C/X/V), independent Undo/Redo (Ctrl+Z/Ctrl+Shift+Z), Song name (Ctrl+R), ordering (Ctrl+Left/Right), Mute/Solo (M/S) and Song volume (+/-). Mixer changes are stored but will take audible effect only after the Phase 3 Song audio engine. F2 Ctrl+S standalone Song export remains Phase 4; Alt+S saves the complete preset including the Song bank. See RELEASE_NOTES_TEST0.2.23.md and SONG_MIGRATION_PLAN.md.
+
+## TEST0.2.26 — Song End, F2 auto-preview and page memory
+
+Song End now supports a live-updated next-Song target and the F2 display follows the active Song, announcing transitions for NVDA. **Every lane must reach the end of its own Length and Repeat before Song End happens**, including blank Song rows. For a quick test, set Length=1 in Op1/2/3 of Song 0 and Song 1, assign Song End=1 in Song 0's Global page (key 4), and start Song 0 with Space.
+
+F2 auditions only the selected operator's Pattern from Pattern Start when navigating Song steps or editing a Pattern-related value. The original Lua default is three Pattern steps. Optionally insert **Preview Steps (1–1024)** from the Enter parameter picker on a given Song row, then edit its value with Alt+E or Alt+arrows. This is a Song editor audition length; it does not modify actual Song playback, Repeat, or the `.biscot` synth sound. Previews never interrupt an already-running full Song.
+
+On F1/F2 opening, NVDA reads Pattern or Song explicitly. F2 value navigation no longer repeats «Operator 1» on every cell; Tab still announces the full location. Alt+Q remembers the last F1/F2 editor in the VST state (`trackerLastMode`), and the two editor instances retain their own cursor position across page switches. All old Song parameters retain their original numeric IDs; new Preview Steps is appended as optional ID 23. See `RELEASE_NOTES_TEST0.2.26.md`.

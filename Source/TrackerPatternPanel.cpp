@@ -65,7 +65,8 @@ void TrackerPatternPanel::announce(const juce::String& s){announceToActiveScreen
 void TrackerPatternPanel::open(){
  startTimerHz(40);parameterSearch.reset();clearSelection();page=1;refresh();setVisible(true);toFront(false);
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
- juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing())safe->navigator.grabKeyboardFocus();});
+ juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing()){
+  safe->navigator.grabKeyboardFocus();safe->announce(safe->positionText(true));}});
 }
 void TrackerPatternPanel::suspendForSong(){
  stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);
@@ -162,8 +163,8 @@ void TrackerPatternPanel::saveCurrentPattern(){
  const int slot=processor.trackerPatterns.activePattern;
  const auto root=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                   .getChildFile("Biscot1-Synth");
- const auto singles=root.getChildFile("Patterns").getChildFile("Singles");
- const auto songs=root.getChildFile("Songs");
+ const auto singles=root.getChildFile("patterns");
+ const auto songs=root.getChildFile("songs");
  const auto patternDir=singles.createDirectory();
  const auto songDir=songs.createDirectory();
  if(patternDir.failed() || songDir.failed()){
@@ -196,7 +197,7 @@ void TrackerPatternPanel::saveCurrentPattern(){
   }
  }
  patternExportFiles[slot]=file;
- announce("Pattern "+juce::String(slot)+" saved to Patterns, Singles, "+file.getFileName());
+ announce("Pattern "+juce::String(slot)+" saved to patterns, "+file.getFileName());
 }
 void TrackerPatternPanel::recordUndo(){
  const int n=processor.trackerPatterns.activePattern;
@@ -506,6 +507,35 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){parameterSearch.reset();clearSelection();close();return true;}
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('s')){
   saveCurrentPattern();return true;
+ }
+ if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('o')){
+  auto chooser=std::make_shared<juce::FileChooser>("Import Biscot1 Pattern",
+   juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("Biscot1-Synth").getChildFile("patterns"),
+   "*.biscot1-pattern");
+  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
+  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,
+   [safe,chooser](const juce::FileChooser& selected){
+    if(safe==nullptr)return;
+    const auto file=selected.getResult();
+    if(file==juce::File{}){safe->navigator.grabKeyboardFocus();return;}
+    TrackerPattern imported(false);int original=-1;
+    if(!file.existsAsFile()||file.getSize()>16*1024*1024||
+       !deserializeTrackerPattern(file.loadFileAsString().toStdString(),original,imported)){
+     safe->announce("Invalid Pattern file");safe->navigator.grabKeyboardFocus();return;
+    }
+    auto& bank=safe->processor.trackerPatterns;
+    int slot=original;
+    if(bank.patterns.count(slot)){
+     slot=0;while(slot<1000&&bank.patterns.count(slot))++slot;
+    }
+    if(slot>=1000){safe->announce("Pattern bank is full");safe->navigator.grabKeyboardFocus();return;}
+    bank.patterns.emplace(slot,std::move(imported));bank.activePattern=slot;
+    safe->processor.commitTrackerState();
+    safe->row=-1;safe->tab=0;safe->cell=safe->logicalCell=0;
+    safe->clearSelection();safe->refresh();
+    safe->announce("Imported Pattern "+juce::String(slot)+(slot!=original?"; original number "+juce::String(original):juce::String{}));
+    safe->navigator.grabKeyboardFocus();
+   });return true;
  }
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}

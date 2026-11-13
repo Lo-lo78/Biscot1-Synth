@@ -137,6 +137,37 @@ inline TrackerSongChainMap compileTrackerSongChainMap(const TrackerSongBank& son
   if(id>=0&&id<100)map.byNumber[(size_t)id]=std::make_shared<const TrackerPlayableSong>(compileTrackerSong(song,id,patterns,&cache));
  return map;
 }
+// A navigation preview intentionally does not follow Song End, lane repeats,
+// other operators or Pattern repeats. It also ignores FX-only Song rows.
+// The original Lua auditions up to three Pattern steps in the selected lane.
+inline std::shared_ptr<const TrackerPlayableSong> compileTrackerSongRowPreview(
+ const TrackerPlayableSong& song,int lane,int row,int requestedSteps){
+ if(lane<0||lane>=3||row<0)return {};
+ const auto& clips=song.clips[(size_t)lane];
+ const auto it=std::find_if(clips.begin(),clips.end(),[row](const auto& clip){return clip.songRow==row;});
+ if(it==clips.end()||!it->pattern||it->playLength<=0)return {};
+ auto result=std::make_shared<TrackerPlayableSong>();
+ result->songNumber=song.songNumber;
+ result->lengths={1,1,1};result->repeats={1,1,1};
+ result->laneSpeeds[(size_t)lane]={song.laneSpeeds[(size_t)lane].empty()?1.:song.laneSpeeds[(size_t)lane][0]};
+ result->mixer={0.f,0.f,0.f};result->mixer[(size_t)lane]=1.f; // audition even when this lane is muted in the full Song
+ result->filterOwner=song.filterOwner;result->filterMask=song.filterMask;result->lfoOwners=song.lfoOwners;
+ result->songEnd=-1;result->midiNote=-1;
+ auto clip=*it;
+ clip.songRow=0;clip.startOffset=0;
+ clip.repeat=1;
+ clip.playLength=std::clamp(requestedSteps,1,clip.playLength);
+ if(clip.pattern->repeat!=1){
+  auto once=std::make_shared<TrackerPlayablePattern>(*clip.pattern);
+  const double firstSpeed=once->repeatSpeeds.empty()?1.:once->repeatSpeeds[0];
+  const int firstTranspose=once->repeatTransposes.empty()?0:once->repeatTransposes[0];
+  once->repeat=1;once->repeatSpeeds.assign(1,firstSpeed);
+  once->repeatTransposes.assign(1,firstTranspose);
+  clip.pattern=once;
+ }
+ result->clips[(size_t)lane].push_back(std::move(clip));
+ return result;
+}
 struct TrackerSongMidiMap {
  std::array<std::shared_ptr<const TrackerPlayableSong>,128> atNote{};
  std::array<int,128> songIndex{};
@@ -259,7 +290,9 @@ public:
     // Preserve an already sounding note until its gate or the next entry.
    }
   }
-  if(allFinished){running=false;tick.finished=true;}
+  if(allFinished || std::all_of(lanes.begin(),lanes.end(),[](const Lane& lane){return lane.done;})){
+   running=false;tick.finished=true;
+  }
   return tick;
  }
 };

@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.25",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.30",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -52,20 +52,26 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  addAndMakeVisible(*presetBrowser);
  presetBrowser->setVisible(false);
  presetBrowser->onClose=[this]{focusBackFromPreset();};
- presetBrowser->onPresetLoaded=[this]{refreshLabels(true);if(trackerPanel)trackerPanel->restoreAfterPreset();if(songPanel)songPanel->restoreAfterPreset();};
+ presetBrowser->onPresetLoaded=[this]{
+  lastTrackerWasSong=(int)proc.state.state.getProperty(juce::Identifier("trackerLastMode"),0)==1;
+  refreshLabels(true);if(trackerPanel)trackerPanel->restoreAfterPreset();if(songPanel)songPanel->restoreAfterPreset();};
  trackerPanel=std::make_unique<TrackerPatternPanel>(proc);
  addAndMakeVisible(*trackerPanel);trackerPanel->setVisible(false);
  songPanel=std::make_unique<TrackerSongPanel>(proc);
  addAndMakeVisible(*songPanel);songPanel->setVisible(false);
- songPanel->onPattern=[this]{songPanel->setVisible(false);if(trackerPanel)trackerPanel->open();};
+ songPanel->onPattern=[this]{
+  lastTrackerWasSong=false;proc.state.state.setProperty(juce::Identifier("trackerLastMode"),0,nullptr);
+  showSynthWidgets(false);if(trackerPanel)trackerPanel->open();};
  songPanel->onExit=[this]{songPanel->setVisible(false);showSynthWidgets(true);focus(Control::grid,true);};
  songPanel->onPresetBrowser=[this](bool save){
-  songBrowserReturn=true;songPanel->setVisible(false);
+  songBrowserReturn=true;songPanel->close();
   showSynthWidgets(true);openPresetBrowser(save);
  };
  trackerPanel->onOpenSong=[this]{
   if(!songPanel)return;
   trackerPanel->suspendForSong();
+  lastTrackerWasSong=true;
+  proc.state.state.setProperty(juce::Identifier("trackerLastMode"),1,nullptr);
   songPanel->open();
  };
  trackerPanel->onClose=[this]{showSynthWidgets(true);focus(Control::grid,true);};
@@ -74,6 +80,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
   showSynthWidgets(true);openPresetBrowser(save);
  };
  setSize(940,610);
+ lastTrackerWasSong=(int)proc.state.state.getProperty(juce::Identifier("trackerLastMode"),0)==1;
  restoreLocation();
  populateGroup();
  startTimerHz(8);
@@ -436,7 +443,8 @@ void BiscotEditor::openTracker(){
  if(!trackerPanel)return;
  if(presetBrowser && presetBrowser->active())return;
  showSynthWidgets(false);
- trackerPanel->open();
+ if(lastTrackerWasSong && songPanel)songPanel->open();
+ else trackerPanel->open();
 }
 void BiscotEditor::openPresetBrowser(bool save){
  if(!presetBrowser)return;

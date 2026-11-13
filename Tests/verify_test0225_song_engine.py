@@ -1,4 +1,4 @@
-"""TEST0.2.25: native Song End / owner / effects control integration."""
+"""TEST0.2.30: native Song End / owner / effects control integration."""
 from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 h=(r/'Source/TrackerSongPlayback.h').read_text()
@@ -18,5 +18,5 @@ assert 'std::array<TrackerSongFxCore,3> songFx' in p
 assert 'std::vector<float> left,right' in fx
 assert 'clearDelay()noexcept' in fx
 assert 'TrackerSongAdvancedTest.exe' in w
-assert 'Biscot1-TEST0.2.25-Windows-x64' in w
+assert 'Biscot1-TEST0.2.30-Windows-x64' in w
 print('OK: song chain, resource ownership, row-only fx, sidechain/delay and audio integration')

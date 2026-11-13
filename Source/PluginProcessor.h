@@ -61,8 +61,10 @@ public:
  void requestSongStart(int row) noexcept;
  void requestSongPause() noexcept;
  void requestSongStop() noexcept;
+ void requestSongPreview(int lane,int row,int steps); // message thread; one lane only
  std::array<std::atomic<int>,3> songAudibleRows{};
- std::atomic<int> songPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused
+ std::atomic<int> songPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused, 3 preview
+ int playingSongNumber()const noexcept{return songPlayingNumber.load(std::memory_order_relaxed);}
  void requestTrackerStart(int step,bool audition=false) noexcept;
  void requestTrackerPause() noexcept;
  void requestTrackerStop() noexcept;
@@ -94,6 +96,7 @@ private:
  std::array<Voice,3> voices{};
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPlayable{};
+ std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPreviewPlayable{};
  std::atomic<std::shared_ptr<const TrackerSongChainMap>> songChainMap{};
  std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
  int songMidiTriggerNote=-1;
@@ -110,6 +113,8 @@ private:
  // never access editable SongBank from renderOne().
  std::array<std::atomic<float>,3> songPendingMixer{};
  std::atomic<int> songPendingMixerSong{-1};
+ std::atomic<int> songPendingEndSong{-1};
+ std::atomic<int> songPendingEndValue{-1};
  std::atomic<unsigned int> songMixerRevision{0};
  unsigned int songMixerLastRevision=0;
  int songFilterOwner=1, songFilterPreference=1;

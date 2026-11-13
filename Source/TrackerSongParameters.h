@@ -10,8 +10,9 @@ struct TrackerSongParameter {
 };
 // Lua F4_PARAMETER_IDS, in original order. Pattern's detail cells are generated
 // by its group and never separately inserted into _order.
-inline constexpr std::array<TrackerSongParameter,17> songParameters{{
+inline constexpr std::array<TrackerSongParameter,18> songParameters{{
  {1,"Pattern",-1,999,1},
+ {23,"Preview Steps",1,1024,1},
  {22,"Start Offset",0,31,1},
  {2,"Speed",0.25,16,0.25},
  {3,"Transpose",-96,96,1},
@@ -35,7 +36,7 @@ inline const TrackerSongParameter* songParam(int id){
 }
 inline double songDefaultValue(int id){
  switch(id){case 1:return -1;case 2:case 4:case 6:case 10:case 12:case 13:case 14:return 1;
- case 11:return 7;case 19:return 100;default:return 0;}
+ case 11:return 7;case 19:return 100;case 23:return 3;default:return 0;}
 }
 inline double songClampValue(int id,double value){
  if(!std::isfinite(value))return songDefaultValue(id);

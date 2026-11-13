@@ -6,9 +6,9 @@ playback=(r/'Source/TrackerPatternPlayback.h').read_text()
 cat=(r/'Source/TrackerPatternAutomation.h').read_text()
 cmake=(r/'CMakeLists.txt').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
-assert 'VERSION 0.2.25' in cmake
-assert 'TEST0.2.25' in (r/'Source/PluginEditor.cpp').read_text()
-assert 'Biscot1-TEST0.2.25-Windows-x64.zip' in workflow
+assert 'VERSION 0.2.30' in cmake
+assert 'TEST0.2.30' in (r/'Source/PluginEditor.cpp').read_text()
+assert 'Biscot1-TEST0.2.30-Windows-x64.zip' in workflow
 assert 'TrackerCurvePreviousTest Tests/TrackerCurvePreviousTest.cpp' in cmake
 assert 'TrackerPatternAutomation.h' in playback
 assert 'trackerCompileAllAutomation(pattern,flattened)' in playback

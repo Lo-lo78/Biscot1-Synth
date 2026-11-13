@@ -47,6 +47,7 @@ private:
  std::unique_ptr<TrackerPatternPanel> trackerPanel;
  std::unique_ptr<TrackerSongPanel> songPanel;
  bool songBrowserReturn=false;
+ bool lastTrackerWasSong=false;
  bool trackerBrowserReturn=false;
  Control presetReturnControl=Control::grid;
  int presetReturnGroup=0, presetReturnSelection=0;

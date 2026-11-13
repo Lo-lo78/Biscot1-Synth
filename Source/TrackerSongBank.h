@@ -15,18 +15,18 @@ struct TrackerSongStep {
  // Pattern (1) is one indivisible ordered group; its auxiliary controls
  // (5/6 and read-only 7/8/21) are exposed by the editor, not separately ordered.
  std::vector<int> order;
- std::array<double,23> values{};
+ std::array<double,24> values{};
  TrackerSongStep() {
   values[1]=-1;values[2]=1;values[4]=1;values[6]=1;
   values[10]=1;values[11]=7;values[12]=values[13]=values[14]=1;
-  values[19]=100;
+  values[19]=100;values[23]=3; // preview duration, independently saved per Song step
  }
  bool contains(int id) const {
   if(id==5||id==6||id==7||id==8||id==21)return contains(1);
   return std::find(order.begin(),order.end(),id)!=order.end();
  }
  bool insert(int id,int pos=-1){
-  if(id<1||id>22||id==5||id==6||id==7||id==8||id==21||contains(id)||order.size()>=17)return false;
+  if(id<1||id>23||id==5||id==6||id==7||id==8||id==21||contains(id)||order.size()>=18)return false;
   order.insert(order.begin()+(pos<0?(int)order.size():std::clamp(pos,0,(int)order.size())),id);
   return true;
  }

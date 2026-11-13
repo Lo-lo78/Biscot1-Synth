@@ -837,9 +837,20 @@ void BiscotProcessor::requestSongStart(int row) noexcept {
 }
 void BiscotProcessor::requestSongPause() noexcept {songRequested.store(-2,std::memory_order_release);}
 void BiscotProcessor::requestSongStop() noexcept {songRequested.store(-1,std::memory_order_release);}
+void BiscotProcessor::requestSongPreview(int lane,int row,int steps){
+ // Never interrupt a full Song transport with a navigation preview.
+ if(songPlaybackStatus.load(std::memory_order_acquire)==1)return;
+ const auto live=songPlayable.load(std::memory_order_acquire);
+ if(!live)return;
+ const auto preview=compileTrackerSongRowPreview(*live,lane,row,steps);
+ if(!preview)return;
+ songPreviewPlayable.store(preview,std::memory_order_release);
+ songRequested.store(-3,std::memory_order_release);
+}
 void BiscotProcessor::songBegin(const std::shared_ptr<const TrackerPlayableSong>& playable,int startRow) noexcept {
  if(!playable)return;
  songPlaybackSnapshot=playable;
+ songPendingEndSong.store(-1,std::memory_order_release);
  songTransport.start(startRow,*playable);
  songMixer=playable->mixer;songMixActive=true;
  songMixerLastRevision=songMixerRevision.load(std::memory_order_acquire);
@@ -856,10 +867,16 @@ void BiscotProcessor::songBegin(const std::shared_ptr<const TrackerPlayableSong>
 }
 bool BiscotProcessor::songChainNext() noexcept {
  if(!songPlaybackSnapshot || !songChainSnapshot)return false;
- const int next=songPlaybackSnapshot->songEnd;
+ // F2 can change Song End while the Song is already sounding. An immutable
+ // playback snapshot may therefore carry the old target; use the newest
+ // message-thread publication at the chain boundary, never read the UI bank.
+ const int current=songPlaybackSnapshot->songNumber;
+ const int liveId=songPendingEndSong.load(std::memory_order_acquire);
+ const int next=liveId==current?songPendingEndValue.load(std::memory_order_relaxed):songPlaybackSnapshot->songEnd;
  if(next<0||next>=100)return false;
+ if(auto newer=songChainMap.load(std::memory_order_acquire))songChainSnapshot=std::move(newer);
  const auto& target=songChainSnapshot->byNumber[(size_t)next];
- if(!target)return false;
+ if(!target)return false; // deliberately never guess an absent Song's contents
  // End -> next Song is a timeline transition, not a full DSP reset.
  // Keep oscillator/filter/LFO state and any running delay tails.
  for(int lane=0;lane<3;++lane)songReleaseLane(lane);
@@ -1046,6 +1063,11 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    songChainSnapshot=songChainMap.load(std::memory_order_acquire);
    for(auto& fx:songFx)fx.resetSidechain();
    songBegin(songPlayable.load(std::memory_order_acquire),songCommand-1);
+  }else if(songCommand==-3){
+   trackerClearOverrides();
+   songChainSnapshot.reset(); // auditions must never follow Song End
+   songBegin(songPreviewPlayable.load(std::memory_order_acquire),0);
+   songPlaybackStatus.store(3,std::memory_order_relaxed);
   }
  }
  const int trackerCommand=trackerRequested.exchange(0,std::memory_order_acq_rel);
@@ -1371,7 +1393,7 @@ bool readSongBank(const juce::String& text,TrackerSongBank& result){
    for(int r=0;r<rows;++r){
     if(!available(8))return false;
     const int step=in.readInt(),entries=in.readInt();
-    if(step<0||step>=4096||entries<1||entries>17||a.count(step)||!available((int64_t)entries*12))return false;
+    if(step<0||step>=4096||entries<1||entries>18||a.count(step)||!available((int64_t)entries*12))return false;
     TrackerSongStep entry;
     for(int k=0;k<entries;++k){
      const int id=in.readInt();const double value=in.readDouble();
@@ -1402,6 +1424,8 @@ void BiscotProcessor::commitSongState(){
  // Song F2 Mute/Solo/Volume edits affect a currently playing Song next block.
  if(songPlayingNumber.load(std::memory_order_acquire)==trackerSongs.activeSong){
   if(const auto* live=trackerSongs.find(trackerSongs.activeSong)){
+   songPendingEndValue.store(live->songEnd,std::memory_order_relaxed);
+   songPendingEndSong.store(trackerSongs.activeSong,std::memory_order_release);
    for(int i=0;i<3;++i){
     const bool mute=(live->mixerMuteMask&(1<<i))!=0 || (live->mixerSoloLane>0&&live->mixerSoloLane!=i+1);
     songPendingMixer[(size_t)i].store(mute?0.f:(float)std::clamp(live->mixerVolumes[(size_t)i]/100.,0.,1.),std::memory_order_relaxed);

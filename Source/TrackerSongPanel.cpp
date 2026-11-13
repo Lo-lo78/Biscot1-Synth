@@ -3,6 +3,7 @@
 #include "ScreenReaderAnnouncer.h"
 #include "TrackerManualNumeric.h"
 #include "TrackerShortcutKey.h"
+#include "TrackerSongPackage.h"
 #include "ParameterSearchKey.h"
 #include <algorithm>
 #include <cmath>
@@ -49,15 +50,38 @@ void TrackerSongPanel::resized(){
  numeric.setBounds(b.removeFromTop(34));
 }
 void TrackerSongPanel::announce(const juce::String& t){announceToActiveScreenReader(navigator,t);}
+void TrackerSongPanel::timerCallback(){
+ if(processor.songPlaybackStatus.load(std::memory_order_relaxed)!=1){
+  lastObservedPlayingSong=-1;return;
+ }
+ const int playing=processor.playingSongNumber();
+ if(playing<0||playing>=TrackerSongBank::maxSongs)return;
+ if((lastObservedPlayingSong<0 && playing!=processor.trackerSongs.activeSong) ||
+    (lastObservedPlayingSong>=0 && playing!=lastObservedPlayingSong)){
+  processor.trackerSongs.activeSong=playing;
+  processor.trackerSongs.at(playing);
+  processor.commitSongState();
+  picker=false;search.reset();clearSelection();
+  if(lane==3)lane=lastOperatorLane;
+  row=0;cell=logicalCell=0;lastStep={(int)0,(int)0,(int)0};
+  refresh(false);
+  announce("Song "+juce::String(playing)+" started. "+positionText());
+ }
+ lastObservedPlayingSong=playing;
+}
+void TrackerSongPanel::close(){stopTimer();processor.requestSongStop();setVisible(false);}
 void TrackerSongPanel::open(){
  processor.commitSongState();
  picker=false;search.reset();clearSelection();numeric.setVisible(false);refresh(false);setVisible(true);toFront(false);
+ lastObservedPlayingSong=processor.songPlaybackStatus.load(std::memory_order_relaxed)==1?processor.playingSongNumber():-1;
+ startTimerHz(12);
  juce::Component::SafePointer<TrackerSongPanel> safe(this);
- juce::MessageManager::callAsync([safe]{if(safe!=nullptr&&safe->isShowing())safe->navigator.grabKeyboardFocus();});
+ juce::MessageManager::callAsync([safe]{if(safe!=nullptr&&safe->isShowing()){
+  safe->navigator.grabKeyboardFocus();safe->announce(safe->positionText(true));}});
 }
 void TrackerSongPanel::restoreAfterPreset(){
  lane=0;row=-1;cell=0;logicalCell=0;rememberedRow=0;lastOperatorLane=0;lastStep={0,0,0};
- picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);refresh();
+ picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();refresh();
 }
 int TrackerSongPanel::visibleCount()const{
  if(picker)return (int)songParameters.size();
@@ -81,6 +105,7 @@ int TrackerSongPanel::selectedParameter()const{
 juce::String TrackerSongPanel::paramLabel(int id,double v)const{
  const auto& pat=processor.trackerPatterns;
  if(id==1)return v<0?"Pattern, Off":"Pattern, "+juce::String((int)v);
+ if(id==23)return "Preview Steps, "+juce::String((int)v);
  if(id==5)return "Pattern Start, step "+juce::String((int)v);
  if(id==6)return "Play Length, "+juce::String((int)v)+" steps";
  if(id==7||id==8||id==21){
@@ -110,7 +135,7 @@ juce::String TrackerSongPanel::positionText(bool full)const{
   (song().name.empty()?juce::String{}:" "+juce::String::fromUTF8(song().name.c_str()))+". "):juce::String{};
  if(picker)return "Song parameters. "+juce::String(songParameters[(size_t)juce::jlimit(0,(int)songParameters.size()-1,pickerIndex)].name);
  if(lane==3)return prefix+"Global. Song End, "+(song().songEnd<0?juce::String("Off"):juce::String(song().songEnd));
- const juce::String laneText=prefix+"Operator "+juce::String(lane+1)+". ";
+ const juce::String laneText=prefix+(full?("Operator "+juce::String(lane+1)+". "):juce::String{});
  if(row<0)return laneText+(cell==0?"Length, "+juce::String(length()):"MIDI Note, "+midiLabel(song().midiNote));
  if(row==length())return laneText+"Repeat, "+juce::String(song().laneRepeats[(size_t)lane]);
  if(speedRow()){
@@ -157,7 +182,14 @@ void TrackerSongPanel::refresh(bool speak){
   navigator.setSelectedId(cell+1,juce::dontSendNotification);
  }
  refreshing=false;
- repaint();if(speak)announce(positionText());
+ repaint();if(speak){announce(positionText());previewCurrentStep();}
+}
+void TrackerSongPanel::previewCurrentStep(){
+ if(picker||!realStep()||processor.songPlaybackStatus.load(std::memory_order_acquire)==1)return;
+ const auto* step=song().findStep(lane,row);
+ if(!step||!step->contains(1)||step->values[1]<0)return;
+ const int length=step->contains(23)?(int)step->values[23]:3;
+ processor.requestSongPreview(lane,row,juce::jlimit(1,1024,length));
 }
 void TrackerSongPanel::changeLane(int next){
  if(next<0||next>3||next==lane)return;
@@ -172,7 +204,9 @@ void TrackerSongPanel::changeLane(int next){
  else if(region==2)row=length();
  else if(region==3)row=length()+1;
  else row=-1;
- refresh(true);
+ refresh(false);
+ announce(lane==3?positionText():("Operator "+juce::String(lane+1)+". "+positionText()));
+ if(realStep())previewCurrentStep();
 }
 void TrackerSongPanel::changeSong(int next){
  next=juce::jlimit(0,TrackerSongBank::maxSongs-1,next);
@@ -221,7 +255,8 @@ double TrackerSongPanel::valueNow()const{
 void TrackerSongPanel::currentValue(double value){
  if(!std::isfinite(value))return;
  auto& s=song();const TrackerSong before=s;double newValue=value;
- if(lane==3){const int n=juce::jlimit(-1,99,(int)std::round(value));if(n==s.songEnd)return;s.songEnd=n;}
+ if(lane==3){const int n=juce::jlimit(-1,99,(int)std::round(value));if(n==s.songEnd)return;s.songEnd=n;
+  if(n>=0)processor.trackerSongs.at(n); // Song End target exists in the immutable graph}
  else if(row<0){
   if(cell==0){
    const int n=juce::jlimit(1,4096,(int)std::round(value));if(n==length())return;
@@ -459,10 +494,10 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  }
  if(code==juce::KeyPress::escapeKey){
   if(picker){picker=false;search.reset();refresh(true);return true;}
-  processor.requestSongStop();if(onExit)onExit();return true;
+  close();if(onExit)onExit();return true;
  }
- if(m.isAltDown()&&letter('q')){processor.requestSongStop();if(onExit)onExit();return true;}
- if(code==juce::KeyPress::F1Key){processor.requestSongStop();if(onPattern)onPattern();return true;}
+ if(m.isAltDown()&&letter('q')){close();if(onExit)onExit();return true;}
+ if(code==juce::KeyPress::F1Key){close();if(onPattern)onPattern();return true;}
  if(code==juce::KeyPress::F2Key){announce(positionText(true));return true;}
  if(code==32){
   if(m.isCtrlDown()){
@@ -479,9 +514,32 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   }return true;
  }
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
- if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
+ if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){
+  juce::String result;
+  songpkg::exportAllSongs(processor.trackerSongs,processor.trackerPatterns,
+    juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),result);
+  announce(result);return true;
+ }
  if(m.isCtrlDown()&&!m.isAltDown()&&letter('s')){
-  announce("Song export will be added with the standalone Song package");return true;
+  juce::String result;
+  songpkg::exportSong(processor.trackerSongs,processor.trackerPatterns,
+    juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),result);
+  announce(result);return true;
+ }
+ if(m.isCtrlDown()&&!m.isAltDown()&&letter('o')){
+  auto chooser=std::make_shared<juce::FileChooser>("Import Biscot1 Song or All Songs",
+   juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("Biscot1-Synth").getChildFile("songs"),"*.biscot1-song;*.biscot1-all-song");
+  juce::Component::SafePointer<TrackerSongPanel> safe(this);
+  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,
+   [safe,chooser](const juce::FileChooser& selected){
+    if(safe==nullptr)return;
+    const auto file=selected.getResult();if(file==juce::File{}){safe->navigator.grabKeyboardFocus();return;}
+    juce::String result;
+    if(songpkg::importSong(file,safe->processor.trackerSongs,safe->processor.trackerPatterns,result)){
+     safe->processor.commitTrackerState();safe->processor.commitSongState();safe->restoreAfterPreset();
+    }
+    safe->announce(result);safe->navigator.grabKeyboardFocus();
+   });return true;
  }
  if(!m.isCtrlDown()&&code==juce::KeyPress::tabKey){announce(positionText(true));return true;}
  if(m.isAltDown()&&code==juce::KeyPress::returnKey){
