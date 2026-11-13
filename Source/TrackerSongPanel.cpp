@@ -54,18 +54,22 @@ void TrackerSongPanel::timerCallback(){
  if(processor.songPlaybackStatus.load(std::memory_order_relaxed)!=1){
   lastObservedPlayingSong=-1;return;
  }
+ followPlayingSong(true);
+}
+// Follow Song End transitions even if the timer has not fired before Space.
+// Do not start a Song, and do not change the transport owned by REAPER.
+void TrackerSongPanel::followPlayingSong(bool speak){
  const int playing=processor.playingSongNumber();
  if(playing<0||playing>=TrackerSongBank::maxSongs)return;
- if((lastObservedPlayingSong<0 && playing!=processor.trackerSongs.activeSong) ||
-    (lastObservedPlayingSong>=0 && playing!=lastObservedPlayingSong)){
+ if(playing!=processor.trackerSongs.activeSong){
   processor.trackerSongs.activeSong=playing;
   processor.trackerSongs.at(playing);
   processor.commitSongState();
   picker=false;search.reset();clearSelection();
   if(lane==3)lane=lastOperatorLane;
-  if(lane<3){row=juce::jlimit(0,length()-1,row);lastStep[(size_t)lane]=row;}
+  if(lane<3)row=juce::jlimit(0,length()-1,row);
   refresh(false);
-  announce("Song "+juce::String(playing)+" started. "+positionText());
+  if(speak)announce("Song "+juce::String(playing)+" started. "+positionText());
  }
  lastObservedPlayingSong=playing;
 }
@@ -595,8 +599,20 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
     refresh();announce("Song paused. "+positionText());
    }else announce("Song is not playing");
   }else{
-   if(processor.songPlaybackStatus.load(std::memory_order_relaxed)==1){processor.requestSongStop();announce("Song stopped");}
-   else{processor.commitSongState();processor.requestSongStart(lane<3&&realStep()?row:0);
+   if(processor.songPlaybackStatus.load(std::memory_order_relaxed)==1){
+    // The Song may have chained since the last GUI timer tick. Capture the
+    // actual playing Song AND each audible step before Stop clears them.
+    followPlayingSong(false);
+    for(int op=0;op<3;++op){
+     const int audible=processor.songAudibleRows[(size_t)op].load(std::memory_order_relaxed);
+     if(audible>=0){
+      lastStep[(size_t)op]=juce::jlimit(0,song().laneLengths[(size_t)op]-1,audible);
+      if(lane==op && realStep())row=lastStep[(size_t)op];
+     }
+    }
+    refresh(false);processor.requestSongStop();
+    announce("Song "+juce::String(processor.trackerSongs.activeSong)+" stopped. "+positionText());
+   }else{processor.commitSongState();processor.requestSongStart(lane<3&&realStep()?row:0);
     announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));}
   }return true;
  }
@@ -645,8 +661,11 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   else navigateArea(direction);
   return true;
  }
+ // Operators 1/2/3 are meaningful only inside Steps: the Song header,
+ // Repeat/Speed/Transpose and other shared areas apply to all operators.
  if(!picker&&!m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&code>='1'&&code<='4'){
-  changeLane(code-'1');return true;
+  if(code=='4'||realStep())changeLane(code-'1');
+  return true;
  }
  if(!picker&&m.isCtrlDown()&&!m.isAltDown()&&letter('j')){
   if(lane<3)openNumeric(EditPurpose::stepNumber,"Go to Song step 0 to "+juce::String(length()-1),juce::String(juce::jlimit(0,length()-1,row)));

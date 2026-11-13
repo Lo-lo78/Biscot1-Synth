@@ -15,7 +15,7 @@ namespace {
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
-constexpr auto biscotVersion="0.99.2";
+constexpr auto biscotVersion="0.99.3";
 constexpr auto biscotReleaseDate="13 November 2026";
 constexpr auto biscotProjectUrl="https://github.com/Lo-lo78/Biscot1-Synth";
 constexpr auto biscotContactEmail="vmanolo301@gmail.com";
@@ -38,7 +38,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 0.99.2",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 0.99.3",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | Alt+A: about | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){

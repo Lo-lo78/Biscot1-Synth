@@ -59,6 +59,7 @@ private:
  bool shortcutEdit=false;int shortcutRow=-1,shortcutCell=0,shortcutLane=0;
  int lastObservedPlayingSong=-1;
  void timerCallback()override;
+ void followPlayingSong(bool speak);
  void previewCurrentStep();
  TrackerSongHistory history;
  TrackerSongClipboard clipboard;

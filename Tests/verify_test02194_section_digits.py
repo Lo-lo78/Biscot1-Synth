@@ -7,7 +7,7 @@ helper=(r/'Source/TrackerShortcutKey.h').read_text()
 test=(r/'Tests/TrackerShortcutTest.cpp').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
 assert 'trackerShortcutSectionIndex(code,(int)k.getTextCharacter())' in source
-assert 'if(section>=0){setTab(section);return true;}' in source
+assert 'if(page==1 && row>=0 && row<currentPattern().length)setTab(section)' in source
 assert "letter('1')" not in source and "letter('2')" not in source and "letter('3')" not in source
 assert "digit='1';digit<='3'" in helper
 assert 'trackerShortcutSectionIndex(digit,0)==i' in test

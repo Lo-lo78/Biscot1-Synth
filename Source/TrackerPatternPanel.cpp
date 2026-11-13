@@ -707,7 +707,12 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  // The parameter picker intentionally retains 1/2/3 for incremental search.
  if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
   const int section=trackerShortcutSectionIndex(code,(int)k.getTextCharacter());
-  if(section>=0){setTab(section);return true;}
+  if(section>=0){
+   // The three operator/filter/LFO sections are selected only from Steps.
+   // Length, Repeat and Speed/Transpose are shared across all three.
+   if(page==1 && row>=0 && row<currentPattern().length)setTab(section);
+   return true;
+  }
  }
  // F1 quick navigation to Pattern header/repeat cells.
  // D/T cycle forward; Shift+D/T cycle backward across every repeat row.

@@ -1,4 +1,8 @@
-## Biscot1 Synth 0.99.2 — Song picker and stereo delay
+## Biscot1 Synth 0.99.3 — Tracker operator scope and Song position
+
+See RELEASE_NOTES_0.99.3.md.
+
+## Biscot1 Synth 0.99.3 — Song picker and stereo delay
 
 - F1 Pattern and F2 Song parameter pickers now mark parameters already in the current step with the short **Set,** prefix, including immediately after insertion.
 - Ctrl+Enter inserts a Song parameter and remains inside the picker; a single insertion/already-present announcement is spoken, matching F1. Enter inserts and returns to the step.
