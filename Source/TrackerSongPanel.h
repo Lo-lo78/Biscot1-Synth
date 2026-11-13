@@ -58,6 +58,16 @@ private:
  int pickerIndex=0;bool picker=false,refreshing=false;
  bool shortcutEdit=false;int shortcutRow=-1,shortcutCell=0,shortcutLane=0;
  int lastObservedPlayingSong=-1;
+ // The F2 Space transport is a start/stop audition. Store the exact edit
+ // cursor at Play so Stop restores it even after Song End chaining.
+ struct ManualPlayOrigin {
+  int song=0,lane=0,row=-1,cell=0,logicalCell=0,lastOperatorLane=0;
+  std::array<int,3> lastStep{0,0,0};
+ } manualPlayOrigin;
+ bool manualPlayOriginValid=false;
+ bool awaitingManualStop=false;
+ void rememberManualPlayOrigin();
+ void restoreManualPlayOrigin();
  void timerCallback()override;
  void followPlayingSong(bool speak);
  void previewCurrentStep();

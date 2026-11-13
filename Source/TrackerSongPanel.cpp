@@ -51,6 +51,13 @@ void TrackerSongPanel::resized(){
 }
 void TrackerSongPanel::announce(const juce::String& t){announceToActiveScreenReader(navigator,t);}
 void TrackerSongPanel::timerCallback(){
+ // Stop is handled by the audio thread at a later block. Do not let an
+ // in-flight Song End position overwrite the cursor restored by Space Stop.
+ if(awaitingManualStop){
+  if(processor.songPlaybackStatus.load(std::memory_order_relaxed)!=1)
+   awaitingManualStop=false;
+  return;
+ }
  if(processor.songPlaybackStatus.load(std::memory_order_relaxed)!=1){
   lastObservedPlayingSong=-1;return;
  }
@@ -73,11 +80,42 @@ void TrackerSongPanel::followPlayingSong(bool speak){
  }
  lastObservedPlayingSong=playing;
 }
-void TrackerSongPanel::close(){stopTimer();processor.requestSongStop();setVisible(false);}
+void TrackerSongPanel::rememberManualPlayOrigin(){
+ manualPlayOrigin.song=processor.trackerSongs.activeSong;
+ manualPlayOrigin.lane=lane;
+ manualPlayOrigin.row=row;
+ manualPlayOrigin.cell=cell;
+ manualPlayOrigin.logicalCell=logicalCell;
+ manualPlayOrigin.lastOperatorLane=lastOperatorLane;
+ manualPlayOrigin.lastStep=lastStep;
+ manualPlayOriginValid=true;
+ awaitingManualStop=false;
+}
+void TrackerSongPanel::restoreManualPlayOrigin(){
+ if(!manualPlayOriginValid)return;
+ processor.trackerSongs.activeSong=manualPlayOrigin.song;
+ processor.trackerSongs.at(manualPlayOrigin.song);
+ lane=manualPlayOrigin.lane;
+ row=manualPlayOrigin.row;
+ cell=manualPlayOrigin.cell;
+ logicalCell=manualPlayOrigin.logicalCell;
+ lastOperatorLane=manualPlayOrigin.lastOperatorLane;
+ lastStep=manualPlayOrigin.lastStep;
+ picker=false;
+ search.reset();
+ clearSelection();
+ lastObservedPlayingSong=-1;
+ manualPlayOriginValid=false;
+ awaitingManualStop=true;
+ processor.commitSongState();
+ refresh(false);
+}
+void TrackerSongPanel::close(){stopTimer();processor.requestSongStop();manualPlayOriginValid=false;awaitingManualStop=false;setVisible(false);}
 void TrackerSongPanel::open(){
  processor.commitSongState();
  picker=false;search.reset();clearSelection();numeric.setVisible(false);refresh(false);setVisible(true);toFront(false);
  lastObservedPlayingSong=processor.songPlaybackStatus.load(std::memory_order_relaxed)==1?processor.playingSongNumber():-1;
+ manualPlayOriginValid=false;awaitingManualStop=false;
  startTimerHz(12);
  juce::Component::SafePointer<TrackerSongPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr&&safe->isShowing()){
@@ -86,7 +124,7 @@ void TrackerSongPanel::open(){
 void TrackerSongPanel::suspendForLibrary(){stopTimer();setVisible(false);}
 void TrackerSongPanel::announceLibraryResult(const juce::String& s){announce(s);}
 void TrackerSongPanel::restoreAfterPreset(){
- picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();
+ picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();manualPlayOriginValid=false;awaitingManualStop=false;
  readCursor();refresh();
 }
 int TrackerSongPanel::visibleCount()const{
@@ -277,6 +315,9 @@ void TrackerSongPanel::vertical(int delta){
  refresh(true);
 }
 void TrackerSongPanel::navigateArea(int direction){
+ // Match F1: at the upper Length boundary, Ctrl+Up changes nothing and
+ // must not refresh the ComboBox or repeat "Length" through NVDA.
+ if(direction==0 || (lane<3 && row<0 && direction<0))return;
  clearSelection();
  if(lane==3){if(direction<0){lane=lastOperatorLane;row=length();cell=0;refresh(true);}return;}
  if(row<0){if(direction>0){row=lastStep[(size_t)lane];cell=0;logicalCell=0;}}
@@ -600,20 +641,17 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
    }else announce("Song is not playing");
   }else{
    if(processor.songPlaybackStatus.load(std::memory_order_relaxed)==1){
-    // The Song may have chained since the last GUI timer tick. Capture the
-    // actual playing Song AND each audible step before Stop clears them.
-    followPlayingSong(false);
-    for(int op=0;op<3;++op){
-     const int audible=processor.songAudibleRows[(size_t)op].load(std::memory_order_relaxed);
-     if(audible>=0){
-      lastStep[(size_t)op]=juce::jlimit(0,song().laneLengths[(size_t)op]-1,audible);
-      if(lane==op && realStep())row=lastStep[(size_t)op];
-     }
-    }
-    refresh(false);processor.requestSongStop();
-    announce("Song "+juce::String(processor.trackerSongs.activeSong)+" stopped. "+positionText());
-   }else{processor.commitSongState();processor.requestSongStart(lane<3&&realStep()?row:0);
-    announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));}
+    // Stop is the inverse of F2 Space Play: even if Song End passed through
+    // several songs, return to the exact song, lane, row and cell at Play.
+    processor.requestSongStop();
+    restoreManualPlayOrigin();
+    announce("Song "+juce::String(processor.trackerSongs.activeSong)+" stopped. Returned to Play start. "+positionText());
+   }else{
+    rememberManualPlayOrigin();
+    processor.commitSongState();
+    processor.requestSongStart(lane<3&&realStep()?row:0);
+    announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));
+   }
   }return true;
  }
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('b'))return true; // disabled and silent inside Alt+Q
