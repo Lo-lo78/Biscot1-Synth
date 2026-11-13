@@ -82,7 +82,6 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  aboutInfo.setBorder(juce::BorderSize<int>(12));
  aboutInfo.setWantsKeyboardFocus(true);
  aboutInfo.setExplicitFocusOrder(1);
- aboutInfo.setKeyHandler([this](const juce::KeyPress& key){return handleAboutKey(key);});
  aboutInfo.onEscapeKey=[this]{closeAbout();};
  addAndMakeVisible(aboutInfo);aboutInfo.setVisible(false);
  aboutProject.setButtonText(juce::String("Project: ")+biscotProjectUrl);

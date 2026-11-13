@@ -4,7 +4,7 @@
 
 **About:** Alt+A opens the accessible About structure adapted from LJuno-116: version, release date, license, GitHub project and contact. Tab/Shift+Tab moves between read-only About text, Project, Contact and Close; Esc or Alt+C closes and returns focus. Alt+A is available in F1 Pattern and F2 Song.
 
-The public version is 0.99.1. The native synth, Pattern/Song tracker, library and Song Trigger automation are retained. No DSP or preset serialization changes intended.
+The public version is 0.99.1. The native synth, Pattern/Song tracker, library and Song Select and Song Transport automation are available. No DSP or preset serialization changes intended.
 
 ---
 
@@ -785,11 +785,11 @@ Repeated standalone Pattern Ctrl+S saves create a new suffixed filename instead 
 
 ## REAPER song playback automation (TEST0.2.44)
 
-The VST3's **Song Trigger** parameter can be automated from the REAPER track envelope: 0 = Off; 1..100 = Song 0..99. The DAW's Play retriggers a nonzero Song Trigger setting, Stop stops playback. To switch songs mid-project, write a new value to the envelope. Host BPM is respected; tracks can play together with the tracker. Existing F2 Song MIDI note assignments continue to work independently.
+The VST3 exposes two separate DAW automation parameters: **Song Select** (0..99 selects Song 0..99 without starting it) and **Song Transport** (Stop, Pause, Play; default Stop). Set Song Select, then automate Song Transport to Play to start from the first row. Pause holds the exact three-lane sequencer position and releases active notes; Play resumes at that position. Stop ends playback; Play after Stop begins at row zero. When REAPER stops, playback stops; if Song Transport is left at Play, the next REAPER Play edge restarts the selected Song. Changing only Song Select never starts/restarts playback. MIDI song triggers remain independent; host BPM is respected. This arrangement does not perform DAW timeline seeking inside a Song.
 
 ## TEST0.2.44 — Factory reset, Ping Pong e Backspace
 
 - Song Delay Ping-Pong Depth now alternates actual stereo echoes even when the originating synth voice is center-panned. Use a nonzero Delay Speed and Delay Feedback for audible alternating repeats.
 - Alt+Q F1 and F2: Backspace restores the current value to its default (including Length, Repeat and Speed); Delete retains its original removal behavior.
-- Outside Alt+Q: Alt+I asks Yes/No before initializing every synth parameter, Song Trigger, the complete Pattern bank and the entire Song bank. No is selected initially; Y confirms immediately, N/Escape cancels. Saved library files on disk remain intact.
-- The DAW Song Trigger is still the manual start control; seeking along the host timeline does not yet change the Song playback position.
+- Outside Alt+Q: Alt+I asks Yes/No before initializing every synth parameter, Song Select/Transport, the complete Pattern bank and the entire Song bank. No is selected initially; Y confirms immediately, N/Escape cancels. Saved library files on disk remain intact.
+- The DAW Song Transport Play command starts the selected Song explicitly; seeking along the host timeline does not yet change the Song playback position.

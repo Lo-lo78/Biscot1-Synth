@@ -29,10 +29,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout BiscotProcessor::createLayou
    layout.add(std::make_unique<juce::AudioParameterFloat>(pid,name,range,d.initial));
   }
  }
- // Same host automation contract as legacy JSFX slider6: Off, Song 0..99.
- // This is a host-visible parameter, independent from the synth's 234 sliders.
+ // The old Song Trigger ID is retained so saved host automation remains mapped,
+ // but choosing a song no longer starts it. Transport is a distinct parameter.
  layout.add(std::make_unique<juce::AudioParameterInt>(
-  juce::ParameterID{"trackerSongTrigger",1},"Song Trigger",0,100,0));
+  juce::ParameterID{"trackerSongTrigger",1},"Song Select",0,99,0));
+ layout.add(std::make_unique<juce::AudioParameterChoice>(
+  juce::ParameterID{"trackerSongTransport",1},"Song Transport",
+  juce::StringArray{"Stop","Pause","Play"},0));
  return layout;
 }
 BiscotProcessor::BiscotProcessor():AudioProcessor(BusesProperties().withOutput("Mix",juce::AudioChannelSet::stereo(),true)
@@ -43,6 +46,7 @@ BiscotProcessor::BiscotProcessor():AudioProcessor(BusesProperties().withOutput("
  state(*this,nullptr,"BISCOT1",createLayout()){
  for(const auto& d:catalog)parameters[(size_t)d.index]=state.getRawParameterValue(id(d.index));
  hostSongTriggerParameter=state.getRawParameterValue("trackerSongTrigger");
+ hostSongTransportParameter=state.getRawParameterValue("trackerSongTransport");
  for(auto& a:trackerOverrideMask)a.store(false,std::memory_order_relaxed);
  trackerPlayable.store(std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(trackerPatterns.at(0))));
  trackerMidiMap.store(std::make_shared<const TrackerMidiMap>(compileTrackerMidiMap(trackerPatterns)));
@@ -72,7 +76,7 @@ void BiscotProcessor::prepareToPlay(double sr,int){
  trackerRequested.store(0);trackerClearOverrides();
  trackerReleaseArpActive=false;trackerMidiTriggerNote=-1;
  songTransport.stop();songPlaybackSnapshot.reset();songChainSnapshot.reset();songPlayingNumber.store(-1);songRequested.store(0);songPlaybackStatus.store(0);songMidiTriggerNote=-1;
- hostSongLastSelection=-1;hostSongPlaying=false;hostSongPending=-1;hostTransportLastPlaying=false;
+ hostSongLastSelection=-1;hostSongLastTransport=-1;hostSongPlaying=false;hostSongPaused=false;hostSongPending=-1;hostTransportLastPlaying=false;
  songMixActive=false; songMixer={1.f,1.f,1.f};songFilterOwner=1;songFilterPreference=1;songFilterMask=7;songLfoOwners={1,1,1};songLfoPreferences={1,1,1};songActiveNotes.fill(-1);songActiveSubCount.fill(0);
  for(auto& x:songAudibleRows)x.store(-1);
 }
@@ -1093,40 +1097,61 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   if(songTransport.running && songPlayingNumber.load(std::memory_order_relaxed)==songPendingMixerSong.load(std::memory_order_relaxed))
    for(int i=0;i<3;++i)songMixer[(size_t)i]=songPendingMixer[(size_t)i].load(std::memory_order_relaxed);
  }
- // Host automation, ported from the legacy JSFX Song Trigger slider.
- // 0 = Off; 1..100 = Song 0..99. Replay an unchanged nonzero selection on
- // every DAW Stop->Play edge (including seeking to a new automated region).
- // Process BEFORE the cold-idle early return, so an idle synth can start.
+ // Host song automation: selection does not trigger playback. The explicit
+ // Stop/Pause/Play envelope owns transport only after Play is requested.
+ // The host's Stop->Play edge restarts a held Play selection from row zero.
  bool hostPlaying=false;
  if(auto* ph=getPlayHead())if(auto position=ph->getPosition())hostPlaying=position->getIsPlaying();
  const bool transportStarted=hostPlaying&&!hostTransportLastPlaying;
  const bool transportStopped=!hostPlaying&&hostTransportLastPlaying;
  hostTransportLastPlaying=hostPlaying;
- if(transportStopped){
-  hostSongPending=-1;hostSongPlaying=false;
- }
  const int hostSelection=hostSongTriggerParameter
-  ?juce::jlimit(0,100,juce::roundToInt(hostSongTriggerParameter->load(std::memory_order_relaxed))):0;
- if(hostSelection!=hostSongLastSelection || (transportStarted && hostSelection>0)){
-  hostSongLastSelection=hostSelection;
-  hostSongPending=hostSelection>0?hostSelection-1:-1;
-  if(hostSelection==0 && hostSongPlaying){
-   songRequested.store(-1,std::memory_order_release);
-   hostSongPlaying=false;
+  ?juce::jlimit(0,99,juce::roundToInt(hostSongTriggerParameter->load(std::memory_order_relaxed))):0;
+ const int hostTransport=hostSongTransportParameter
+  ?juce::jlimit(0,2,juce::roundToInt(hostSongTransportParameter->load(std::memory_order_relaxed))):0;
+ const bool hostCommandChanged=hostTransport!=hostSongLastTransport;
+ hostSongLastSelection=hostSelection;
+ hostSongLastTransport=hostTransport;
+ if(transportStopped){
+  hostSongPending=-1;
+  if(hostSongPlaying){songRequested.store(-1,std::memory_order_release);hostSongPlaying=false;}
+  hostSongPaused=false;
+ }
+ if(hostCommandChanged){
+  if(hostTransport==0){
+   hostSongPending=-1;
+   if(hostSongPlaying){songRequested.store(-1,std::memory_order_release);hostSongPlaying=false;}
+   hostSongPaused=false;
+  }else if(hostTransport==1){
+   hostSongPending=-1;
+   if(hostSongPlaying && songTransport.running && !hostSongPaused){
+    for(int lane=0;lane<3;++lane)songReleaseLane(lane);
+    hostSongPaused=true;
+    songPlaybackStatus.store(2,std::memory_order_relaxed);
+   }
+  }else if(hostTransport==2){
+   if(hostSongPlaying && hostSongPaused && songTransport.running){
+    hostSongPaused=false;
+    songPlaybackStatus.store(1,std::memory_order_relaxed);
+   }else if(hostPlaying){
+    hostSongPending=hostSelection;
+   }
   }
  }
- // If automation was restored before the Song bank was published, preserve
- // the request until its immutable compiled Song becomes available.
- if(hostSongPending>=0){
+ if(transportStarted && hostTransport==2 && !hostSongPaused)
+  hostSongPending=hostSelection;
+ // A song is not started while the DAW is stopped: a later Play edge will
+ // initiate it. Selecting a different Song while running never restarts it.
+ if(hostPlaying && hostSongPending>=0){
   const auto bank=songChainMap.load(std::memory_order_acquire);
   if(bank && bank->byNumber[(size_t)hostSongPending]){
    songRequested.store(5000+hostSongPending,std::memory_order_release);
-   hostSongPending=-1;hostSongPlaying=true;
+   hostSongPending=-1;hostSongPlaying=true;hostSongPaused=false;
   }
  }
  const int songCommand=songRequested.exchange(0,std::memory_order_acq_rel);
  if(songCommand!=0){
-  if(songCommand<5000)hostSongPlaying=false; // manual transport takes ownership
+  if(songCommand<5000){hostSongPlaying=false;hostSongPaused=false;hostSongPending=-1;} // manual transport takes ownership
   const int patternStopped=trackerRequested.exchange(0,std::memory_order_acq_rel);
   (void)patternStopped;
   trackerReleaseNote();trackerTransport.stop();trackerReleaseArpActive=false;
@@ -1233,7 +1258,7 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    playback=trackerTransport.running?trackerPlaybackSnapshot.get():nullptr;
    more=it.getNextEvent(message,offset);
   }
-  if(songTransport.running && songPlaybackSnapshot){
+  if(songTransport.running && songPlaybackSnapshot && !hostSongPaused){
    const auto events=songTransport.tick(*songPlaybackSnapshot,sampleRateHz,tempoBpm);
    // Evaluate all three Song row control columns before any note-on.
    // This also processes effects on blank Song rows.
@@ -1559,6 +1584,8 @@ void BiscotProcessor::resetToFactoryState(){
  }
  if(auto* trigger=state.getParameter("trackerSongTrigger"))
   trigger->setValueNotifyingHost(trigger->convertTo0to1(0.f));
+ if(auto* transport=state.getParameter("trackerSongTransport"))
+  transport->setValueNotifyingHost(transport->convertTo0to1(0.f));
  trackerPatterns.reset();trackerSongs.reset();
  // Discard the editor navigation and saved tracker metadata, too.
  // APVTS parameter values are stored in the child parameter nodes, not

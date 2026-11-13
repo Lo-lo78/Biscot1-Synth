@@ -14,3 +14,9 @@ for fname in ('TrackerPatternPanel','TrackerSongPanel'):
 assert 'VERSION 0.99.1' in cmake
 assert 'Biscot1-0.99.1-Windows-x64.zip' in workflow
 print('OK: public About, Alt+A routing and 0.99.1 version')
+
+# JUCE TextEditor does not support setKeyHandler: use a typed subclass.
+assert 'setKeyHandler' not in editor
+assert 'struct AboutReadOnlyEditor final : juce::TextEditor' in header
+assert 'owner.handleAboutKey(key)' in header
+assert 'juce::TextEditor::keyPressed(key)' in header

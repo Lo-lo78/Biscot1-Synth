@@ -2,13 +2,22 @@ from pathlib import Path
 r=Path(__file__).resolve().parents[1]
 cpp=(r/'Source/PluginProcessor.cpp').read_text()
 h=(r/'Source/PluginProcessor.h').read_text()
-assert '"trackerSongTrigger"' in cpp
-assert '"Song Trigger",0,100,0' in cpp
-assert 'transportStarted && hostSelection>0' in cpp
-assert 'hostSongPending=hostSelection>0?hostSelection-1:-1' in cpp
-assert 'songRequested.store(5000+hostSongPending' in cpp
+# Original identifier is intentionally kept so existing host automation IDs resolve.
+assert 'juce::ParameterID{"trackerSongTrigger",1},"Song Select",0,99,0' in cpp
+assert 'juce::ParameterID{"trackerSongTransport",1},"Song Transport"' in cpp
+assert 'juce::StringArray{"Stop","Pause","Play"},0' in cpp
+assert 'hostSongTransportParameter=state.getRawParameterValue("trackerSongTransport")' in cpp
+assert 'hostSongTriggerParameter=state.getRawParameterValue("trackerSongTrigger")' in cpp
+assert 'hostSongPending=hostSelection;' in cpp
+assert 'transportStarted && hostTransport==2' in cpp
+assert 'hostCommandChanged' in cpp
+assert 'hostSongPaused=true;' in cpp
+assert 'hostSongPaused=false;' in cpp
+assert 'songPlaybackSnapshot && !hostSongPaused' in cpp
+assert 'songTransport.stop();' in cpp
+assert 'hostSongLastTransport=-1' in cpp
+assert 'hostSongTransportParameter' in h
 assert 'bank->byNumber[(size_t)selected]' in cpp
-assert 'hostSongTriggerParameter' in h
-assert 'hostSongLastSelection=-1' in h
-assert 'hostSongTriggerParameter=state.getRawParameterValue' in cpp
-print('OK: native Song Trigger automation and DAW Play restart')
+assert 'transport->setValueNotifyingHost(transport->convertTo0to1(0.f));' in cpp
+assert '"Song Trigger",0,100,0' not in cpp
+print('OK: independent Song Select and Stop/Pause/Play host automation')

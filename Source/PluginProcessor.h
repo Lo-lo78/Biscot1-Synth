@@ -109,8 +109,9 @@ private:
  int songMidiTriggerNote=-1;
  // Dedicated host automation parameter: never mapped through the 234 DSP slots.
  std::atomic<float>* hostSongTriggerParameter=nullptr;
- int hostSongLastSelection=-1,hostSongPending=-1;
- bool hostSongPlaying=false,hostTransportLastPlaying=false;
+ std::atomic<float>* hostSongTransportParameter=nullptr;
+ int hostSongLastSelection=-1,hostSongLastTransport=-1,hostSongPending=-1;
+ bool hostSongPlaying=false,hostSongPaused=false,hostTransportLastPlaying=false;
  std::shared_ptr<const TrackerPlayableSong> songPlaybackSnapshot;
  std::shared_ptr<const TrackerSongChainMap> songChainSnapshot;
  std::atomic<int> songPlayingNumber{-1};

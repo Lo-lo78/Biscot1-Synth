@@ -13,7 +13,7 @@ jobs:
       - name: Verify factory reset, tracker Backspace and Ping Pong stereo handling
         shell: pwsh
         run: python Tests/verify_test0244_factory_pingpong.py
-      - name: Check host Song Trigger automation and transport edge integration
+      - name: Check separate Song selection and Stop/Pause/Play automation
         shell: pwsh
         run: python Tests/verify_test0243_host_song_trigger.py
       - name: Validate release-number consistency before the regression tests

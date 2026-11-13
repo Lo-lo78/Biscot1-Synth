@@ -54,7 +54,16 @@ private:
   bool keyPressed(const juce::KeyPress& key) override {return owner.handleAboutKey(key);}
   BiscotEditor& owner;
  };
- juce::TextEditor aboutInfo{"About Biscot1 Synth"};
+  struct AboutReadOnlyEditor final : juce::TextEditor {
+   explicit AboutReadOnlyEditor(BiscotEditor& editor)
+    : juce::TextEditor("About Biscot1 Synth"),owner(editor) {}
+   bool keyPressed(const juce::KeyPress& key) override {
+    if(owner.handleAboutKey(key))return true;
+    return juce::TextEditor::keyPressed(key);
+   }
+   BiscotEditor& owner;
+  };
+  AboutReadOnlyEditor aboutInfo{*this};
  AboutButton aboutProject{*this,"Project"};
  AboutButton aboutContact{*this,"Contact"};
  AboutButton aboutClose{*this,"Close"};
