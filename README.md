@@ -1,3 +1,16 @@
+# Biscot1 Synth VST3 — TEST0.2.38 (MSVC Pattern panel const fix)
+
+GitHub Actions reached the full JUCE/MSVC VST3 build in TEST0.2.37, but failed
+with `C2662` at `TrackerPatternPanel.cpp:871-872`: `cursorRegion() const`
+called the mutable-only `currentPattern()` accessor. This version adds a
+read-only accessor overload and an early CI regression check. The actual
+Windows JUCE/MSVC plugin build still needs confirmation on GitHub Actions.
+
+See `RELEASE_NOTES_TEST0.2.38.md` for details. The Song-library format issue
+reported in REAPER is separate and is not claimed fixed in this version.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.37 (GitHub Actions release-test repair)
 
 The TEST0.2.36 GitHub Actions run failed before compilation because several

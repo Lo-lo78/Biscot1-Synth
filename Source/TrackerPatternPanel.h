@@ -100,6 +100,7 @@ private:
  void pauseAtAudibleStep();
  void auditionCurrentStep();
  TrackerPattern& currentPattern(){return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
+ const TrackerPattern& currentPattern() const {return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
  const TrackerParam* currentParameter() const;
  TrackerCell* selectedCell();
  void refresh(bool speakPosition=false);
