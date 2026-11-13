@@ -1,11 +1,11 @@
-# Biscot1 Synth VST3 — TEST0.2.43 (F1/F2 tracker navigation)
+# Biscot1 Synth VST3 — TEST0.2.44 (F1/F2 tracker navigation)
 
 In the native Alt+Q Pattern and Song grids, **Ctrl+Up/Down** moves among
 header, remembered steps and footer/repeat regions. **Ctrl+Shift+Up/Down**
 switches the active Pattern (F1) or Song (F2), keeping cursor region and
 position wherever possible. Ctrl+Home/End no longer switches regions in
 the grids. The parameter-picker shortcuts are unchanged. See
-`RELEASE_NOTES_TEST0.2.43.md`. Windows VST3 compilation is pending.
+`RELEASE_NOTES_TEST0.2.44.md`. Windows VST3 compilation is pending.
 
 ---
 
@@ -773,6 +773,13 @@ Outside Alt+Q, **Ctrl+O and Alt+B** both open the full preset browser; loading `
 
 Repeated standalone Pattern Ctrl+S saves create a new suffixed filename instead of silently overwriting the prior Pattern file.
 
-## REAPER song playback automation (TEST0.2.43)
+## REAPER song playback automation (TEST0.2.44)
 
 The VST3's **Song Trigger** parameter can be automated from the REAPER track envelope: 0 = Off; 1..100 = Song 0..99. The DAW's Play retriggers a nonzero Song Trigger setting, Stop stops playback. To switch songs mid-project, write a new value to the envelope. Host BPM is respected; tracks can play together with the tracker. Existing F2 Song MIDI note assignments continue to work independently.
+
+## TEST0.2.44 — Factory reset, Ping Pong e Backspace
+
+- Song Delay Ping-Pong Depth now alternates actual stereo echoes even when the originating synth voice is center-panned. Use a nonzero Delay Speed and Delay Feedback for audible alternating repeats.
+- Alt+Q F1 and F2: Backspace restores the current value to its default (including Length, Repeat and Speed); Delete retains its original removal behavior.
+- Outside Alt+Q: Alt+I asks Yes/No before initializing every synth parameter, Song Trigger, the complete Pattern bank and the entire Song bank. No is selected initially; Y confirms immediately, N/Escape cancels. Saved library files on disk remain intact.
+- The DAW Song Trigger is still the manual start control; seeking along the host timeline does not yet change the Song playback position.

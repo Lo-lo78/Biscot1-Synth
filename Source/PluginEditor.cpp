@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.43",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.44",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -48,6 +48,14 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  value.setTextBoxStyle(juce::Slider::TextBoxRight,false,130,25);
  value.setWantsKeyboardFocus(true);value.setTitle({});value.setDescription({});value.setExplicitFocusOrder(2);addAndMakeVisible(value);
  edit.setMultiLine(false);edit.setName("Edit");edit.setTitle({});edit.setDescription({});edit.setWantsKeyboardFocus(true);edit.setExplicitFocusOrder(3);addAndMakeVisible(edit);
+ resetPrompt.setText("Reset complete Biscot1 instrument, all Patterns and all Songs?",juce::dontSendNotification);
+ resetPrompt.setColour(juce::Label::textColourId,foreground);
+ resetPrompt.setVisible(false);addAndMakeVisible(resetPrompt);
+ resetYes.setVisible(false);resetNo.setVisible(false);
+ resetYes.setWantsKeyboardFocus(true);resetNo.setWantsKeyboardFocus(true);
+ resetYes.onClick=[this]{finishFactoryReset(true);};
+ resetNo.onClick=[this]{finishFactoryReset(false);};
+ addAndMakeVisible(resetYes);addAndMakeVisible(resetNo);
  presetBrowser=std::make_unique<PresetBrowser>(presetManager);
  addAndMakeVisible(*presetBrowser);
  presetBrowser->setVisible(false);
@@ -353,7 +361,47 @@ bool BiscotEditor::keyPressed(const juce::KeyPress& key){
  const Control c=edit.hasKeyboardFocus(true)?Control::edit:value.hasKeyboardFocus(true)?Control::value:Control::grid;
  return handleKey(key,c);
 }
+void BiscotEditor::openFactoryResetConfirmation(){
+ if(resetConfirming)return;
+ resetConfirming=true;resetChoiceYes=false;
+ resetPrompt.setVisible(true);resetYes.setVisible(true);resetNo.setVisible(true);
+ resetNo.toFront(false);resetYes.toFront(false);resetPrompt.toFront(false);
+ resetNo.grabKeyboardFocus();
+ announce(resetNo,"Initialize the entire synth, Pattern and Song banks? No selected. Y confirms, N or Escape cancels. Arrows choose; Enter confirms");
+}
+void BiscotEditor::finishFactoryReset(bool approved){
+ if(!resetConfirming)return;
+ resetConfirming=false;
+ resetYes.setVisible(false);resetNo.setVisible(false);resetPrompt.setVisible(false);
+ if(approved){
+  proc.resetToFactoryState();
+  lastTrackerWasSong=false;group=0;selected=0;lastSelected.fill(0);
+  if(trackerPanel)trackerPanel->restoreAfterPreset();
+  if(songPanel)songPanel->restoreAfterPreset();
+  populateGroup();refreshLabels(true);
+ }
+ focus(Control::grid,true);
+ announce(grid,approved?"Biscot1 initialized to factory state":"Initialize cancelled");
+}
+bool BiscotEditor::handleFactoryResetKey(const juce::KeyPress& k){
+ if(!resetConfirming)return false;
+ const int code=k.getKeyCode();
+ const auto ch=juce::CharacterFunctions::toLowerCase(k.getTextCharacter());
+ if(code==juce::KeyPress::escapeKey || ch=='n'){finishFactoryReset(false);return true;}
+ if(ch=='y'){finishFactoryReset(true);return true;}
+ if(code==juce::KeyPress::upKey||code==juce::KeyPress::rightKey ||
+    code==juce::KeyPress::downKey||code==juce::KeyPress::leftKey){
+  resetChoiceYes=(code==juce::KeyPress::upKey||code==juce::KeyPress::rightKey);
+  (resetChoiceYes?resetYes:resetNo).grabKeyboardFocus();
+  announce(resetChoiceYes?static_cast<juce::Component&>(resetYes):static_cast<juce::Component&>(resetNo),
+           resetChoiceYes?"Yes selected":"No selected");
+  return true;
+ }
+ if(code==juce::KeyPress::returnKey){finishFactoryReset(resetChoiceYes);return true;}
+ return true;
+}
 bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
+ if(resetConfirming)return handleFactoryResetKey(k);
  if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(k);
  const auto m=k.getModifiers();const int code=k.getKeyCode();
  // Reuse the proven LB-303 incremental search: leading words, Shift-backward,
@@ -374,6 +422,7 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
   openPresetBrowser(false);return true;
  }
  if(m.isAltDown() && !m.isCtrlDown()){
+  if(!m.isShiftDown() && letter('i')){openFactoryResetConfirmation();return true;}
   if(letter('b')){openPresetBrowser(false);return true;}
   if(letter('s')){openPresetBrowser(true);return true;}
   if(letter('l')){if(c!=Control::grid)focus(Control::grid,c==Control::edit);return true;}
@@ -545,6 +594,12 @@ void BiscotEditor::resized(){
  grid.setBounds(area.removeFromTop(32));
  area.removeFromTop(10);drawingArea=area;
  if(presetBrowser)presetBrowser->setBounds(getLocalBounds().reduced(12));
+ auto dialog=getLocalBounds().reduced(70);
+ resetPrompt.setBounds(dialog.removeFromTop(48));
+ auto buttons=dialog.removeFromTop(45);
+ resetNo.setBounds(buttons.removeFromRight(120));
+ buttons.removeFromRight(12);
+ resetYes.setBounds(buttons.removeFromRight(120));
  if(trackerPanel)trackerPanel->setBounds(getLocalBounds().reduced(9));
  if(songPanel)songPanel->setBounds(getLocalBounds().reduced(9));
  if(libraryBrowser)libraryBrowser->setBounds(getLocalBounds().reduced(9));

@@ -446,7 +446,13 @@ void TrackerPatternPanel::jumpToNonemptyStep(int direction){
  }
 }
 void TrackerPatternPanel::resetCurrentCell(){
- if(row<0||row>=currentPattern().length)return;
+ if(page!=1)return;
+ const auto& pattern=currentPattern();
+ // Backspace is the factory/default-value shortcut for every F1 cell,
+ // including header and repeat fields, not a destructive Delete.
+ if(row<0){changeValue(cell==0?16.:cell==1?-1.:0.);return;}
+ if(row==pattern.length){changeValue(1.);return;}
+ if(row>pattern.length){changeValue(cell%2==0?1.:0.);return;}
  auto* c=selectedCell();if(!c)return;
  const auto* def=findTrackerParam(c->id);if(!def)return;
  if(c->value==def->initial)return;

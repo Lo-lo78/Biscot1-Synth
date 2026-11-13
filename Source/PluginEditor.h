@@ -59,6 +59,18 @@ private:
  int group=0, selected=0;
  std::array<int,12> lastSelected{};
  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+ // Accessible factory-reset prompt, initial choice No.
+ struct ResetChoice final : juce::TextButton {
+  ResetChoice(BiscotEditor& e,const juce::String& label):juce::TextButton(label),owner(e){}
+  bool keyPressed(const juce::KeyPress& k) override {return owner.handleFactoryResetKey(k);}
+  BiscotEditor& owner;
+ };
+ juce::Label resetPrompt;
+ ResetChoice resetYes{*this,"Yes"},resetNo{*this,"No"};
+ bool resetConfirming=false,resetChoiceYes=false;
+ void openFactoryResetConfirmation();
+ bool handleFactoryResetKey(const juce::KeyPress&);
+ void finishFactoryReset(bool approved);
  bool updating=false, initialFocusPending=false;
  int focusRetries=0, stepScaleIndex=0;
  std::array<double,9> stepScales {{0.001,0.01,0.1,0.5,1,2,5,10,20}};

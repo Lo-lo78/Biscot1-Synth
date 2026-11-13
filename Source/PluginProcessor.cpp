@@ -1549,6 +1549,24 @@ void BiscotProcessor::commitTrackerState(){
  if(pattern)trackerPlayable.store(std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(*pattern)),
                                   std::memory_order_release);
 }
+void BiscotProcessor::resetToFactoryState(){
+ // Deliberately destructive: caller must have obtained explicit Yes.
+ // Keep this on the message thread, not in the real-time audio callback.
+ requestSongStop();requestTrackerStop();
+ for(const auto& d:catalog){
+  if(auto* parameter=state.getParameter(id(d.index)))
+   parameter->setValueNotifyingHost(parameter->convertTo0to1(d.initial));
+ }
+ if(auto* trigger=state.getParameter("trackerSongTrigger"))
+  trigger->setValueNotifyingHost(trigger->convertTo0to1(0.f));
+ trackerPatterns.reset();trackerSongs.reset();
+ // Discard the editor navigation and saved tracker metadata, too.
+ // APVTS parameter values are stored in the child parameter nodes, not
+ // in these root properties. Newly committed banks recreate their blobs.
+ state.state.removeAllProperties(nullptr);
+ trackerClearOverrides();
+ commitTrackerState();commitSongState();
+}
 void BiscotProcessor::getStateInformation(juce::MemoryBlock& out){if(auto xml=state.copyState().createXml())copyXmlToBinary(*xml,out);}
 void BiscotProcessor::setStateInformation(const void* ptr,int length){
  if(auto xml=getXmlFromBinary(ptr,length);xml && xml->hasTagName(state.state.getType())){

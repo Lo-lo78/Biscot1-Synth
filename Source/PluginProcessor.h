@@ -58,6 +58,7 @@ public:
  bool popTrackerRecordedMidi(TrackerRecordedMidiEvent& e) noexcept {return trackerMidiQueue.pop(e);}
  void commitTrackerState(); // UI thread: serialize and publish an immutable Pattern snapshot
  void commitSongState(); // UI thread: publish immutable Song and Pattern snapshots
+ void resetToFactoryState(); // UI thread; clears synth, trigger, Pattern and Song banks
  void requestSongStart(int row) noexcept;
  void requestSongPause() noexcept;
  void requestSongStop() noexcept;

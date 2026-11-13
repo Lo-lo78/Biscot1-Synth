@@ -66,8 +66,15 @@ public:
   const float fedL=dl*(1.f-cross)+dr*cross;
   const float fedR=dr*(1.f-cross)+dl*cross;
   // Internal feedback cap guards against runaway energy on long note chains.
-  left[index]=std::clamp(inputL+feedback*fedL,-4.f,4.f);
-  right[index]=std::clamp(inputR+feedback*fedR,-4.f,4.f);
+  // A centered synth voice has identical L and R samples. Swapping their
+  // feedback alone cannot create audible Ping Pong. As depth approaches 100%,
+  // feed the mono sum into the left delay input only, then cross-feed later
+  // repeats to the right. Keep the dry signal and depth=0 stereo behaviour.
+  const float mono=0.5f*(inputL+inputR);
+  const float injectedL=inputL*(1.f-cross)+mono*cross;
+  const float injectedR=inputR*(1.f-cross);
+  left[index]=std::clamp(injectedL+feedback*fedL,-4.f,4.f);
+  right[index]=std::clamp(injectedR+feedback*fedR,-4.f,4.f);
   if(++index>=count)index=0;
   if(validSamples<count)++validSamples;
   outL+=dl*volume;outR+=dr*volume;

@@ -70,6 +70,7 @@ private:
  void copySelected(bool cut);
  void pasteClipboard();
  void clearSelected();
+ void resetCurrentValue();
  void reorder(int direction);
  void undoRedo(bool redo);
  void mixVolume(int delta);

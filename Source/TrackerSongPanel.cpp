@@ -398,6 +398,18 @@ void TrackerSongPanel::eraseCurrent(){
  if(it->second.empty())a.erase(it);
  commitEdit(before);refresh(true);
 }
+void TrackerSongPanel::resetCurrentValue(){
+ if(picker)return; // Picker contains parameter names, not editable values.
+ if(lane==3){currentValue(-1.);return;}
+ if(row<0){currentValue(cell==0?16.:-1.);return;}
+ if(row==length()){currentValue(1.);return;}
+ if(speedRow()){currentValue(1.);return;}
+ const int id=selectedParameter();
+ if(id<=0||id==7||id==8||id==21)return; // read-only cells
+ const auto* step=song().findStep(lane,row);
+ if(step==nullptr || !step->contains(id))return;
+ currentValue(songDefaultValue(id));
+}
 void TrackerSongPanel::commitEdit(const TrackerSong& before){
  history.record(processor.trackerSongs.activeSong,before);
  processor.commitSongState();
@@ -700,6 +712,8 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   if(realStep()){picker=true;search.reset();refresh(true);}else announce("Alt+E edits this Song value");
   return true;
  }
+ if(!m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&
+    code==juce::KeyPress::backspaceKey){resetCurrentValue();return true;}
  if(code==juce::KeyPress::deleteKey){if(selectionActive())clearSelected();else eraseCurrent();return true;}
  // Region navigation moved to Ctrl+Up/Down; keep Ctrl+Home/End inert in F2 grid.
  if(m.isCtrlDown()&&!m.isAltDown()&&
