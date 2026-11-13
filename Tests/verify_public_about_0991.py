@@ -20,3 +20,16 @@ assert 'setKeyHandler' not in editor
 assert 'struct AboutReadOnlyEditor final : juce::TextEditor' in header
 assert 'owner.handleAboutKey(key)' in header
 assert 'juce::TextEditor::keyPressed(key)' in header
+
+# LJuno-116 parity: arrows, word movement, selection, Home/End, page, copy and select all.
+for phrase in ('navigateAboutText(key)', 'moveCaretLeft(byWordOrDocument,selecting)',
+               'moveCaretRight(byWordOrDocument,selecting)', 'moveCaretUp(selecting)',
+               'moveCaretDown(selecting)', 'moveCaretToStartOfLine(selecting)',
+               'moveCaretToEndOfLine(selecting)', 'moveCaretToTop(selecting)',
+               'moveCaretToEnd(selecting)', 'pageUp(selecting)', 'pageDown(selecting)',
+               'aboutInfo.selectAll()', 'aboutInfo.copyToClipboard()',
+               'AccessibilityHandler::clearCurrentlyFocusedHandler()'):
+    assert phrase in editor,phrase
+assert 'navigateAboutText(const juce::KeyPress&)' in header
+assert 'setKeyHandler' not in editor
+print('OK: About arrow navigation and native text selection match LJuno-116')

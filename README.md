@@ -793,3 +793,7 @@ The VST3 exposes two separate DAW automation parameters: **Song Select** (0..99 
 - Alt+Q F1 and F2: Backspace restores the current value to its default (including Length, Repeat and Speed); Delete retains its original removal behavior.
 - Outside Alt+Q: Alt+I asks Yes/No before initializing every synth parameter, Song Select/Transport, the complete Pattern bank and the entire Song bank. No is selected initially; Y confirms immediately, N/Escape cancels. Saved library files on disk remain intact.
 - The DAW Song Transport Play command starts the selected Song explicitly; seeking along the host timeline does not yet change the Song playback position.
+
+### Accessible About (Alt+A)
+
+Use the arrow keys to read the About text character by character or line by line, Ctrl+Left/Right to move by word, Home/End and Ctrl+Home/End for line/document boundaries, and Page Up/Down to scroll. Hold Shift while navigating to select text. Ctrl+A selects all; Ctrl+C copies to the clipboard. Tab and Shift+Tab move between the text, Project, Contact and Close controls. Esc/Alt+C closes and restores focus.

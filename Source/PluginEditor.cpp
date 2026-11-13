@@ -420,6 +420,7 @@ void BiscotEditor::openAbout(){
   c->setVisible(true);c->toFront(false);
  }
  aboutInfo.setCaretPosition(0);
+ juce::AccessibilityHandler::clearCurrentlyFocusedHandler();
  aboutInfo.grabKeyboardFocus();
  if(auto* handler=aboutInfo.getAccessibilityHandler())handler->grabFocus();
  repaint();
@@ -434,6 +435,44 @@ void BiscotEditor::closeAbout(){
  else focus(Control::grid,true);
  repaint();
 }
+// Match LJuno-116's accessible About text navigation.  Use JUCE's own
+// caret/selection APIs so screen readers receive native selection events,
+// without duplicate synthesized speech announcements.
+bool BiscotEditor::navigateAboutText(const juce::KeyPress& key){
+ const auto code=key.getKeyCode();
+ const auto mods=key.getModifiers();
+ const bool selecting=mods.isShiftDown();
+ const bool byWordOrDocument=mods.isCtrlDown() || mods.isCommandDown();
+ if(code==juce::KeyPress::leftKey){aboutInfo.moveCaretLeft(byWordOrDocument,selecting);return true;}
+ if(code==juce::KeyPress::rightKey){aboutInfo.moveCaretRight(byWordOrDocument,selecting);return true;}
+ if(code==juce::KeyPress::upKey){
+  if(byWordOrDocument && selecting)aboutInfo.moveCaretToTop(true);
+  else aboutInfo.moveCaretUp(selecting);
+  return true;
+ }
+ if(code==juce::KeyPress::downKey){
+  if(byWordOrDocument && selecting)aboutInfo.moveCaretToEnd(true);
+  else aboutInfo.moveCaretDown(selecting);
+  return true;
+ }
+ if(code==juce::KeyPress::homeKey){
+  if(byWordOrDocument)aboutInfo.moveCaretToTop(selecting);
+  else aboutInfo.moveCaretToStartOfLine(selecting);
+  return true;
+ }
+ if(code==juce::KeyPress::endKey){
+  if(byWordOrDocument)aboutInfo.moveCaretToEnd(selecting);
+  else aboutInfo.moveCaretToEndOfLine(selecting);
+  return true;
+ }
+ if(code==juce::KeyPress::pageUpKey){aboutInfo.pageUp(selecting);return true;}
+ if(code==juce::KeyPress::pageDownKey){aboutInfo.pageDown(selecting);return true;}
+ const auto lowerCode=juce::CharacterFunctions::toLowerCase(
+   static_cast<juce::juce_wchar>(code));
+ if(byWordOrDocument && lowerCode=='a'){aboutInfo.selectAll();return true;}
+ if(byWordOrDocument && lowerCode=='c'){aboutInfo.copyToClipboard();return true;}
+ return false;
+}
 bool BiscotEditor::handleAboutKey(const juce::KeyPress& key){
  if(!aboutOpen)return false;
  const auto code=key.getKeyCode();const auto mods=key.getModifiers();
@@ -444,18 +483,22 @@ bool BiscotEditor::handleAboutKey(const juce::KeyPress& key){
   int current=0;
   auto* focused=juce::Component::getCurrentlyFocusedComponent();
   for(int i=0;i<4;++i)if(controls[i]==focused){current=i;break;}
-  controls[(current+(mods.isShiftDown()?3:1))%4]->grabKeyboardFocus();
+  auto* target=controls[(current+(mods.isShiftDown()?3:1))%4];
+  juce::AccessibilityHandler::clearCurrentlyFocusedHandler();
+  target->grabKeyboardFocus();
+  if(auto* handler=target->getAccessibilityHandler())handler->grabFocus();
   return true;
  }
+ if(aboutInfo.hasKeyboardFocus(false) && navigateAboutText(key))return true;
  if(code==juce::KeyPress::returnKey){
   if(aboutProject.hasKeyboardFocus(false)){aboutProject.onClick();return true;}
   if(aboutContact.hasKeyboardFocus(false)){aboutContact.onClick();return true;}
   if(aboutClose.hasKeyboardFocus(false)){closeAbout();return true;}
+  if(aboutInfo.hasKeyboardFocus(false)){closeAbout();return true;}
   return true;
  }
- // Read-only TextEditor provides caret movement, selection and Ctrl+C itself.
- // Other shortcuts cannot change the synth while About is open.
- return juce::Component::getCurrentlyFocusedComponent()==&aboutInfo?false:true;
+ // About is modal.  Unrelated keys never reach the synthesizer.
+ return true;
 }
 void BiscotEditor::openFactoryResetConfirmation(){
  if(resetConfirming)return;

@@ -17,3 +17,10 @@ Build correction: replaced unsupported JUCE TextEditor::setKeyHandler with an ac
 - Stop resets the Song playback; Pause freezes three-lane sequencing and releases active notes; Play resumes after Pause or starts at the beginning after Stop.
 - A new REAPER Play starts the selected Song only if the Song Transport parameter is Play.
 - The old host parameter identifier `trackerSongTrigger` is retained for Song Select; previous automation values need to be revised for the new 0–99 mapping.
+
+## About accessibility completion (pre-release)
+
+- Mirrored LJuno-116 About text caret navigation: arrow keys, Ctrl+arrow word navigation, Home/End, Ctrl+Home/End, Page Up/Down and Shift selection.
+- Ctrl+A selects the entire About, Ctrl+C copies selected text for the clipboard.
+- Tab / Shift+Tab change the focused controls, Enter activates links or closes the About, Esc and Alt+C close it. Native accessibility caret/selection events avoid duplicate speech.
+- JUCE TextEditor subclass remains in use: no unsupported setKeyHandler call.

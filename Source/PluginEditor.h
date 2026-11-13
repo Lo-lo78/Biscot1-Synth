@@ -72,6 +72,7 @@ private:
  void openAbout();
  void closeAbout();
  bool handleAboutKey(const juce::KeyPress&);
+ bool navigateAboutText(const juce::KeyPress&);
 
  bool songBrowserReturn=false;
  bool lastTrackerWasSong=false;
