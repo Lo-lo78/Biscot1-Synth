@@ -1,0 +1,232 @@
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.h:38: bool refreshing=false,automaticPreview=false,confirming=false;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.h:39: juce::File confirmationFile;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.h:25: int cursorRegion() const;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.h:47:      k.getKeyCode()==32 && !k.getModifiers().isCtrlDown() && !k.getModifiers().isAltDown())
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.h:71: // Reuse this editor session's export target, but never overwrite an
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.h:102: TrackerPattern& currentPattern(){return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.h:103: const TrackerPattern& currentPattern() const {return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:28: return tmp.getFile().replaceWithText(text) && tmp.overwriteTargetFileWithTemporary();
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:163: if(bytes.size()>256u*1024u*1024u){message="Song package exceeds 256 MB";return false;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:175:inline bool importSong(const juce::File& file,TrackerSongBank& songs,TrackerPatternBank& patterns,juce::String& message){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:192: if(!(in>>active>>ns>>np)||active<0||active>=100||ns<1||ns>100||np<0||np>1000){message="Invalid Song package header";return false;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:204: if(!in.eof()||!loadedSongs.count(active)){message="Incomplete Song package";return false;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:211:   message="Missing chained Song in package";return false;
+/mnt/data/biscot_0_2_39/Source/TrackerSongPackage.h:254:          all?"All 100 Song slots restored":"Legacy Song package loaded")+
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.h:24: int cursorRegion() const;
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.h:47:      k.getKeyCode()==32 && !k.getModifiers().isCtrlDown() && !k.getModifiers().isAltDown())
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.h:30:    enum class Mode { closed, browse, save, rename, folder, overwrite, remove };
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.h:45:    Mode confirmReturn = Mode::browse;
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.h:77:    void confirmAction();
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:3:#include "TrackerSongPackage.h"
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:48: help.setText("Type filename: incremental search | Up/Down: files | Right: enter folder | Left/Backspace: parent | Space: play/stop full file | +/-: shorten/extend preview | Ctrl+P: automatic preview (remembered) | Ctrl+Left/Right: archive Song | Enter: load | F5: refresh",juce::dontSendNotification);
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:66: mode=next;confirming=false;automaticPreview=recalledAutomaticPreview(next);selected=0;previewSteps=0;archiveSongSlot=0;search.reset();
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:95: stopPreview();setVisible(false);confirming=false;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:99: search.reset();confirming=false;previewCacheFile=juce::File{};previewSongs.reset();previewPatterns.reset();
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:131: confirming=false;stopPreview();archiveSongSlot=0;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:194:   if(!songpkg::importSong(file,*loadedSongs,*loadedPatterns,status)){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:218:  if(!songpkg::importSong(file,processor.trackerSongs,processor.trackerPatterns,result))return false;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:242: if(mode==Mode::songs && (!confirming || confirmationFile!=item.path)){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:243:  confirming=true;confirmationFile=item.path;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:245:   "Import will replace all 100 Song slots, including empty slots. Press Enter again to confirm, Escape to cancel":"Import will replace the current Song slot. Press Enter again to confirm, Escape to cancel");
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:248: confirming=false;
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:257:  if(confirming){confirming=false;announce("Import cancelled");return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:264: if(code==juce::KeyPress::leftKey && !mod.isCtrlDown() && !mod.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:267: if(code==juce::KeyPress::rightKey && !mod.isCtrlDown() && !mod.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:284:  return trackerShortcutLetterMatches(code,(int)k.getTextCharacter(),target,mod.isCtrlDown());
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:286: if(mod.isCtrlDown() && letter('p')){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:291: if(!mod.isCtrlDown()&&!mod.isAltDown() && code==32){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:298: if(!mod.isCtrlDown()&&!mod.isAltDown() && (code=='+'||code=='-')){
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:307: if(mode==Mode::songs && mod.isCtrlDown() && !mod.isAltDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerLibraryBrowser.cpp:314: if(!mod.isCtrlDown() && !mod.isAltDown() && !mod.isCommandDown() &&
+/mnt/data/biscot_0_2_39/Source/PluginEditor.h:52: bool lastTrackerWasSong=false;
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:37:    accept.onClick = [this] { confirmAction(); };
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:40:        if (mode == Mode::overwrite || mode == Mode::remove)
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:42:            showMode (confirmReturn);
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:67:        && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown())
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:77:    else if (mode == Mode::overwrite || mode == Mode::remove)
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:179:    const bool confirming = next == Mode::overwrite || next == Mode::remove;
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:182:    promptLabel.setVisible (editing || confirming);
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:184:    accept.setVisible (editing || confirming);
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:193:        if (next == Mode::overwrite) promptLabel.setText ("Overwrite existing preset?", juce::dontSendNotification);
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:195:        accept.setButtonText (confirming ? "Yes" : (next == Mode::save ? "Save" : "OK"));
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:196:        cancel.setButtonText (confirming ? "No" : "Close");
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:349:    confirmReturn = Mode::browse;
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:363:            confirmReturn = Mode::save;
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:364:            showMode (Mode::overwrite);
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:366:            announce ("Overwrite preset " + pendingFile.getFileNameWithoutExtension() + "? Yes or No");
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:398:void PresetBrowser::confirmAction()
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:400:    if (mode == Mode::overwrite)
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:443:    if (code == juce::KeyPress::rightKey && !mods.isCtrlDown() && !mods.isAltDown())
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:453:    if (! items.empty() && ! mods.isAltDown() && ! mods.isCtrlDown()
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:480:    if (mods.isCtrlDown() && (k.getTextCharacter() == 'n' || k.getTextCharacter() == 'N' || code == 'N'))
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:485:    if (! mods.isCtrlDown() && ! mods.isAltDown() && ! mods.isCommandDown())
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:516:    if (mode == Mode::overwrite || mode == Mode::remove)
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:519:        if (code == juce::KeyPress::returnKey || code == 'Y') { confirmAction(); return true; }
+/mnt/data/biscot_0_2_39/Source/PresetBrowser.cpp:522:            showMode (confirmReturn);
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:38: instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:56:  lastTrackerWasSong=(int)proc.state.state.getProperty(juce::Identifier("trackerLastMode"),0)==1;
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:91:  lastTrackerWasSong=false;proc.state.state.setProperty(juce::Identifier("trackerLastMode"),0,nullptr);
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:92:  showSynthWidgets(false);if(trackerPanel){trackerPanel->setCursorRegion(songPanel->cursorRegion());trackerPanel->open();}};
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:101:  lastTrackerWasSong=true;
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:102:  songPanel->setCursorRegion(trackerPanel->cursorRegion());
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:112: lastTrackerWasSong=(int)proc.state.state.getProperty(juce::Identifier("trackerLastMode"),0)==1;
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:363: if(m.isAltDown() && m.isShiftDown() && !m.isCtrlDown() && !m.isCommandDown()
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:372: if(m.isCtrlDown() && code==juce::KeyPress::tabKey){changeGroup(m.isShiftDown()?-1:1);return true;}
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:373: if(m.isAltDown() && !m.isCtrlDown()){
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:404: if(m.isCtrlDown() && code==juce::KeyPress::homeKey){select(0);return true;}
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:405: if(m.isCtrlDown() && code==juce::KeyPress::endKey){select((int)groups[(size_t)group].size()-1);return true;}
+/mnt/data/biscot_0_2_39/Source/PluginEditor.cpp:477: if(lastTrackerWasSong && songPanel)songPanel->open();
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:6:#include "TrackerSongPackage.h"
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:26: help.setText("F1 Pattern | 1/2/3: Operator | Ctrl+Up/Down: Song | Enter: Song parameters | Alt+E: edit | Tab: position | Esc: exit",juce::dontSendNotification);
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:479: const auto letter=[&](char c){return trackerShortcutLetterMatches(code,(int)k.getTextCharacter(),c,m.isCtrlDown());};
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:542:  if(m.isCtrlDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:555: if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:556: if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:561: if(m.isCtrlDown()&&!m.isAltDown()&&letter('s')){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:568: if(m.isCtrlDown()&&!m.isAltDown()&&letter('o')){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:572: if(!m.isCtrlDown()&&code==juce::KeyPress::tabKey){announce(positionText(true));return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:578: if(!picker && !m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && lane<3){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:591: if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::upKey){changeSong(processor.trackerSongs.activeSong-1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:592: if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::downKey){changeSong(processor.trackerSongs.activeSong+1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:593: if(!picker&&!m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&code>='1'&&code<='4'){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:596: if(!picker&&m.isCtrlDown()&&!m.isAltDown()&&letter('j')){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:601:  if(m.isCtrlDown()&&!m.isAltDown()&&letter('z')){undoRedo(m.isShiftDown());return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:602:  if(m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&letter('r')){renameSong();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:603:  if(m.isCtrlDown()&&m.isShiftDown()&&m.isAltDown()&&letter('c')){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:606:  if(m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&letter('c')){copySelected(false);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:607:  if(m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&letter('x')){copySelected(true);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:608:  if(m.isCtrlDown()&&!m.isAltDown()&&!m.isShiftDown()&&letter('v')){pasteClipboard();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:609:  if(m.isCtrlDown()&&m.isShiftDown()&&m.isAltDown()&&code==juce::KeyPress::deleteKey){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:613:  if(m.isCtrlDown()&&m.isShiftDown()&&!m.isAltDown()&&code==juce::KeyPress::deleteKey){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:617:  if(m.isCtrlDown()&&!m.isShiftDown()&&!m.isAltDown()&&code==juce::KeyPress::deleteKey){clearSelected();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:618:  if(m.isShiftDown()&&!m.isCtrlDown()&&!m.isAltDown()&&lane<3){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:624:  if(m.isCtrlDown()&&!m.isShiftDown()&&!m.isAltDown()&&code==juce::KeyPress::leftKey){reorder(-1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:625:  if(m.isCtrlDown()&&!m.isShiftDown()&&!m.isAltDown()&&code==juce::KeyPress::rightKey){reorder(1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:626:  if(!m.isCtrlDown()&&!m.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:634:  if(code==juce::KeyPress::returnKey){insertSelectedParameter(m.isCtrlDown());return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:644:  if(m.isCtrlDown()&&code==juce::KeyPress::homeKey)move=-pickerIndex;
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:645:  if(m.isCtrlDown()&&code==juce::KeyPress::endKey)move=(int)songParameters.size()-1-pickerIndex;
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:654: if(m.isAltDown()&&!m.isCtrlDown()&&letter('e')){openCurrentNumeric();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:655: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::upKey){adjustValue(1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:656: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::downKey){adjustValue(-1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:657: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::pageUpKey){adjustValue(1,true);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:658: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::pageDownKey){adjustValue(-1,true);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:659: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::homeKey){extreme(true);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:660: if(m.isAltDown()&&!m.isCtrlDown()&&code==juce::KeyPress::endKey){extreme(false);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:666: if(m.isCtrlDown()&&code==juce::KeyPress::homeKey){navigateArea(-1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:667: if(m.isCtrlDown()&&code==juce::KeyPress::endKey){navigateArea(1);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:684: return true; // keep the Alt+Q keyboard focus inside the native Song grid
+/mnt/data/biscot_0_2_39/Source/TrackerSongPanel.cpp:689:int TrackerSongPanel::cursorRegion() const {
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:31: help.setText("F1 Pattern | Enter: parameters | Alt+E: edit value | Alt+Enter: Pattern | F2: Song | Space: play | Esc: back",juce::dontSendNotification);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:42:   if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:94: if(page!=1||row<0||row>=currentPattern().length)return nullptr;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:95: auto& values=currentPattern().cells(row,tab);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:125: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:181: const auto payload=serializeTrackerPattern(currentPattern(),slot);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:200:     !temporary.overwriteTargetFileWithTemporary()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:209: auto& stack=undo[n];if(stack.size()>=128)stack.erase(stack.begin());stack.push_back(currentPattern());redo[n].clear();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:213: auto& p=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:239: const auto& p=currentPattern();double old=0,step=1;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:251: if(page==1 && row>=0 && row<currentPattern().length)
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:254: if(row>=0 && row<currentPattern().length)
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:260: const auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:272: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:292: const auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:301: if(stepClipboard.empty() || row<0 || row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:302: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:318: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:326: if(row<0 || row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:328: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:339: auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:350: const auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:385: const int oldLength=currentPattern().length;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:388: const auto& replacement=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:399: if(target<0||target>=currentPattern().length){announce("Invalid step number");return;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:403: if(row<0 || row>=currentPattern().length){announce("Select a step parameter first");return;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:407: const auto match=trackerFindMatchingParameter(currentPattern(),row,tab,parameterId,direction);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:419: if(row<0||row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:420: const auto& p=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:430: if(row<0||row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:440: const auto& p=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:447: if(page!=1 || row<0 || row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:451: if(trackerCanAuditionStep(currentPattern(),row,status))
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:459: const int step=(row>=0 && row<currentPattern().length)?row:0;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:475:  if(step>=0 && step<safe->currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:483: recordUndo();currentPattern()=TrackerPattern{};
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:490:  code,(int)k.getTextCharacter(),c,m.isCtrlDown());};
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:527: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('s')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:533: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('o')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:537: if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:538: if(m.isAltDown() && !m.isCtrlDown() && letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:541:  if(m.isCtrlDown() && !m.isAltDown()){pauseAtAudibleStep();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:542:  if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && page==1){playFromCursor();return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:549: if(m.isCtrlDown()&&code==juce::KeyPress::tabKey&&page==2){setTab((tab+(m.isShiftDown()?2:1))%3);return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:550: if(!m.isCtrlDown() && code==juce::KeyPress::tabKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:555: if(page==1 && m.isCtrlDown() && code==juce::KeyPress::tabKey)return true;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:558: if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:563:  if(m.isCtrlDown() && code==juce::KeyPress::homeKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:566:  if(m.isCtrlDown() && code==juce::KeyPress::endKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:579:  if(m.isCtrlDown() && code==juce::KeyPress::leftKey){paramHeight=juce::jmax(1,paramHeight-1);announce("Grid "+juce::String(paramHeight));return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:580:  if(m.isCtrlDown() && code==juce::KeyPress::rightKey){paramHeight=juce::jmin(100,paramHeight+1);announce("Grid "+juce::String(paramHeight));return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:586:    if(row<0 || row>=currentPattern().length){announce("Select a pattern step first");return true;}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:587:    auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:601:   if(!m.isCtrlDown()){page=1;refresh(true);}return true;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:622: if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::returnKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:623:  if(row>=0 && row<currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:628: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('j')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:630:   "Go to step 0 to "+juce::String(currentPattern().length-1),
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:631:   juce::String(juce::jlimit(0,currentPattern().length-1,row)));
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:636: // This is distinct from Ctrl+PageUp/PageDown, which visits ANY nonempty step.
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:637: if(m.isCtrlDown() && m.isAltDown() && !m.isShiftDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:641: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::pageUpKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:644: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && code==juce::KeyPress::pageDownKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:647: if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::leftKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:650: if(m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown() && code==juce::KeyPress::rightKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:653: if(m.isCtrlDown() && m.isShiftDown() && m.isAltDown() && letter('c')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:654:  wholePatternClipboard=currentPattern();clipboardMode=ClipboardMode::pattern;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:657: if(m.isCtrlDown() && m.isShiftDown() && m.isAltDown() && code==juce::KeyPress::deleteKey){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:660: if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:662: if(m.isShiftDown() && !m.isCtrlDown() && !m.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:671: if(!m.isAltDown() && !m.isCtrlDown() && !m.isShiftDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:677: // These are plain letter shortcuts only: Alt+E and Ctrl combinations remain untouched.
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:678: if(!m.isAltDown() && !m.isCtrlDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:682:      currentPattern().length,currentPattern().repeat,row,cell);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:693: if(m.isCtrlDown() && m.isShiftDown() && !m.isAltDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:695:  jumpToStep(juce::jlimit(0,currentPattern().length-1,
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:698: if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:703: if(m.isCtrlDown() && letter('z')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:707:   to.push_back(currentPattern());currentPattern()=std::move(from.back());from.pop_back();finishEdit();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:710: if(m.isCtrlDown() && letter('c')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:716: if(m.isCtrlDown() && letter('x')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:720:   recordUndo();currentPattern().erase(row,tab,cell);finishEdit();announce("Parameter cut");
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:723: if(m.isCtrlDown() && letter('v')){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:725:   recordUndo();currentPattern()=wholePatternClipboard;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:729:   if(row<0||row>=currentPattern().length)announce("Select a step before pasting");
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:732:  if(clipboardMode==ClipboardMode::parameter && hasClipboard && row>=0&&row<currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:733:   auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:753: if(m.isCtrlDown() && code==juce::KeyPress::leftKey && row>=0 && row<currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:754:  auto& a=currentPattern().cells(row,tab);if(cell>0&&cell<(int)a.size()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:757: if(m.isCtrlDown() && code==juce::KeyPress::rightKey && row>=0 && row<currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:758:  auto& a=currentPattern().cells(row,tab);if(cell>=0&&cell+1<(int)a.size()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:772: if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && m.isShiftDown() && !m.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:775: if(code==juce::KeyPress::deleteKey && m.isCtrlDown() && !m.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:778: if(code==juce::KeyPress::deleteKey && hasStepSelection() && !m.isCtrlDown() && !m.isAltDown()){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:781: if(code==juce::KeyPress::deleteKey && row>=0 && row<currentPattern().length){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:782:  if(currentPattern().view(row,tab).empty())return true;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:783:  recordUndo();currentPattern().erase(row,tab,cell);finishEdit();return true;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:791:  if(next!=cell || (row>=0 && row<currentPattern().length && logicalCell!=next)){
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:792:   cell=next;if(row>=0 && row<currentPattern().length){logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;}refresh(true);}
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:795: // Ctrl+Home/End alone cross between the three F1 regions.
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:797: if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:799:  const auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:815: if(!m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() &&
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:817:  const auto& pat=currentPattern();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:834:  recordingNextStep=juce::jlimit(0,currentPattern().length-1,lastRealStep);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:841: if(!stepRecording || page!=1 || row<0 || row>=currentPattern().length)return;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:842: auto& pat=currentPattern();recordUndo();
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:869:int TrackerPatternPanel::cursorRegion() const {
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:871: if(row<currentPattern().length)return 1;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:872: return row==currentPattern().length?2:3;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:877: else if(region==1)row=juce::jlimit(0,currentPattern().length-1,lastRealStep);
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:878: else if(region==2)row=currentPattern().length;
+/mnt/data/biscot_0_2_39/Source/TrackerPatternPanel.cpp:879: else row=currentPattern().length+1;

@@ -27,6 +27,12 @@ private:
   bool keyPressed(const juce::KeyPress& k) override {return owner.handle(k);}
   TrackerLibraryBrowser& owner;
  } list;
+ struct ConfirmationButton final : juce::TextButton {
+  ConfirmationButton(TrackerLibraryBrowser& p,const juce::String& label):juce::TextButton(label),owner(p){}
+  bool keyPressed(const juce::KeyPress& k) override{return owner.handle(k);}
+  TrackerLibraryBrowser& owner;
+ };
+ ConfirmationButton yes{*this,"Yes"}, no{*this,"No"};
  struct Entry {juce::File path;bool directory=false;};
  BiscotProcessor& processor;
  juce::Label heading,help;
@@ -35,7 +41,7 @@ private:
  std::vector<Entry> entries;
  BrowserIncrementalSearch search;
  int selected=0,previewSteps=0,archiveSongSlot=0; // 0 = full original file
- bool refreshing=false,automaticPreview=false,confirming=false;
+ bool refreshing=false,automaticPreview=false,confirming=false,confirmationYes=false;
  juce::File confirmationFile;
  juce::File previewCacheFile;
  std::unique_ptr<TrackerSongBank> previewSongs;
@@ -48,6 +54,7 @@ private:
  void stopPreview();
  void preview();
  void activate();
+ void finishConfirmation(bool approve);
  bool importSelected(const juce::File&,juce::String&);
  bool handle(const juce::KeyPress&);
  juce::String entryLabel(int) const;

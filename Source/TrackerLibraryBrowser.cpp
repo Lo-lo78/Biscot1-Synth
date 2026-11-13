@@ -45,6 +45,12 @@ TrackerLibraryBrowser::TrackerLibraryBrowser(BiscotProcessor& p):list(*this),pro
   if(index!=selected){selected=index;selectionChanged(true,automaticPreview);}
  };
  addAndMakeVisible(list);
+ yes.setWantsKeyboardFocus(true);no.setWantsKeyboardFocus(true);
+ yes.setExplicitFocusOrder(2);no.setExplicitFocusOrder(3);
+ yes.onClick=[this]{finishConfirmation(true);};
+ no.onClick=[this]{finishConfirmation(false);};
+ addAndMakeVisible(yes);addAndMakeVisible(no);
+ yes.setVisible(false);no.setVisible(false);
  help.setText("Type filename: incremental search | Up/Down: files | Right: enter folder | Left/Backspace: parent | Space: play/stop full file | +/-: shorten/extend preview | Ctrl+P: automatic preview (remembered) | Ctrl+Left/Right: archive Song | Enter: load | F5: refresh",juce::dontSendNotification);
  setVisible(false);
 }
@@ -55,15 +61,19 @@ void TrackerLibraryBrowser::resized(){
  auto r=getLocalBounds().reduced(22);
  heading.setBounds(r.removeFromTop(40));help.setBounds(r.removeFromBottom(35));
  r.removeFromTop(10);list.setBounds(r.removeFromTop(35));
+ auto buttons=r.removeFromTop(48);
+ no.setBounds(buttons.removeFromLeft(110));
+ buttons.removeFromLeft(10);
+ yes.setBounds(buttons.removeFromLeft(110));
 }
 void TrackerLibraryBrowser::paint(juce::Graphics& g){
  g.fillAll(background);g.setColour(foreground);g.drawRect(getLocalBounds(),1);
 }
 void TrackerLibraryBrowser::announce(const juce::String& s){
- announceToActiveScreenReader(list,s);
+ announceToActiveScreenReader(confirming?(confirmationYes?static_cast<juce::Component&>(yes):static_cast<juce::Component&>(no)):static_cast<juce::Component&>(list),s);
 }
 void TrackerLibraryBrowser::open(Mode next){
- mode=next;confirming=false;automaticPreview=recalledAutomaticPreview(next);selected=0;previewSteps=0;archiveSongSlot=0;search.reset();
+ mode=next;confirming=false;confirmationYes=false;yes.setVisible(false);no.setVisible(false);list.setVisible(true);automaticPreview=recalledAutomaticPreview(next);selected=0;previewSteps=0;archiveSongSlot=0;search.reset();
  previewCacheFile=juce::File{};previewSongs.reset();previewPatterns.reset();
  root=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
   .getChildFile("Biscot1-Synth").getChildFile(mode==Mode::patterns?"patterns":"songs");
@@ -92,7 +102,7 @@ void TrackerLibraryBrowser::stopPreview(){
   processor.requestSongStop();
 }
 void TrackerLibraryBrowser::close(bool imported,const juce::String& result){
- stopPreview();setVisible(false);confirming=false;
+ stopPreview();setVisible(false);confirming=false;yes.setVisible(false);no.setVisible(false);list.setVisible(true);
  if(onClose)onClose(mode,imported,result);
 }
 void TrackerLibraryBrowser::scan(bool summary){
@@ -239,22 +249,48 @@ void TrackerLibraryBrowser::activate(){
  if(entries.empty()){announce("No library files");return;}
  const auto& item=entries[(size_t)selected];
  if(item.directory){enterFolder();return;}
- if(mode==Mode::songs && (!confirming || confirmationFile!=item.path)){
-  confirming=true;confirmationFile=item.path;
-  announce(item.path.hasFileExtension(".biscot1-all-song")?
-   "Import will replace all 100 Song slots, including empty slots. Press Enter again to confirm, Escape to cancel":"Import will replace the current Song slot. Press Enter again to confirm, Escape to cancel");
+ if(mode==Mode::songs){
+  stopPreview();confirming=true;confirmationYes=false;confirmationFile=item.path;
+  list.setVisible(false);no.setVisible(true);yes.setVisible(true);
+  no.grabKeyboardFocus();
+  announce("Replace ALL current Patterns and Songs with the selected " +
+   juce::String(item.path.hasFileExtension(".biscot1-all-song")?"100-Song archive":"single Song") +
+   "? Yes or No. No selected. Left and Right choose; Enter confirms; Y or N acts immediately; Escape cancels");
   return;
  }
- confirming=false;
  juce::String status;
  if(importSelected(item.path,status))close(true,status);
  else announce(status);
 }
+void TrackerLibraryBrowser::finishConfirmation(bool approve){
+ if(!confirming)return;
+ const auto file=confirmationFile;
+ confirming=false;confirmationYes=false;
+ no.setVisible(false);yes.setVisible(false);list.setVisible(true);
+ if(!approve){list.grabKeyboardFocus();announce("Import cancelled. Patterns and Songs unchanged");return;}
+ juce::String status;
+ if(importSelected(file,status))close(true,status);
+ else{list.grabKeyboardFocus();announce(status);}
+}
 bool TrackerLibraryBrowser::keyPressed(const juce::KeyPress& k){return handle(k);}
 bool TrackerLibraryBrowser::handle(const juce::KeyPress& k){
  const int code=k.getKeyCode();const auto mod=k.getModifiers();
+ if(confirming){
+  if(code==juce::KeyPress::escapeKey){finishConfirmation(false);return true;}
+  if(!mod.isAltDown()&&!mod.isCtrlDown()&&!mod.isCommandDown()){
+   const auto ch=juce::CharacterFunctions::toLowerCase(k.getTextCharacter());
+   if(ch=='y'||code=='Y'){finishConfirmation(true);return true;}
+   if(ch=='n'||code=='N'){finishConfirmation(false);return true;}
+   if(code==juce::KeyPress::leftKey || code==juce::KeyPress::rightKey ||
+      code==juce::KeyPress::upKey || code==juce::KeyPress::downKey){
+    confirmationYes=(code==juce::KeyPress::rightKey||code==juce::KeyPress::upKey);
+    (confirmationYes?yes:no).grabKeyboardFocus();announce(confirmationYes?"Yes selected":"No selected");return true;
+   }
+   if(code==juce::KeyPress::returnKey){finishConfirmation(confirmationYes);return true;}
+  }
+  return true;
+ }
  if(code==juce::KeyPress::escapeKey){
-  if(confirming){confirming=false;announce("Import cancelled");return true;}
   if(folder!=root){parentFolder();return true;}
   close();return true;
  }

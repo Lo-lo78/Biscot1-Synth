@@ -27,7 +27,7 @@ public:
     bool keyPressed (const juce::KeyPress&) override;
 
 private:
-    enum class Mode { closed, browse, save, rename, folder, overwrite, remove };
+    enum class Mode { closed, browse, save, rename, folder, overwrite, remove, loadReplace };
     struct BrowserList final : juce::ListBox
     {
         explicit BrowserList (PresetBrowser& p) : juce::ListBox ("Presets", &p), parent (p) {}
@@ -40,19 +40,28 @@ private:
         bool keyPressed (const juce::KeyPress& k) override;
         PresetBrowser& parent;
     };
+    struct ConfirmationButton final : juce::TextButton
+    {
+        ConfirmationButton (PresetBrowser& p, const juce::String& text)
+            : juce::TextButton (text), owner (p) {}
+        bool keyPressed (const juce::KeyPress& k) override { return owner.shortcut (k); }
+        PresetBrowser& owner;
+    };
     PresetManager& manager;
     Mode mode = Mode::closed;
     Mode confirmReturn = Mode::browse;
     BrowserList entries { *this };
     NameEdit nameEdit { *this };
     juce::Label folderLabel, promptLabel;
-    juce::TextButton accept { "OK" }, cancel { "Cancel" }, back { "Back" };
+    ConfirmationButton accept { *this, "OK" }, cancel { *this, "Cancel" };
+    juce::TextButton back { "Back" };
     juce::File directory, previewFile, pendingFile, editFile;
     PresetManager::Snapshot original;
     std::vector<PresetManager::BrowserEntry> items;
     bool suppressSelection = false;
     bool hasPreview = false;
     bool isPreviewing = false;
+    bool confirmationYes = false; // arrows select; Enter executes; Y/N act directly
     BrowserIncrementalSearch incrementalSearch;
 
     int getNumRows() override;
@@ -75,6 +84,7 @@ private:
     void deleteSelected();
     void commitName();
     void confirmAction();
+    void cancelConfirmation();
     void showMenu();
     void announce (const juce::String&);
     void rememberDirectory();

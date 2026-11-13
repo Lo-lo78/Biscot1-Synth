@@ -11,7 +11,8 @@ assert 'songpkg::exportSong(' in sp and 'songpkg::importSong(' in browser
 assert 'deserializeTrackerPattern(' in browser and 'letter(\'o\')' in pp
 assert 'BISCOT1_SONG_BUNDLE_V2' in package
 assert 'serializeTrackerPattern(*patterns.find(id),id)' in package
-assert 'decode(payload,song,decodedId,embedded)' in package and 'auto newPatterns=patterns;auto newSongs=songs' in package
+assert 'decode(payload,song,decodedId,embedded)' in package and 'TrackerPatternBank newPatterns;' in package
+assert 'TrackerSongBank newSongs;' in package
 assert 'patterns=std::move(newPatterns);songs=std::move(newSongs)' in package
 assert 'n>18' in package and 'id>23' in package  # Preview Steps stays portable
 assert 'compileTrackerSongRowPreview' in play and 'songPendingEndValue.load' in proc

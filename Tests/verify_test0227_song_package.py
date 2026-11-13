@@ -7,7 +7,7 @@ pattern=(root/'Source/TrackerPatternPanel.cpp').read_text()
 browser=(root/'Source/TrackerLibraryBrowser.cpp').read_text()
 for label in ['BISCOT1_SONG_BUNDLE_V2','serializeTrackerPattern(',
               'deserializeTrackerPattern(', 'std::map<int,int> patternMap,songMap',
-              'newPatterns.patterns.emplace(', 'newSongs.songs.emplace(',
+              'newPatterns.patterns.emplace(', 'newSongs.songs[dest]=',
               'atomicWrite(target,', 'Missing referenced Pattern', 'Missing embedded Pattern']:
  assert label in pkg,label
 assert 'songpkg::exportSong(' in song

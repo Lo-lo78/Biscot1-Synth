@@ -10,7 +10,8 @@ assert 'if(!single)for(int ref:{s.songEnd,s.loopTarget})' in p
 assert 'detail::hexBytes(payload)' in p and 'decodePayload(hex,payload' in p
 assert 'if(legacy)' in p and 'songMap.at(s.songEnd)' in p and 'songMap.at(s.loopTarget)' in p
 assert 'patternMap.at((int)step.values[1])' in p
-assert 'newPatterns=patterns;auto newSongs=songs' in p
+assert 'TrackerPatternBank newPatterns;' in p
+assert 'TrackerSongBank newSongs;' in p
 assert 'getChildFile("patterns")' in f and 'getChildFile("Singles")' not in f
 assert '"songs"' in browser
 print('OK 0.2.28: standalone Song, chain remapping, simple library folders')

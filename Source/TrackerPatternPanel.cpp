@@ -47,7 +47,7 @@ TrackerPatternPanel::TrackerPatternPanel(BiscotProcessor& p):navigator(*this),nu
  numeric.setName("Tracker numeric edit");numeric.setDescription({});numeric.setMultiLine(false);
  numeric.setWantsKeyboardFocus(true);numeric.setExplicitFocusOrder(2);
  addAndMakeVisible(numeric);numeric.setVisible(false);
- refreshParameterList();refresh();
+ readCursor();refreshParameterList();refresh();
 }
 std::unique_ptr<juce::AccessibilityHandler> TrackerPatternPanel::createAccessibilityHandler(){
  return createIgnoredAccessibilityHandler(*this);
@@ -64,7 +64,7 @@ void TrackerPatternPanel::resized(){
 }
 void TrackerPatternPanel::announce(const juce::String& s){announceToActiveScreenReader(navigator,s);}
 void TrackerPatternPanel::open(){
- startTimerHz(40);parameterSearch.reset();clearSelection();page=1;refresh();setVisible(true);toFront(false);
+ startTimerHz(40);parameterSearch.reset();clearSelection();refresh();setVisible(true);toFront(false);
  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing()){
   safe->navigator.grabKeyboardFocus();safe->announce(safe->positionText(true));}});
@@ -76,9 +76,31 @@ void TrackerPatternPanel::announceLibraryResult(const juce::String& s){announce(
 void TrackerPatternPanel::suspendForSong(){
  stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);
 }
-void TrackerPatternPanel::restoreAfterPreset(){setStepRecording(false);patternExportFiles.clear();undo.clear();redo.clear();clearSelection();parameterSearch.reset();row=-1;cell=0;logicalCell=0;lastLogicalCell={0,0,0};page=1;refresh();}
+void TrackerPatternPanel::restoreAfterPreset(){
+ setStepRecording(false);patternExportFiles.clear();undo.clear();redo.clear();clearSelection();parameterSearch.reset();
+ readCursor();refresh();
+}
 void TrackerPatternPanel::close(){
  stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);if(onClose)onClose();
+}
+void TrackerPatternPanel::readCursor(){
+ const auto& state=processor.state.state;
+ page=juce::jlimit(1,2,(int)state.getProperty(juce::Identifier("trackerPatternPage"),1));
+ tab=juce::jlimit(0,2,(int)state.getProperty(juce::Identifier("trackerPatternTab"),0));
+ row=(int)state.getProperty(juce::Identifier("trackerPatternRow"),-1);
+ cell=juce::jmax(0,(int)state.getProperty(juce::Identifier("trackerPatternCell"),0));
+ logicalCell=juce::jmax(0,(int)state.getProperty(juce::Identifier("trackerPatternLogicalCell"),cell));
+ lastLogicalCell[(size_t)tab]=logicalCell;
+ lastRealStep=juce::jlimit(0,1023,(int)state.getProperty(juce::Identifier("trackerPatternLastStep"),0));
+}
+void TrackerPatternPanel::persistCursor(){
+ auto& state=processor.state.state;
+ state.setProperty(juce::Identifier("trackerPatternPage"),page,nullptr);
+ state.setProperty(juce::Identifier("trackerPatternTab"),tab,nullptr);
+ state.setProperty(juce::Identifier("trackerPatternRow"),row,nullptr);
+ state.setProperty(juce::Identifier("trackerPatternCell"),cell,nullptr);
+ state.setProperty(juce::Identifier("trackerPatternLogicalCell"),logicalCell,nullptr);
+ state.setProperty(juce::Identifier("trackerPatternLastStep"),lastRealStep,nullptr);
 }
 void TrackerPatternPanel::refreshParameterList(){
  parameterList.clear();
@@ -160,6 +182,7 @@ void TrackerPatternPanel::refresh(bool speakPosition){
   navigator.setSelectedId(cell+1,juce::dontSendNotification);
  }
  refreshing=false;
+ persistCursor();
  repaint();if(speakPosition)announce(positionText());
 }
 // A named, independent library export. This never modifies the .biscot preset.
@@ -179,19 +202,15 @@ void TrackerPatternPanel::saveCurrentPattern(const juce::String& requestedName){
   announce("Cannot create Biscot1 Pattern/Song library folders");return;
  }
  const auto payload=serializeTrackerPattern(currentPattern(),slot);
- // Only re-use a file previously exported by this slot during this session
- // and under the SAME explicitly chosen file name. Otherwise create a suffix.
+ // Each save creates a new file. In particular, resaving the same Pattern
+ // name must never silently replace an earlier library snapshot on disk.
+ // The Song and full preset browsers use explicit Yes/No for destructive loads;
+ // standalone Pattern exports simply choose a duplicate-safe suffix.
  juce::File file;
- const auto saved=patternExportFiles.find(slot);
- if(saved!=patternExportFiles.end() && saved->second.getParentDirectory()==singles &&
-    saved->second.getFileName().equalsIgnoreCase(baseName+".biscot1-pattern"))
-  file=saved->second;
- else{
-  for(int suffix=1;suffix<=9999;++suffix){
-   const auto name=baseName+(suffix==1?juce::String{}:"_"+juce::String(suffix))+".biscot1-pattern";
-   const auto candidate=singles.getChildFile(name);
-   if(!candidate.exists()){file=candidate;break;}
-  }
+ for(int suffix=1;suffix<=9999;++suffix){
+  const auto name=baseName+(suffix==1?juce::String{}:"_"+juce::String(suffix))+".biscot1-pattern";
+  const auto candidate=singles.getChildFile(name);
+  if(!candidate.exists()){file=candidate;break;}
  }
  if(file==juce::File{}){announce("Pattern library has too many duplicate names");return;}
  if(!file.existsAsFile() || file.loadFileAsString().toStdString()!=payload){
@@ -535,7 +554,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   return true;
  }
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
- if(m.isAltDown() && !m.isCtrlDown() && letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
+ if(m.isAltDown() && !m.isCtrlDown() && letter('b'))return true; // disabled and silent inside Alt+Q
  if(code==juce::KeyPress::F1Key){page=1;parameterSearch.reset();refresh(true);return true;}
  if(code==32){
   if(m.isCtrlDown() && !m.isAltDown()){pauseAtAudibleStep();return true;}

@@ -1,3 +1,9 @@
+# Biscot1 Synth VST3 — TEST0.2.40 (silent Song parameter-picker borders)
+
+F2 Song: Enter opens the parameter list. At first/last parameter, blocked movement with the arrows, PageUp/PageDown, Home/End and Ctrl+Home/End now remains silent, just as in F1 Pattern. All other 0.2.39 features are preserved; see `RELEASE_NOTES_TEST0.2.40.md`. Windows/MSVC build and NVDA/OSARA testing are pending.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.38 (MSVC Pattern panel const fix)
 
 GitHub Actions reached the full JUCE/MSVC VST3 build in TEST0.2.37, but failed
@@ -738,3 +744,12 @@ See `RELEASE_NOTES_TEST0.2.35.md`.
 
 
 TEST0.2.36: See RELEASE_NOTES_TEST0.2.36.md for cursor, shortcut and library diagnostics.
+
+
+## TEST0.2.39 — confirmed destructive Song import and accessible confirmation
+
+Song imports via F2 Ctrl+O **replace both Pattern and Song banks**, unlike standalone Pattern imports via F1 Ctrl+O. A portable `.biscot1-song` restores only the selected Song to the user's current Song number, after clearing previous Songs and Patterns; a `.biscot1-all-song` restores all 100 Song slots. Imported Pattern IDs are unchanged. Before changing anything, the plugin asks Yes/No (No initially selected). Arrows select, Enter acts on selected, Y/N act immediately, Escape cancels. File decoding/validation is completed before replacing state, so invalid files do not delete prior data. The synth timbre is not included in Song files.
+
+Outside Alt+Q, **Ctrl+O and Alt+B** both open the full preset browser; loading `.biscot` requires the same Yes/No confirmation. Merely browsing preset names no longer changes the instrument. Inside Alt+Q, Alt+B does nothing and speaks nothing. The Pattern and Song cursor positions are stored with the instrument state and should survive closing/reopening the REAPER FX editor.
+
+Repeated standalone Pattern Ctrl+S saves create a new suffixed filename instead of silently overwriting the prior Pattern file.

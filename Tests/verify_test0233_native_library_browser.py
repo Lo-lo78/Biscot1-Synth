@@ -14,7 +14,7 @@ for key in ['Ctrl+P','F5','onClose','keyPressed','createAccessibilityHandler']:
 for key in ['juce::KeyPress::upKey','juce::KeyPress::downKey','juce::KeyPress::pageUpKey',
             'juce::KeyPress::homeKey','juce::KeyPress::escapeKey','juce::KeyPress::backspaceKey',
             'juce::KeyPress::returnKey','code==32','automaticPreview','archiveSongSlot',
-            'Import will replace all 100 Song slots','Import will replace the current Song slot',
+            'Replace ALL current Patterns and Songs','single Song',
             'trackerPlaybackStatus.load','songPlaybackStatus.load',
             'deserializeTrackerPattern(','songpkg::importSong(','loadedPatterns->patterns.clear()',
             'requestLibraryPatternPreview','requestLibrarySongPreview','getChildFile("Biscot1-Synth")']:

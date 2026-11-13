@@ -212,32 +212,40 @@ inline bool importSong(const juce::File& file,TrackerSongBank& songs,TrackerPatt
   }
   for(int ref:references(s))if(!loadedPatterns.count(ref)){message="Missing embedded Pattern";return false;}
  }
- // Transactional import: commit neither bank until every slot is available.
- auto newPatterns=patterns;auto newSongs=songs;
+ // Destructive import is atomic: *first* validate every payload, reference and
+ // requested Song slot above, *then* build complete replacement banks locally.
+ // The import caller must have obtained explicit Yes/No consent before this.
+ // Never retain old Patterns, remap occupied slots, or leave old Songs with
+ // dangling references to Patterns that have been removed.
+ const int selectedDestination=juce::jlimit(0,99,songs.activeSong);
+ TrackerPatternBank newPatterns;
+ TrackerSongBank newSongs;
+ newPatterns.patterns.clear();
+ newSongs.songs.clear();
  std::map<int,int> patternMap,songMap;
  for(const auto& [id,pat]:loadedPatterns){
-  int dest=id;if(newPatterns.patterns.count(dest)){dest=0;while(dest<1000&&newPatterns.patterns.count(dest))++dest;}
-  if(dest>=1000){message="Pattern bank is full";return false;}
-  newPatterns.patterns.emplace(dest,pat);patternMap[id]=dest;
+  newPatterns.patterns.emplace(id,pat); // Original numeric Pattern IDs, even 0..999.
+  patternMap[id]=id;
  }
+ // Always leave one valid empty Pattern when the imported Song has no Patterns.
+ if(newPatterns.patterns.empty())newPatterns.patterns.emplace(0,TrackerPattern(false));
+ newPatterns.activePattern=newPatterns.patterns.begin()->first;
  if(all){
   newSongs.songs=loadedSongs; // exact 0..99: replace static bank, including empty slots
   for(int i=0;i<100;++i)songMap[i]=i;
   newSongs.activeSong=active;
  }else if(single){
-  // The selected destination is explicit, not the original file's Song number.
-  const int dest=juce::jlimit(0,99,newSongs.activeSong);
+  // Only the imported Song survives, in the user's selected 0..99 destination.
+  const int dest=selectedDestination;
   newSongs.songs[dest]=loadedSongs.at(active);
+  newSongs.activeSong=dest;
   songMap[active]=dest;
   // Song End and Loop Target deliberately retain their numeric addresses.
  }else{
-  // Compatibility with the older V2 composition-bundle importer.
-  for(const auto& [id,s]:loadedSongs){
-   int dest=id;if(newSongs.songs.count(dest)){dest=0;while(dest<100&&newSongs.songs.count(dest))++dest;}
-   if(dest>=100){message="Song bank is full";return false;}
-   newSongs.songs.emplace(dest,s);songMap[id]=dest;
-  }
-  newSongs.activeSong=songMap.at(active);
+  // Legacy V2 multi-Song bundles are also restored into a clean Song bank.
+  newSongs.songs=loadedSongs;
+  for(const auto& [id,_]:loadedSongs)songMap[id]=id;
+  newSongs.activeSong=active;
  }
  for(const auto& [id,_]:loadedSongs){
   const int dest=single?newSongs.activeSong:songMap.at(id);
@@ -252,7 +260,7 @@ inline bool importSong(const juce::File& file,TrackerSongBank& songs,TrackerPatt
  patterns=std::move(newPatterns);songs=std::move(newSongs);
  message=(single?"Single Song loaded into slot "+juce::String(songs.activeSong):
           all?"All 100 Song slots restored":"Legacy Song package loaded")+
-         ". "+juce::String(np)+" embedded Patterns";
+         ". Previous tracker banks replaced. "+juce::String(np)+" embedded Patterns";
  return true;
 }
 } // namespace songpkg

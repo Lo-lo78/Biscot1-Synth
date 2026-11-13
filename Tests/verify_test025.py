@@ -27,7 +27,7 @@ assert 'std::unique_ptr<PresetBrowser> presetBrowser;' in head
 assert '"Biscot1-Synth"' in manager
 assert '"*.biscot"' in manager and 'hasFileExtension ("biscot")' in manager
 assert 'State: ' in manager and 'getStateInformation' in manager and 'setStateInformation' in manager
-assert 'manager.restore (original)' in browser and 'manager.commit (entry.file)' in browser
+assert 'manager.restore (original)' in browser and 'manager.load (target)' in browser and 'Mode::loadReplace' in browser
 assert 'manager.instrument()' not in browser
 assert 'void BiscotProcessor::getStateInformation' in processor
 print('OK: accessible editor navigation, native preset save/load and state restore (static)')

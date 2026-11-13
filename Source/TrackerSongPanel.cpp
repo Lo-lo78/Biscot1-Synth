@@ -37,7 +37,7 @@ TrackerSongPanel::TrackerSongPanel(BiscotProcessor& p):navigator(*this),numeric(
  addAndMakeVisible(navigator);
  numeric.setName("Song numeric edit");numeric.setMultiLine(false);numeric.setWantsKeyboardFocus(true);
  numeric.setExplicitFocusOrder(2);addAndMakeVisible(numeric);numeric.setVisible(false);
- refresh();
+ readCursor();refresh();
 }
 std::unique_ptr<juce::AccessibilityHandler> TrackerSongPanel::createAccessibilityHandler(){
  return createIgnoredAccessibilityHandler(*this);
@@ -82,8 +82,8 @@ void TrackerSongPanel::open(){
 void TrackerSongPanel::suspendForLibrary(){stopTimer();setVisible(false);}
 void TrackerSongPanel::announceLibraryResult(const juce::String& s){announce(s);}
 void TrackerSongPanel::restoreAfterPreset(){
- lane=0;row=-1;cell=0;logicalCell=0;rememberedRow=0;lastOperatorLane=0;lastStep={0,0,0};
- picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();refresh();
+ picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();
+ readCursor();refresh();
 }
 int TrackerSongPanel::visibleCount()const{
  if(picker)return (int)songParameters.size();
@@ -150,6 +150,30 @@ juce::String TrackerSongPanel::positionText(bool full)const{
  const auto* entry=song().findStep(lane,row);
  return laneText+"step "+juce::String(row)+". "+paramLabel(id,entry->values[(size_t)id]);
 }
+void TrackerSongPanel::readCursor(){
+ const auto& state=processor.state.state;
+ lane=juce::jlimit(0,3,(int)state.getProperty(juce::Identifier("trackerSongLane"),0));
+ lastOperatorLane=juce::jlimit(0,2,(int)state.getProperty(juce::Identifier("trackerSongLastOperator"),0));
+ row=(int)state.getProperty(juce::Identifier("trackerSongRow"),-1);
+ cell=juce::jmax(0,(int)state.getProperty(juce::Identifier("trackerSongCell"),0));
+ logicalCell=juce::jmax(0,(int)state.getProperty(juce::Identifier("trackerSongLogicalCell"),cell));
+ for(int i=0;i<3;++i)
+  lastStep[(size_t)i]=juce::jlimit(0,4095,(int)state.getProperty(juce::Identifier(juce::String("trackerSongLastStep")+juce::String(i)),0));
+ if(lane<3){
+  const int len=length();
+  row=juce::jlimit(-1,len+(song().laneRepeats[(size_t)lane]+9)/10,row);
+ }else row=-1;
+}
+void TrackerSongPanel::persistCursor(){
+ auto& state=processor.state.state;
+ state.setProperty(juce::Identifier("trackerSongLane"),lane,nullptr);
+ state.setProperty(juce::Identifier("trackerSongLastOperator"),lastOperatorLane,nullptr);
+ state.setProperty(juce::Identifier("trackerSongRow"),row,nullptr);
+ state.setProperty(juce::Identifier("trackerSongCell"),cell,nullptr);
+ state.setProperty(juce::Identifier("trackerSongLogicalCell"),logicalCell,nullptr);
+ for(int i=0;i<3;++i)
+  state.setProperty(juce::Identifier(juce::String("trackerSongLastStep")+juce::String(i)),lastStep[(size_t)i],nullptr);
+}
 void TrackerSongPanel::refresh(bool speak){
  refreshing=true;
  navigator.clear(juce::dontSendNotification);
@@ -184,6 +208,7 @@ void TrackerSongPanel::refresh(bool speak){
   navigator.setSelectedId(cell+1,juce::dontSendNotification);
  }
  refreshing=false;
+ persistCursor();
  repaint();if(speak){announce(positionText());previewCurrentStep();}
 }
 void TrackerSongPanel::previewCurrentStep(){
@@ -552,7 +577,7 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
     announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));}
   }return true;
  }
- if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
+ if(m.isAltDown()&&!m.isCtrlDown()&&letter('b'))return true; // disabled and silent inside Alt+Q
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){
   openNumeric(EditPurpose::saveAllSongsName,
    "Save all 100 Songs file name. Enter to save; Escape to cancel", "All_Songs");
@@ -643,7 +668,13 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::endKey)move=std::min(7-pickerIndex%8,(int)songParameters.size()-1-pickerIndex);
   if(m.isCtrlDown()&&code==juce::KeyPress::homeKey)move=-pickerIndex;
   if(m.isCtrlDown()&&code==juce::KeyPress::endKey)move=(int)songParameters.size()-1-pickerIndex;
-  if(move){pickerIndex=juce::jlimit(0,(int)songParameters.size()-1,pickerIndex+move);search.reset();refresh(true);return true;}
+  if(move){
+   // Match the F1 Pattern picker: a clamped movement that does not change
+   // the selected parameter must be completely silent for NVDA/OSARA.
+   const int next=juce::jlimit(0,(int)songParameters.size()-1,pickerIndex+move);
+   if(next!=pickerIndex){pickerIndex=next;search.reset();refresh(true);}
+   return true;
+  }
   if(const auto ch=biscotParameterSearchCharacter(k);ch!=0){
    const int found=search.next((wchar_t)ch,pickerIndex,(int)songParameters.size(),m.isShiftDown()?-1:1,
     juce::Time::getMillisecondCounter(),[](int i){return std::wstring(juce::String(songParameters[(size_t)i].name).toWideCharPointer());});

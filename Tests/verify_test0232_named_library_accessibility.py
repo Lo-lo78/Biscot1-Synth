@@ -13,7 +13,7 @@ for required in [
  'if(purpose==NumericPurpose::savePatternName)',
  'saveCurrentPattern(txt);return true;',
  'patternExportFiles[slot]=file;',
- 'getFileName().equalsIgnoreCase(baseName+".biscot1-pattern")',
+ 'if(!candidate.exists()){file=candidate;break;}',
  'TemporaryFile temporary(file)',
  'getChildFile("patterns")',
  'getChildFile("songs")',
@@ -52,5 +52,5 @@ assert '"CON"' in f and '"LPT"' in f
 assert 'parent.mode == Mode::save || parent.mode == Mode::rename || parent.mode == Mode::folder' in preset
 assert 'announceToActiveScreenReader (*this, "spazio")' in preset
 assert 'newSongs.songs=loadedSongs' in b
-assert 'const int dest=juce::jlimit(0,99,newSongs.activeSong)' in b
+assert 'const int dest=selectedDestination' in b
 print('OK TEST0.2.35 named library save, typed spaces and focus')

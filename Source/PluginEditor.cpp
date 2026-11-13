@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.38",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.40",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -370,6 +370,9 @@ bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
   return true; // never let REAPER consume page-navigation arrows
  }
  if(m.isCtrlDown() && code==juce::KeyPress::tabKey){changeGroup(m.isShiftDown()?-1:1);return true;}
+ if(!m.isAltDown() && m.isCtrlDown() && !m.isShiftDown() && letter('o')){
+  openPresetBrowser(false);return true;
+ }
  if(m.isAltDown() && !m.isCtrlDown()){
   if(letter('b')){openPresetBrowser(false);return true;}
   if(letter('s')){openPresetBrowser(true);return true;}

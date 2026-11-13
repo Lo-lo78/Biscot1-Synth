@@ -37,11 +37,8 @@ PresetBrowser::PresetBrowser (PresetManager& p) : manager (p)
     accept.onClick = [this] { confirmAction(); };
     cancel.onClick = [this]
     {
-        if (mode == Mode::overwrite || mode == Mode::remove)
-        {
-            showMode (confirmReturn);
-            if (mode == Mode::browse) focusList(); else focusName (nameEdit.getText());
-        }
+        if (mode == Mode::overwrite || mode == Mode::remove || mode == Mode::loadReplace)
+            cancelConfirmation();
         else if (mode == Mode::rename || mode == Mode::folder)
         { showMode (Mode::browse); focusList(); }
         else close();
@@ -74,8 +71,8 @@ void PresetBrowser::announce (const juce::String& text)
     juce::Component* source = &entries;
     if (mode == Mode::save || mode == Mode::rename || mode == Mode::folder)
         source = &nameEdit;
-    else if (mode == Mode::overwrite || mode == Mode::remove)
-        source = &accept;
+    else if (mode == Mode::overwrite || mode == Mode::remove || mode == Mode::loadReplace)
+        source = confirmationYes ? static_cast<juce::Component*>(&accept) : static_cast<juce::Component*>(&cancel);
     biscot::announceToActiveScreenReader (*source, text);
 }
 void PresetBrowser::paint (juce::Graphics& g)
@@ -176,7 +173,7 @@ void PresetBrowser::showMode (Mode next)
     setVisible (next != Mode::closed);
     const bool browsing = next == Mode::browse;
     const bool editing = next == Mode::save || next == Mode::rename || next == Mode::folder;
-    const bool confirming = next == Mode::overwrite || next == Mode::remove;
+    const bool confirming = next == Mode::overwrite || next == Mode::remove || next == Mode::loadReplace;
     entries.setVisible (browsing);
     nameEdit.setVisible (editing);
     promptLabel.setVisible (editing || confirming);
@@ -192,6 +189,7 @@ void PresetBrowser::showMode (Mode next)
         if (next == Mode::folder) promptLabel.setText ("New preset folder", juce::dontSendNotification);
         if (next == Mode::overwrite) promptLabel.setText ("Overwrite existing preset?", juce::dontSendNotification);
         if (next == Mode::remove) promptLabel.setText ("Delete selected preset?", juce::dontSendNotification);
+        if (next == Mode::loadReplace) promptLabel.setText ("Replace complete current instrument state with this preset?", juce::dontSendNotification);
         accept.setButtonText (confirming ? "Yes" : (next == Mode::save ? "Save" : "OK"));
         cancel.setButtonText (confirming ? "No" : "Close");
         toFront (false);
@@ -225,7 +223,6 @@ void PresetBrowser::focusList()
     const int row = entries.getSelectedRow();
     if (juce::isPositiveAndBelow (row, static_cast<int> (items.size())))
     {
-        previewRow (row);
         announce ("Preset browser. " + getNameForRow (row));
     }
     else announce ("Preset browser. Empty folder");
@@ -258,7 +255,8 @@ void PresetBrowser::selectedRowsChanged (int row)
         ! juce::isPositiveAndBelow (row, static_cast<int> (items.size()))) return;
     // LJuno-style explicit UI Automation announcement, not merely a ListBox
     // selection event: NVDA can otherwise remain completely silent on arrows.
-    previewRow (row);
+    // Moving between preset filenames must not silently load another synth,
+    // Pattern bank or Song bank before the user answers Yes or No.
     announce (getNameForRow (row));
 }
 void PresetBrowser::listBoxItemDoubleClicked (int row, const juce::MouseEvent&)
@@ -287,14 +285,14 @@ void PresetBrowser::activateRow (int row)
         directory = entry.file;
         refresh(); focusList(); return;
     }
-    previewRow (row);
-    if (previewFile != entry.file) return;
-    auto result = manager.commit (entry.file);
-    if (result.failed()) { announce (result.getErrorMessage()); return; }
-    // Report the result while the list is still visible. Closing next fires
-    // onClose, which returns accessibility focus to the original Grid/Value/Edit.
-    announce ("Loaded preset " + entry.name);
-    close (false);
+    // Confirmation precedes the first mutation; arrow navigation is browse-only.
+    pendingFile = entry.file;
+    confirmReturn = Mode::browse;
+    confirmationYes = false;
+    showMode (Mode::loadReplace);
+    cancel.grabKeyboardFocus();
+    announce ("Load preset " + entry.name +
+        "? This replaces the entire synth, Pattern and Song state. Yes or No. No selected");
 }
 void PresetBrowser::parentFolder()
 {
@@ -347,6 +345,7 @@ void PresetBrowser::deleteSelected()
     { announce ("Delete folders using Windows Explorer"); return; }
     pendingFile = items[static_cast<size_t> (row)].file;
     confirmReturn = Mode::browse;
+    confirmationYes = false;
     showMode (Mode::remove);
     cancel.grabKeyboardFocus(); // No is the default, matching LJuno.
     announce ("Delete preset " + pendingFile.getFileNameWithoutExtension() + "? Yes or No");
@@ -361,6 +360,7 @@ void PresetBrowser::commitName()
         {
             pendingFile = destination;
             confirmReturn = Mode::save;
+            confirmationYes = false;
             showMode (Mode::overwrite);
             cancel.grabKeyboardFocus(); // No is the default, matching LJuno.
             announce ("Overwrite preset " + pendingFile.getFileNameWithoutExtension() + "? Yes or No");
@@ -395,9 +395,26 @@ void PresetBrowser::refreshAndSelectFile (const juce::File& file)
         { entries.selectRow (i); entries.scrollToEnsureRowIsOnscreen (i); break; }
     focusList();
 }
+void PresetBrowser::cancelConfirmation()
+{
+    confirmationYes = false;
+    showMode (confirmReturn);
+    if (mode == Mode::browse) focusList(); else focusName (nameEdit.getText());
+}
 void PresetBrowser::confirmAction()
 {
-    if (mode == Mode::overwrite)
+    if (mode == Mode::loadReplace)
+    {
+        const auto target = pendingFile;
+        // PresetManager::load validates the complete file before changing state.
+        // This action never writes over the existing preset file on disk.
+        auto result = manager.load (target);
+        if (result.failed()) { cancelConfirmation(); announce (result.getErrorMessage()); return; }
+        if (onPresetLoaded) onPresetLoaded();
+        announce ("Loaded preset " + target.getFileNameWithoutExtension());
+        close (false);
+    }
+    else if (mode == Mode::overwrite)
     {
         juce::File saved;
         auto result = manager.save (directory, nameEdit.getText(), saved, true);
@@ -513,16 +530,31 @@ bool PresetBrowser::shortcut (const juce::KeyPress& key)
     if (mode == Mode::browse) return listKey (key);
     if (mode == Mode::save || mode == Mode::rename || mode == Mode::folder)
         return textKey (key);
-    if (mode == Mode::overwrite || mode == Mode::remove)
+    if (mode == Mode::overwrite || mode == Mode::remove || mode == Mode::loadReplace)
     {
         const auto code = key.getKeyCode();
-        if (code == juce::KeyPress::returnKey || code == 'Y') { confirmAction(); return true; }
-        if (code == juce::KeyPress::escapeKey || code == 'N')
+        const auto mods = key.getModifiers();
+        if (code == juce::KeyPress::escapeKey) { cancelConfirmation(); return true; }
+        if (! mods.isCtrlDown() && ! mods.isAltDown() && ! mods.isCommandDown())
         {
-            showMode (confirmReturn);
-            if (mode == Mode::browse) focusList(); else focusName (nameEdit.getText());
-            return true;
+            const auto character = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+            if (character == 'y' || code == 'Y') { confirmAction(); return true; }
+            if (character == 'n' || code == 'N') { cancelConfirmation(); return true; }
+            if (code == juce::KeyPress::leftKey || code == juce::KeyPress::rightKey ||
+                code == juce::KeyPress::upKey || code == juce::KeyPress::downKey)
+            {
+                confirmationYes = code == juce::KeyPress::rightKey || code == juce::KeyPress::upKey;
+                (confirmationYes ? accept : cancel).grabKeyboardFocus();
+                announce (confirmationYes ? "Yes selected" : "No selected");
+                return true;
+            }
+            if (code == juce::KeyPress::returnKey)
+            {
+                if (confirmationYes) confirmAction(); else cancelConfirmation();
+                return true;
+            }
         }
+        return true;
     }
     return false;
 }

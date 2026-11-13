@@ -87,3 +87,8 @@ All three Biscot1 file browsers now support incremental filename/word-prefix sea
 
 ### TEST0.2.35 preview fidelity
 The file library now uses the same immutable compiled Song timeline as F2 playback, without altering row alignment, event timing or loops. Full audition is default; +/- chooses an external preview length only. Song End within the archive is supported through an isolated immutable Song graph, not the live project bank.
+
+
+## TEST0.2.39 — current replacement policy (supersedes collision remapping above)
+
+Before every single- or all-Song import, a keyboard-operable Yes/No confirmation protects the **entire current Pattern and Song banks**. The loader validates the whole file before clearing anything, then atomically replaces both banks. Original Pattern indexes are restored exactly (0–999), never remapped into free destination slots. For a single Song, only the imported Song is placed at the selected Song number and other Song slots are cleared, to avoid dangling Pattern references; for an all-Song archive, all fixed 100 Song slots are restored. Song imports do **not** change any synth parameters/timbre. Standalone Pattern imports still add to the existing bank, using a free destination on collision. Descriptions of Song collision remapping above are superseded.

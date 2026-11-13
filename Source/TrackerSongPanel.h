@@ -92,6 +92,8 @@ private:
  juce::String positionText(bool full=false)const;
  juce::String paramLabel(int id,double value)const;
  void refresh(bool speak=false);
+ void readCursor();
+ void persistCursor();
  void changeLane(int next);
  void changeSong(int next);
  void vertical(int delta);

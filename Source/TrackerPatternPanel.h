@@ -108,6 +108,8 @@ private:
  juce::String positionText(bool includePattern=false) const;
  juce::String cellText(const TrackerCell&) const;
  void refreshParameterList();
+ void readCursor();
+ void persistCursor();
  void recordUndo();
  void finishEdit();
  void changeValue(double value);

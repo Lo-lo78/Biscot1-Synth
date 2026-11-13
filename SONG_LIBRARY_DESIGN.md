@@ -49,3 +49,8 @@ Biscot1-Synth/
 The original external dependency scheme was replaced. Only two tracker library directories are needed beneath the user Documents `Biscot1-Synth`: lower-case `patterns` for standalone `.biscot1-pattern` files, and lower-case `songs` for both `.biscot1-song` (portable single Song) and `.biscot1-all-song` (fixed 100-Song archive). Songs embed every Pattern needed and need no dependent files. Single Song imports target the current Song slot; all-Song imports replace slots 0–99. Both formats leave the synth alone.
 
 Saving via F1 Ctrl+S, F2 Ctrl+S or F2 Alt+S first focuses an editable filename field, initially selected. Enter saves, Esc cancels, and typing a space inserts the character and explicitly speaks `spazio`. Source notes under TEST0.2.21.4 above are historical proposals only.
+
+
+## TEST0.2.39 — current replacement policy (supersedes collision remapping above)
+
+Before every single- or all-Song import, a keyboard-operable Yes/No confirmation protects the **entire current Pattern and Song banks**. The loader validates the whole file before clearing anything, then atomically replaces both banks. Original Pattern indexes are restored exactly (0–999), never remapped into free destination slots. For a single Song, only the imported Song is placed at the selected Song number and other Song slots are cleared, to avoid dangling Pattern references; for an all-Song archive, all fixed 100 Song slots are restored. Song imports do **not** change any synth parameters/timbre. Standalone Pattern imports still add to the existing bank, using a free destination on collision. Descriptions of Song collision remapping above are superseded.
