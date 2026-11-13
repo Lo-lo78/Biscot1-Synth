@@ -10,6 +10,8 @@ jobs:
       - name: Verify F1 F2 picker parity and complete stereo delay audition
         shell: pwsh
         run: python Tests/verify_public_picker_delay_0992.py
+      - name: Guard Song row preview tests with NDEBUG enabled
+        run: python Tests/verify_release_song_row_preview_test.py
       - name: Verify public About and accessible Alt+A navigation
         shell: pwsh
         run: python Tests/verify_public_about_0991.py

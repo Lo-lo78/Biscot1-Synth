@@ -5,3 +5,5 @@
 - True stereo alternating Ping-Pong repeats at every depth instead of collapsing to mono around 50%.
 - F2 micro-preview uses the delay settings active at the selected Song row, retaining its audible decay after the short note preview. Non-delay previews remain short.
 - Preserves Song Select, Song Transport, navigation, About, and all other 0.99.1 functions.
+
+- Build verification fix: Song-row FX preview regression test now executes its setup and checks with MSVC Release (`NDEBUG`); no DSP or plugin runtime changes.
