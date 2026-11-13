@@ -3,6 +3,7 @@
 #include "TrackerSongBank.h"
 #include "TrackerSongParameters.h"
 #include "TrackerPatternText.h"
+#include "TrackerLibraryFileNames.h"
 #include <juce_core/juce_core.h>
 #include <set>
 #include <sstream>
@@ -19,11 +20,8 @@ inline std::set<int> references(const TrackerSong& s){
  return ids;
 }
 inline juce::String safeName(juce::String name){
- name=name.trim();
- for(auto c:juce::String("\\/:*?\"<>|"))name=name.replaceCharacter(c,'_');
- name=name.replace("..","_").trimCharactersAtEnd(" .");
- if(name.isEmpty())name="Song";
- return name.substring(0,90);
+ const auto clean=trackerLibraryFileStem(name);
+ return clean.isEmpty()?juce::String("Song"):clean;
 }
 inline bool atomicWrite(const juce::File& target,const juce::String& text){
  juce::TemporaryFile tmp(target);
@@ -115,7 +113,8 @@ inline bool decodePayload(const std::string& hex,std::string& out,size_t maxByte
 // Both embed their referenced Patterns. Song End / Loop Target in a single
 // Song remain numeric: a missing destination is never silently bundled.
 inline bool exportPackage(const TrackerSongBank& songs,const TrackerPatternBank& patterns,
-                          const juce::File& root,bool all,juce::String& message){
+                          const juce::File& root,bool all,juce::String& message,
+                          const juce::String& requestedFileName={}){
  const int active=songs.activeSong;
  if(active<0||active>=100||!songs.find(active)){message="Active Song is missing";return false;}
  std::set<int> songIds;
@@ -134,8 +133,11 @@ inline bool exportPackage(const TrackerSongBank& songs,const TrackerPatternBank&
   message="Cannot create Biscot1 library folders";return false;
  }
  const auto* first=songs.find(active);
- const juce::String filename=all?"All_Songs":safeName(juce::String::fromUTF8(first->name.c_str()).isEmpty()?"Song_"+juce::String(active):juce::String::fromUTF8(first->name.c_str()));
  const juce::String ext=all?".biscot1-all-song":".biscot1-song";
+ auto chosenName=requestedFileName.trim();
+ if(chosenName.endsWithIgnoreCase(ext))chosenName=chosenName.dropLastCharacters(ext.length());
+ const juce::String filename=chosenName.isNotEmpty()?safeName(chosenName):
+  all?juce::String("All_Songs"):safeName(juce::String::fromUTF8(first->name.c_str()).isEmpty()?"Song_"+juce::String(active):juce::String::fromUTF8(first->name.c_str()));
  juce::File target;
  for(int n=1;n<=9999;++n){
   const auto candidate=directory.getChildFile(filename+(n==1?juce::String{}:"_"+juce::String(n))+ext);
@@ -164,11 +166,11 @@ inline bool exportPackage(const TrackerSongBank& songs,const TrackerPatternBank&
   ". "+juce::String((int)patternIds.size())+" embedded Patterns. "+target.getFileName();
  return true;
 }
-inline bool exportSong(const TrackerSongBank& songs,const TrackerPatternBank& patterns,const juce::File& root,juce::String& message){
- return exportPackage(songs,patterns,root,false,message);
+inline bool exportSong(const TrackerSongBank& songs,const TrackerPatternBank& patterns,const juce::File& root,juce::String& message,const juce::String& name={}){
+ return exportPackage(songs,patterns,root,false,message,name);
 }
-inline bool exportAllSongs(const TrackerSongBank& songs,const TrackerPatternBank& patterns,const juce::File& root,juce::String& message){
- return exportPackage(songs,patterns,root,true,message);
+inline bool exportAllSongs(const TrackerSongBank& songs,const TrackerPatternBank& patterns,const juce::File& root,juce::String& message,const juce::String& name={}){
+ return exportPackage(songs,patterns,root,true,message,name);
 }
 inline bool importSong(const juce::File& file,TrackerSongBank& songs,TrackerPatternBank& patterns,juce::String& message){
  if(!file.existsAsFile()||file.getSize()>256ll*1024ll*1024ll){message="Invalid Song file";return false;}

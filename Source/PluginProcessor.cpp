@@ -692,6 +692,17 @@ void BiscotProcessor::requestTrackerStart(int step,bool audition) noexcept {
 }
 void BiscotProcessor::requestTrackerPause() noexcept {trackerRequested.store(-2,std::memory_order_release);}
 void BiscotProcessor::requestTrackerStop() noexcept {trackerRequested.store(-1,std::memory_order_release);}
+bool BiscotProcessor::requestLibraryPatternPreview(const TrackerPattern& source,int start,int count){
+ // Never replace a complete user-started Pattern or Song transport.
+ if(trackerPlaybackStatus.load(std::memory_order_acquire)==1 ||
+    songPlaybackStatus.load(std::memory_order_acquire)==1)return false;
+ auto snapshot=std::make_shared<const TrackerPlayablePattern>(compileTrackerPattern(source));
+ start=juce::jlimit(0,snapshot->length-1,start);
+ trackerLibraryPlayable.store(std::move(snapshot),std::memory_order_release);
+ trackerLibraryPreviewSteps.store(juce::jlimit(0,1024,count),std::memory_order_release);
+ trackerRequested.store(3073+start,std::memory_order_release);
+ return true;
+}
 void BiscotProcessor::trackerReleaseNote() noexcept {
  for(int i=trackerTransport.activeSubCount-1;i>=0;--i)
   onMidi(juce::MidiMessage::noteOff(1,trackerTransport.activeSubNotes[(size_t)i]));
@@ -837,6 +848,24 @@ void BiscotProcessor::requestSongStart(int row) noexcept {
 }
 void BiscotProcessor::requestSongPause() noexcept {songRequested.store(-2,std::memory_order_release);}
 void BiscotProcessor::requestSongStop() noexcept {songRequested.store(-1,std::memory_order_release);}
+bool BiscotProcessor::requestLibrarySongPreview(const TrackerSong& song,int slot,
+ const TrackerPatternBank& patterns,const TrackerSongBank& sourceSongs,int divisions){
+ // No mutable library banks are accessed from the audio thread.
+ if(songPlaybackStatus.load(std::memory_order_acquire)==1 ||
+    trackerPlaybackStatus.load(std::memory_order_acquire)==1)return false;
+ auto chain=std::make_shared<const TrackerSongChainMap>(compileTrackerSongChainMap(sourceSongs,patterns));
+ // For a single-Song file, the original slot has already been established by
+ // the parser. For an all-Song file, every existing slot is in this graph.
+ std::shared_ptr<const TrackerPlayableSong> playable;
+ if(slot>=0 && slot<100)playable=chain->byNumber[(size_t)slot];
+ if(!playable)playable=compileTrackerSongLibraryPreview(compileTrackerSong(song,slot,patterns),divisions);
+ if(!playable)return false;
+ songLibraryChainMap.store(std::move(chain),std::memory_order_release);
+ songPreviewPlayable.store(std::move(playable),std::memory_order_release);
+ songLibraryPreviewDivisions.store(juce::jlimit(0,1024,divisions),std::memory_order_release);
+ songRequested.store(-4,std::memory_order_release);
+ return true;
+}
 void BiscotProcessor::requestSongPreview(int lane,int row,int steps){
  // Never interrupt a full Song transport with a navigation preview.
  if(songPlaybackStatus.load(std::memory_order_acquire)==1)return;
@@ -872,15 +901,20 @@ bool BiscotProcessor::songChainNext() noexcept {
  // message-thread publication at the chain boundary, never read the UI bank.
  const int current=songPlaybackSnapshot->songNumber;
  const int liveId=songPendingEndSong.load(std::memory_order_acquire);
- const int next=liveId==current?songPendingEndValue.load(std::memory_order_relaxed):songPlaybackSnapshot->songEnd;
+ const int next=!songLibraryPreviewRunning && liveId==current
+  ?songPendingEndValue.load(std::memory_order_relaxed):songPlaybackSnapshot->songEnd;
  if(next<0||next>=100)return false;
- if(auto newer=songChainMap.load(std::memory_order_acquire))songChainSnapshot=std::move(newer);
+ // Preview chains refer ONLY to Songs from the previewed file. Never read a
+ // newly edited live Song, or follow an absent link into the current project.
+ if(!songLibraryPreviewRunning)
+  if(auto newer=songChainMap.load(std::memory_order_acquire))songChainSnapshot=std::move(newer);
  const auto& target=songChainSnapshot->byNumber[(size_t)next];
  if(!target)return false; // deliberately never guess an absent Song's contents
  // End -> next Song is a timeline transition, not a full DSP reset.
  // Keep oscillator/filter/LFO state and any running delay tails.
  for(int lane=0;lane<3;++lane)songReleaseLane(lane);
  songBegin(target,0);
+ if(songLibraryPreviewRunning)songPlaybackStatus.store(3,std::memory_order_relaxed);
  return true;
 }
 void BiscotProcessor::songApplyRowFx(int lane,const TrackerSongRowFx& fx) noexcept {
@@ -923,6 +957,8 @@ void BiscotProcessor::songReleaseLane(int lane) noexcept {
  }
 }
 void BiscotProcessor::songStopAudio(bool pause) noexcept {
+ songLibraryPreviewRunning=false;
+ songLibraryPreviewSamplesLeft=-1.;
  for(int lane=0;lane<3;++lane)songReleaseLane(lane);
  songTransport.stop();
  // Keep Song mixer and timbre throughout the natural VCA release tail.
@@ -1063,9 +1099,17 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    songChainSnapshot=songChainMap.load(std::memory_order_acquire);
    for(auto& fx:songFx)fx.resetSidechain();
    songBegin(songPlayable.load(std::memory_order_acquire),songCommand-1);
-  }else if(songCommand==-3){
+  }else if(songCommand==-3 || songCommand==-4){
    trackerClearOverrides();
-   songChainSnapshot.reset(); // auditions must never follow Song End
+   // -3 is the F2 row audition: no chaining. -4 is a faithful file playback
+   // that may follow Song End only to another Song embedded in that file.
+   const bool library=(songCommand==-4);
+   songLibraryPreviewRunning=library;
+   if(library)for(auto& fx:songFx)fx.resetSidechain();
+   songChainSnapshot=library?songLibraryChainMap.load(std::memory_order_acquire):nullptr;
+   const int divisions=library?songLibraryPreviewDivisions.load(std::memory_order_acquire):0;
+   songLibraryPreviewSamplesLeft=divisions>0
+    ?(double)divisions*TrackerSongTransport::gridSamples(sampleRateHz,tempoBpm,1.): -1.;
    songBegin(songPreviewPlayable.load(std::memory_order_acquire),0);
    songPlaybackStatus.store(3,std::memory_order_relaxed);
   }
@@ -1079,12 +1123,15 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   const int audible=trackerTransport.currentStep;
   trackerTransport.stop();
   if(trackerCommand>0){
-   trackerPlaybackSnapshot=trackerPlayable.load(std::memory_order_acquire);
+   const bool fromLibrary=trackerCommand>=3073;
+   trackerPlaybackSnapshot=fromLibrary?trackerLibraryPlayable.load(std::memory_order_acquire)
+                                      :trackerPlayable.load(std::memory_order_acquire);
    if(trackerPlaybackSnapshot){
-    const bool audition=trackerCommand>=2049;
-    const int wanted=(audition?trackerCommand-2049:trackerCommand-1);
-    trackerTransport.start(wanted,*trackerPlaybackSnapshot,audition);
-    trackerPlaybackStatus.store(audition?3:1,std::memory_order_relaxed);
+    const bool audition=!fromLibrary&&trackerCommand>=2049;
+    const int wanted=fromLibrary?trackerCommand-3073:(audition?trackerCommand-2049:trackerCommand-1);
+    trackerTransport.start(wanted,*trackerPlaybackSnapshot,audition,
+     fromLibrary?trackerLibraryPreviewSteps.load(std::memory_order_acquire):0);
+    trackerPlaybackStatus.store(fromLibrary||audition?3:1,std::memory_order_relaxed);
    }
   }else{
    // Tracker's temporary MIDI routing must not leak into live keyboard play.
@@ -1168,6 +1215,11 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
     }
    }
    if(events.finished && !songChainNext())songStopAudio(false);
+   // Duration is a wall-clock audition window: the score itself is NEVER
+   // truncated or shifted. This is the same output as a real Song from row 0.
+   if(songLibraryPreviewRunning && songTransport.running &&
+      songLibraryPreviewSamplesLeft>0 && --songLibraryPreviewSamplesLeft<=0)
+    songStopAudio(false);
   }
   if(playback && trackerTransport.running){
    const auto event=trackerTransport.tick(*playback,sampleRateHz,tempoBpm);

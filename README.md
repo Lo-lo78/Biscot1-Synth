@@ -1,3 +1,26 @@
+# Biscot1 Synth VST3 — TEST0.2.35 (faithful file-browser playback)
+
+**Current tracker library:** in Alt+Q, F1 Ctrl+S opens an accessible Pattern
+file-name edit; F2 Ctrl+S opens a single Song name edit, and F2 Alt+S opens
+an all-100-Songs file-name edit. The initial name is selected for easy typing;
+Enter writes the file and Esc cancels. In these name fields, pressing Space
+inserts a real space and explicitly announces `spazio` to NVDA. The same
+accessibility fix also applies to the synth's existing `.biscot` preset name,
+rename and folder fields.
+
+Library files are under `Documents/Biscot1-Synth/patterns` and
+`Documents/Biscot1-Synth/songs`. Single Song `.biscot1-song` may be imported
+into any selected Song slot; `.biscot1-all-song` restores all 100 fixed slots.
+Both embed referenced Patterns; synth timbre is not overwritten. Colliding
+filenames receive a numeric suffix rather than overwriting unrelated exports.
+F1 Alt+S still opens the independent complete `.biscot` preset browser.
+
+**Remaining migration priority:** advanced browser management and archive verification;
+Windows/REAPER/NVDA user acceptance tests. The following older release
+sections remain as historical records, not the current implementation.
+
+---
+
 # Biscot1 Synth VST3 — TEST0.2.25 (Song End, resource arbitration and native Song effects)
 
 Alt+Q F2 Song can now play three operator lanes at once. **Space** starts/stops,
@@ -641,3 +664,48 @@ Song End now supports a live-updated next-Song target and the F2 display follows
 F2 auditions only the selected operator's Pattern from Pattern Start when navigating Song steps or editing a Pattern-related value. The original Lua default is three Pattern steps. Optionally insert **Preview Steps (1–1024)** from the Enter parameter picker on a given Song row, then edit its value with Alt+E or Alt+arrows. This is a Song editor audition length; it does not modify actual Song playback, Repeat, or the `.biscot` synth sound. Previews never interrupt an already-running full Song.
 
 On F1/F2 opening, NVDA reads Pattern or Song explicitly. F2 value navigation no longer repeats «Operator 1» on every cell; Tab still announces the full location. Alt+Q remembers the last F1/F2 editor in the VST state (`trackerLastMode`), and the two editor instances retain their own cursor position across page switches. All old Song parameters retain their original numeric IDs; new Preview Steps is appended as optional ID 23. See `RELEASE_NOTES_TEST0.2.26.md`.
+
+## TEST0.2.33: Native keyboard-first tracker library browser (previous behavior)
+
+In Alt+Q, press Ctrl+O from F1 for `Documents/Biscot1-Synth/patterns`,
+or from F2 for `Documents/Biscot1-Synth/songs`.
+The browser uses an accessible JUCE ComboBox (no system file chooser).
+
+- Up/Down: choose file or folder. PageUp/PageDown jump by 5, Home/End jump to boundaries.
+- Enter on a folder: enter it. Backspace: parent. Escape: cancel pending import, parent, or close at root.
+- Space or P: preview saved file **without loading**. Ctrl+P: toggle automatic preview while navigating (off by default).
+- + / - : audition length (1, 3, 8, 16, 32 Pattern steps). F5 refresh. Tab announces the browser context.
+- Left/Right on a `.biscot1-all-song` file: select which Song slot (0–99) to hear; importing the file still restores all 100 static slots.
+- Enter on a Pattern: import into its original number, or the first free slot if already occupied.
+- Enter on a Song: require another Enter to confirm replacement of the current Song slot or all 100 Song slots.
+- Imported Pattern/Song dependencies are embedded as in TEST0.2.32. Library previews are immutable, audio-thread safe, bounded and never overwrite project banks. When the browser closes, the tracker regains keyboard focus.
+
+Existing named Ctrl+S / Alt+S exports, NVDA "spazio" typing feedback, Song End,
+preview on Song rows, and the synth DSP are unchanged.
+
+
+## TEST0.2.34: Incremental filename search, three-operator Song preview
+
+This section supersedes the old keyboard controls in the TEST0.2.33 browser section above.
+
+- In ALL Biscot1 file browsers (Preset, Pattern, Song) type a filename prefix progressively. A single `p` jumps to the next filename beginning with P; rapid `pa`, `pat` narrow the search. Prefixes of words also match (e.g. `bass` finds `Electric Bass`). Repeating one letter cycles, and after around 1.2 s idle the next key begins a new search. Folders can also match.
+- **P does not trigger preview.** In the Pattern/Song libraries, **Space** plays a temporary preview without loading. **Ctrl+P** toggles automatic preview, persisted separately for Pattern and Song libraries across sessions. `+/-` still chooses 1/3/8/16/32 Pattern steps, 3 by default.
+- **Right Arrow** enters a highlighted folder, **Left Arrow** and **Backspace** go to its parent in all three browsers. Enter on a file loads/imports it (with the existing confirmation for Song replacement). In `.biscot1-all-song`, use **Ctrl+Left / Ctrl+Right** to select the preview Song slot 0–99; plain arrows are reserved for folders.
+- Library Song audition now combines the first usable Pattern from each of the **three operators**. Each operator retains its Pattern Start, transpose and speed; Song mixer settings are honored. The three short clips start together for instant recognition even when their first Song rows differ. This is not full-Song playback and does not follow Song End. F2's regular step-navigation audition remains operator-only, matching Lua.
+- No changes to synth DSP, full Song/Pattern playback, or the `.biscot1-pattern`, `.biscot1-song`, `.biscot1-all-song` formats.
+
+See `RELEASE_NOTES_TEST0.2.34.md` for details and testing limitations.
+
+
+## TEST0.2.35: faithful browser playback (supersedes 0.2.34 audition)
+
+In Alt+Q, **Pattern browser** (`F1`, `Ctrl+O`) and **Song browser** (`F2`, `Ctrl+O`) now play the exact saved musical timeline, not a reconstruction. Space starts/stops preview. Ctrl+P is remembered independently by browser. Both file formats start at time zero and include initial silence. `+` extends and `-` shortens the preview window: `1`, `3`, `8`, `16`, `32`, `64` 16th-note divisions, or **Full file** (default). The window is **not** an edit of file contents. For Pattern playback, divisions follow actual Pattern step progression, including repeats; for Song playback, the cutoff uses 16th-note real-time divisions at the host tempo and all three lanes continue at their own stored speeds.
+
+- **Pattern**: respects real notes, pauses, parameter automation, gate, per-repeat speed/transpose and all Pattern repeats. No jumping to the first note.
+- **Song**: same compiled and sample-clocked three-operator arrangement as normal playback, including lane-specific lengths/repeats/speed, original Song rows, Pattern Start, Play Length, Start Offset, Filter/LFO ownership, FX rows, mixer and Song End chaining **only if the target is in the opened file**. Missing Song End targets simply stop.
+- **Full Song archive**: Ctrl+Left / Ctrl+Right chooses the Song slot to preview, while Left/Right without Ctrl navigate folders.
+- **Synth presets (`.biscot`)**: the preset browser loads/previews the patch's settings; it does not invent notes or start playing the embedded Song.
+- The browser does not import the file during preview and does not modify the active Song/Pattern banks. The sound uses the synth patch currently loaded in the VST3 because Song and Pattern files do not contain a synth patch.
+- The short, selected-operator preview used while moving through F2 cells is separate and unchanged.
+
+See `RELEASE_NOTES_TEST0.2.35.md`.

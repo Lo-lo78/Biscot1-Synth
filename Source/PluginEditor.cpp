@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.31",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.35",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -59,6 +59,34 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  addAndMakeVisible(*trackerPanel);trackerPanel->setVisible(false);
  songPanel=std::make_unique<TrackerSongPanel>(proc);
  addAndMakeVisible(*songPanel);songPanel->setVisible(false);
+ libraryBrowser=std::make_unique<TrackerLibraryBrowser>(proc);
+ addAndMakeVisible(*libraryBrowser);libraryBrowser->setVisible(false);
+ libraryBrowser->onClose=[this](TrackerLibraryBrowser::Mode mode,bool imported,const juce::String& result){
+  if(imported){
+   if(mode==TrackerLibraryBrowser::Mode::patterns)trackerPanel->restoreAfterPreset();
+   else songPanel->restoreAfterPreset();
+  }
+  showSynthWidgets(false);
+  if(mode==TrackerLibraryBrowser::Mode::patterns){
+   trackerPanel->open();
+   if(result.isNotEmpty()){
+    juce::Component::SafePointer<TrackerPatternPanel> safe(trackerPanel.get());
+    juce::MessageManager::callAsync([safe,result]{if(safe!=nullptr&&safe->isShowing())safe->announceLibraryResult(result);});
+   }
+  }else{
+   songPanel->open();
+   if(result.isNotEmpty()){
+    juce::Component::SafePointer<TrackerSongPanel> safe(songPanel.get());
+    juce::MessageManager::callAsync([safe,result]{if(safe!=nullptr&&safe->isShowing())safe->announceLibraryResult(result);});
+   }
+  }
+ };
+ trackerPanel->onLibraryBrowser=[this]{
+  trackerPanel->suspendForLibrary();libraryBrowser->open(TrackerLibraryBrowser::Mode::patterns);
+ };
+ songPanel->onLibraryBrowser=[this]{
+  songPanel->suspendForLibrary();libraryBrowser->open(TrackerLibraryBrowser::Mode::songs);
+ };
  songPanel->onPattern=[this]{
   lastTrackerWasSong=false;proc.state.state.setProperty(juce::Identifier("trackerLastMode"),0,nullptr);
   showSynthWidgets(false);if(trackerPanel)trackerPanel->open();};
@@ -89,8 +117,9 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
 }
 BiscotEditor::~BiscotEditor(){
  stopTimer();
- if(songPanel){songPanel->onPattern={};songPanel->onExit={};songPanel->onPresetBrowser={};songPanel.reset();}
- if(trackerPanel){trackerPanel->onOpenSong={};trackerPanel->onClose={};trackerPanel->onPresetBrowser={};trackerPanel.reset();}
+ if(libraryBrowser){libraryBrowser->onClose={};libraryBrowser.reset();}
+ if(songPanel){songPanel->onLibraryBrowser={};songPanel->onPattern={};songPanel->onExit={};songPanel->onPresetBrowser={};songPanel.reset();}
+ if(trackerPanel){trackerPanel->onLibraryBrowser={};trackerPanel->onOpenSong={};trackerPanel->onClose={};trackerPanel->onPresetBrowser={};trackerPanel.reset();}
  if(presetBrowser){presetBrowser->onClose={};presetBrowser->onPresetLoaded={};presetBrowser->close();presetBrowser.reset();}
  attachment.reset();grid.onChange=nullptr;
 }
@@ -289,7 +318,7 @@ void BiscotEditor::focus(Control c,bool deferred){
  if(deferred)juce::MessageManager::callAsync(action);else action();
 }
 void BiscotEditor::initialFocus(){
- if((trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
+ if((libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
  if(initialFocusPending)return;
  initialFocusPending=true;
  // LB-303 pattern: do not hand off focus until the native UIA child exists.
@@ -316,6 +345,7 @@ void BiscotEditor::initialFocus(){
 }
 void BiscotEditor::focusGained(FocusChangeType){initialFocus();}
 bool BiscotEditor::keyPressed(const juce::KeyPress& key){
+ if(libraryBrowser && libraryBrowser->isVisible())return libraryBrowser->keyPressed(key);
  if(trackerPanel && trackerPanel->isVisible())return trackerPanel->keyPressed(key);
  if(songPanel && songPanel->isVisible())return songPanel->keyPressed(key);
  if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(key);
@@ -513,10 +543,11 @@ void BiscotEditor::resized(){
  if(presetBrowser)presetBrowser->setBounds(getLocalBounds().reduced(12));
  if(trackerPanel)trackerPanel->setBounds(getLocalBounds().reduced(9));
  if(songPanel)songPanel->setBounds(getLocalBounds().reduced(9));
+ if(libraryBrowser)libraryBrowser->setBounds(getLocalBounds().reduced(9));
 }
 void BiscotEditor::paint(juce::Graphics& g){
  g.fillAll(background);
- if((trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
+ if((libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
  const auto& entries=groups[(size_t)group];
  const int columns=((int)entries.size()+rowsPerColumn-1)/rowsPerColumn;
  if(columns<=0 || drawingArea.isEmpty())return;

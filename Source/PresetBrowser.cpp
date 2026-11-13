@@ -58,7 +58,15 @@ bool PresetBrowser::BrowserList::keyPressed (const juce::KeyPress& key)
 }
 bool PresetBrowser::NameEdit::keyPressed (const juce::KeyPress& key)
 {
-    return parent.textKey (key) || juce::TextEditor::keyPressed (key);
+    if (parent.textKey (key)) return true;
+    const bool used = juce::TextEditor::keyPressed (key);
+    // The focused name field still inserts the space. JUCE's ordinary UIA
+    // text notifications may not speak it through NVDA, so echo it explicitly.
+    if ((parent.mode == Mode::save || parent.mode == Mode::rename || parent.mode == Mode::folder)
+        && key.getKeyCode() == 32
+        && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown())
+        biscot::announceToActiveScreenReader (*this, "spazio");
+    return used;
 }
 
 void PresetBrowser::announce (const juce::String& text)
@@ -121,6 +129,7 @@ void PresetBrowser::browse()
     original = manager.capture();
     previewFile = {};
     hasPreview = false;
+    incrementalSearch.reset();
     showMode (Mode::browse);
     int selected = 0;
     if (manager.validPreset (target) && target.getParentDirectory() == directory)
@@ -192,6 +201,7 @@ void PresetBrowser::showMode (Mode next)
 }
 void PresetBrowser::refresh (int selected)
 {
+    incrementalSearch.reset();
     const juce::ScopedValueSetter<bool> guard (suppressSelection, true);
     items = manager.list (directory);
     entries.updateContent();
@@ -273,6 +283,7 @@ void PresetBrowser::activateRow (int row)
     const auto entry = items[static_cast<size_t> (row)];
     if (entry.directory)
     {
+        incrementalSearch.reset();
         directory = entry.file;
         refresh(); focusList(); return;
     }
@@ -287,6 +298,7 @@ void PresetBrowser::activateRow (int row)
 }
 void PresetBrowser::parentFolder()
 {
+    incrementalSearch.reset();
     if (directory == manager.root()) return;
     const auto old = directory;
     directory = directory.getParentDirectory();
@@ -300,25 +312,20 @@ void PresetBrowser::parentFolder()
 }
 bool PresetBrowser::selectByInitial (juce::juce_wchar character, bool backwards)
 {
-    if (! juce::CharacterFunctions::isLetterOrDigit (character) || items.empty()) return false;
-    const int count = static_cast<int> (items.size());
-    int row = entries.getSelectedRow();
-    if (row < 0) row = backwards ? 0 : count - 1;
-    for (int offset = 1; offset <= count; ++offset)
+    if (items.empty()) return false;
+    const int match = incrementalSearch.type (character, entries.getSelectedRow(),
+        static_cast<int> (items.size()),
+        [this] (int row) { return items[static_cast<size_t> (row)].name; }, backwards);
+    if (match < 0) announce ("No matching preset for " + incrementalSearch.currentPrefix());
+    else if (match != entries.getSelectedRow())
     {
-        const auto candidate = (row + (backwards ? -offset : offset) + count * 2) % count;
-        const auto& item = items[static_cast<size_t> (candidate)];
-        if (! item.directory && item.name.isNotEmpty()
-            && juce::CharacterFunctions::toLowerCase (item.name[0]) == juce::CharacterFunctions::toLowerCase (character))
-        {
-            entries.selectRow (candidate);
-            entries.scrollToEnsureRowIsOnscreen (candidate);
-            return true;
-        }
+        entries.selectRow (match);
+        entries.scrollToEnsureRowIsOnscreen (match);
     }
-    announce ("No matching preset");
+    else announce (getNameForRow (match));
     return true;
 }
+
 void PresetBrowser::renameSelected()
 {
     const auto row = entries.getSelectedRow();
@@ -432,7 +439,16 @@ bool PresetBrowser::listKey (const juce::KeyPress& k)
         && (juce::CharacterFunctions::toLowerCase (k.getTextCharacter()) == 'b'
             || juce::CharacterFunctions::toLowerCase (k.getTextCharacter()) == 'c')))
     { close(); return true; }
-    if (code == juce::KeyPress::returnKey) { activateRow (entries.getSelectedRow()); return true; }
+    if (code == juce::KeyPress::returnKey) { incrementalSearch.reset(); activateRow (entries.getSelectedRow()); return true; }
+    if (code == juce::KeyPress::rightKey && !mods.isCtrlDown() && !mods.isAltDown())
+    {
+        const int row = entries.getSelectedRow();
+        if (juce::isPositiveAndBelow (row, static_cast<int> (items.size()))
+            && items[static_cast<size_t> (row)].directory)
+            activateRow (row);
+        else announce ("Right arrow enters folders. Press Enter to load a preset");
+        return true;
+    }
     // Mirror LJuno: explicitly select + announce on every keyboard step.
     if (! items.empty() && ! mods.isAltDown() && ! mods.isCtrlDown()
         && ! mods.isCommandDown())
@@ -447,6 +463,7 @@ bool PresetBrowser::listKey (const juce::KeyPress& k)
         else target = -1;
         if (target >= 0 || code == juce::KeyPress::upKey || code == juce::KeyPress::pageUpKey)
         {
+            incrementalSearch.reset();
             const int bounded = juce::jlimit (0, static_cast<int> (items.size()) - 1, target);
             if (bounded != entries.getSelectedRow())
             {

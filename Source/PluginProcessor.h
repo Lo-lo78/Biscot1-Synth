@@ -62,12 +62,14 @@ public:
  void requestSongPause() noexcept;
  void requestSongStop() noexcept;
  void requestSongPreview(int lane,int row,int steps); // message thread; one lane only
+ bool requestLibrarySongPreview(const TrackerSong&,int,const TrackerPatternBank&,const TrackerSongBank&,int);
  std::array<std::atomic<int>,3> songAudibleRows{};
  std::atomic<int> songPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused, 3 preview
  int playingSongNumber()const noexcept{return songPlayingNumber.load(std::memory_order_relaxed);}
  void requestTrackerStart(int step,bool audition=false) noexcept;
  void requestTrackerPause() noexcept;
  void requestTrackerStop() noexcept;
+ bool requestLibraryPatternPreview(const TrackerPattern&,int,int);
  std::atomic<int> trackerAudibleStep{-1}; // audio-clock position for accessible pause
  std::atomic<int> trackerPlaybackStatus{0}; // 0 stopped, 1 playing, 2 paused, 3 audition
  float param(int i) const noexcept {
@@ -97,6 +99,10 @@ private:
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPreviewPlayable{};
+ std::atomic<std::shared_ptr<const TrackerSongChainMap>> songLibraryChainMap{};
+ std::atomic<int> songLibraryPreviewDivisions{0}; // 0: full natural duration
+ bool songLibraryPreviewRunning=false; // audio-thread only
+ double songLibraryPreviewSamplesLeft=-1.; // audio-thread only
  std::atomic<std::shared_ptr<const TrackerSongChainMap>> songChainMap{};
  std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
  int songMidiTriggerNote=-1;
@@ -143,7 +149,9 @@ private:
  void trackerReleaseArpTick() noexcept;
  bool handleTrackerExternalMidi(const juce::MidiMessage&) noexcept;
  std::shared_ptr<const TrackerPlayablePattern> trackerPlaybackSnapshot; // pinned while audio transport is active
- std::atomic<int> trackerRequested{0}; // 1..1024 start; 2049..3072 audition; -1 stop; -2 pause
+ std::atomic<int> trackerRequested{0}; // +3073..4096: isolated library preview
+ std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerLibraryPlayable{};
+ std::atomic<int> trackerLibraryPreviewSteps{0}; // 0: full Pattern, including all repeats
  TrackerPatternTransport trackerTransport{}; // audio thread only
  std::array<std::atomic<float>,234> trackerOverrideValues{};
  std::array<std::atomic<bool>,234> trackerOverrideMask{};

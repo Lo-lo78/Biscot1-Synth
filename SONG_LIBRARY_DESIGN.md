@@ -43,3 +43,9 @@ Biscot1-Synth/
 - Validate every dependency and file version before applying changes.
 - Remap Pattern numbers to free slots when a destination bank already uses a referenced ID. Update **all three Song lanes** consistently. Do not silently overwrite unrelated patterns.
 - Use the imported Pattern data for an accessible audition list, and eventually allow copying any single Pattern from another `.biscot` preset without loading its synth sound.
+
+## Current implementation: TEST0.2.32 (supersedes the early design above)
+
+The original external dependency scheme was replaced. Only two tracker library directories are needed beneath the user Documents `Biscot1-Synth`: lower-case `patterns` for standalone `.biscot1-pattern` files, and lower-case `songs` for both `.biscot1-song` (portable single Song) and `.biscot1-all-song` (fixed 100-Song archive). Songs embed every Pattern needed and need no dependent files. Single Song imports target the current Song slot; all-Song imports replace slots 0–99. Both formats leave the synth alone.
+
+Saving via F1 Ctrl+S, F2 Ctrl+S or F2 Alt+S first focuses an editable filename field, initially selected. Enter saves, Esc cancels, and typing a space inserts the character and explicitly speaks `spazio`. Source notes under TEST0.2.21.4 above are historical proposals only.

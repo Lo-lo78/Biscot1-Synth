@@ -168,6 +168,14 @@ inline std::shared_ptr<const TrackerPlayableSong> compileTrackerSongRowPreview(
  result->clips[(size_t)lane].push_back(std::move(clip));
  return result;
 }
+// The library must play the saved Song verbatim: original sparse row positions,
+// lane lengths/speeds/repeats, clip windows, Pattern repeats, Song FX, mixer,
+// delays and Song End. Playback duration is bounded separately by the audio
+// transport's wall-clock budget. Do NOT edit/re-align this immutable score.
+inline std::shared_ptr<const TrackerPlayableSong> compileTrackerSongLibraryPreview(
+ const TrackerPlayableSong& song,int /*previewGridDivisions*/){
+ return std::make_shared<const TrackerPlayableSong>(song);
+}
 struct TrackerSongMidiMap {
  std::array<std::shared_ptr<const TrackerPlayableSong>,128> atNote{};
  std::array<int,128> songIndex{};

@@ -5,6 +5,7 @@
 #include "TrackerParameterCatalog.h"
 #include "IncrementalParameterSearch.h"
 #include "ParameterSearchKey.h"
+#include "ScreenReaderAnnouncer.h"
 #include <functional>
 #include <map>
 #include <array>
@@ -22,9 +23,12 @@ public:
  bool keyPressed(const juce::KeyPress&) override;
  void open();
  void suspendForSong();
+ void suspendForLibrary();
+ void announceLibraryResult(const juce::String&);
  void restoreAfterPreset();
  std::function<void()> onClose;
  std::function<void()> onOpenSong;
+ std::function<void()> onLibraryBrowser;
  std::function<void(bool)> onPresetBrowser;
 private:
  struct Navigator : juce::ComboBox {
@@ -34,14 +38,21 @@ private:
  } navigator;
  struct Numeric : juce::TextEditor {
   explicit Numeric(TrackerPatternPanel& parent):juce::TextEditor("Tracker Edit"),owner(parent){}
-  bool keyPressed(const juce::KeyPress& k) override {return owner.handle(k,true) || juce::TextEditor::keyPressed(k);}
+  bool keyPressed(const juce::KeyPress& k) override {
+   if(owner.handle(k,true))return true;
+   const bool used=juce::TextEditor::keyPressed(k);
+   if(owner.numericPurpose==NumericPurpose::savePatternName &&
+      k.getKeyCode()==32 && !k.getModifiers().isCtrlDown() && !k.getModifiers().isAltDown())
+    announceToActiveScreenReader(*this,"spazio");
+   return used;
+  }
   TrackerPatternPanel& owner;
  } numeric;
  BiscotProcessor& processor;
  juce::Label header,help;
  int page=1,tab=0,row=-1,cell=0,logicalCell=0,parameterIndex=0,paramHeight=8;
  std::array<int,3> lastLogicalCell{0,0,0};
- enum class NumericPurpose { value, patternNumber, stepNumber };
+ enum class NumericPurpose { value, patternNumber, stepNumber, savePatternName };
  NumericPurpose numericPurpose=NumericPurpose::value;
  std::array<int,5> jumpSizes{1,5,10,15,20};
  int jumpIndex=0;
@@ -100,7 +111,7 @@ private:
  bool handle(const juce::KeyPress&,bool editing);
  void setTab(int);
  void changeRow(int);
- void saveCurrentPattern();
+ void saveCurrentPattern(const juce::String& requestedName);
  void close();
  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TrackerPatternPanel)
 };

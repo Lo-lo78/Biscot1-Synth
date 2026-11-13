@@ -65,3 +65,25 @@ The previous Phase 4 multi-file proposal above is superseded. `Ctrl+S` in F1 sav
 ## TEST0.2.29 — Save all Songs in one package
 
 F2 Ctrl+S exports all instantiated Songs in the bank and embeds all their referenced Patterns, whether or not linked by Song End. F2 Ctrl+O imports the whole package and retains active Song selection. See RELEASE_NOTES_TEST0.2.29.md.
+
+## TEST0.2.30–0.2.32 — Current library behavior (overrides earlier proposals)
+
+- F2 Ctrl+S exports ONE selected Song and its Patterns to one `.biscot1-song`. Import places it in the actively selected destination slot; Song End / Loop Target are kept as numbers even if the referenced Song is absent.
+- F2 Alt+S exports the full fixed 100-Song bank and associated Patterns to one `.biscot1-all-song`. Import restores all 100 Song slots, including empty entries. Neither import changes synth settings.
+- F1 Ctrl+S exports one `.biscot1-pattern`. Both Song types embed referenced Patterns; the folder `patterns` holds independent exports only.
+- TEST0.2.32 opens a real, focused JUCE TextEditor before each tracker export, with user-editable filename, Enter/ESC, and explicit spoken `spazio` on space typed in the name field. The chosen filename is sanitized for Windows paths and collisions are suffixed.
+- F1 Alt+S remains the separate complete preset `.biscot` browser.
+- Still pending: native accessible Pattern/Song browser with auditory preview, and Windows/NVDA/REAPER end-to-end test.
+
+## TEST0.2.33 — Native library browsing milestone
+
+Ctrl+O in F1/F2 now opens native JUCE library browser with audible temporary previews and independent bank import, filename navigation, folders, confirmation for Song replacement and automatic preview toggle. Existing `.biscot1-song` / `.biscot1-all-song` / `.biscot1-pattern` formats are unchanged. The Song preview previews the earliest playable operator/clip, not a complete arrangement; multitrack Song preview and asynchronous loading of very large bundles remain possible future enhancements.
+
+
+## TEST0.2.34 — Library usability follow-up
+
+All three Biscot1 file browsers now support incremental filename/word-prefix search, Right-to-open-folder and Left/Backspace-to-parent. The tracker library frees P for search (Space previews), remembers Ctrl+P auto-preview independently for Pattern/Song, and moves `.biscot1-all-song` slot selection to Ctrl+Left/Right. Song library audio audition combines three operators from their first available clips, with bounded duration; F2 per-row audition remains one lane. No source or preset format change; Windows JUCE/NVDA test pending.
+
+
+### TEST0.2.35 preview fidelity
+The file library now uses the same immutable compiled Song timeline as F2 playback, without altering row alignment, event timing or loops. Full audition is default; +/- chooses an external preview length only. Song End within the archive is supported through an isolated immutable Song graph, not the live project bank.

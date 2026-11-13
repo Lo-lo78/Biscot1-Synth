@@ -25,8 +25,8 @@ assert 'for(auto& stage:outputStages)stage.reset();' in proc
 assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in editor
 assert 'handler->getNativeImplementation()==nullptr' in editor
 assert 'SidIdleAndSquarePwmTest.exe' in workflow
-assert 'TEST0.2.31' in editor
-assert 'VERSION 0.2.31' in (r/'CMakeLists.txt').read_text()
+assert 'TEST0.2.35' in editor
+assert 'VERSION 0.2.35' in (r/'CMakeLists.txt').read_text()
 assert len(json.loads((r/'Reference/ParameterCatalog.json').read_text()))==224
 native=json.loads((r/'Reference/NativeParameters.json').read_text())
 assert [x['index'] for x in native[-3:]]==[231,232,233]

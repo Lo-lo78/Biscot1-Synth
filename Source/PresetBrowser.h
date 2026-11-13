@@ -2,6 +2,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PresetManager.h"
+#include "BrowserIncrementalSearch.h"
 #include <functional>
 
 namespace biscot
@@ -52,6 +53,7 @@ private:
     bool suppressSelection = false;
     bool hasPreview = false;
     bool isPreviewing = false;
+    BrowserIncrementalSearch incrementalSearch;
 
     int getNumRows() override;
     void paintListBoxItem (int, juce::Graphics&, int, int, bool) override;

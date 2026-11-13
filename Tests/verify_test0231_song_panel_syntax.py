@@ -45,4 +45,4 @@ def structural_braces(text):
 
 assert structural_braces(function) == 0, 'currentValue() has an unmatched brace'
 assert structural_braces(source) == 0, 'TrackerSongPanel.cpp has an unmatched brace'
-print('OK TEST0.2.31 Song End C++ structural regression')
+print('OK TEST0.2.35 Song End C++ structural regression')

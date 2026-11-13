@@ -13,6 +13,7 @@
 #include "TrackerStepRecording.h"
 #include "TrackerHeaderNavigation.h"
 #include "TrackerPatternText.h"
+#include "TrackerLibraryFileNames.h"
 
 namespace biscot {
 namespace {
@@ -68,6 +69,10 @@ void TrackerPatternPanel::open(){
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr && safe->isShowing()){
   safe->navigator.grabKeyboardFocus();safe->announce(safe->positionText(true));}});
 }
+void TrackerPatternPanel::suspendForLibrary(){
+ stopTimer();setStepRecording(false);setVisible(false);
+}
+void TrackerPatternPanel::announceLibraryResult(const juce::String& s){announce(s);}
 void TrackerPatternPanel::suspendForSong(){
  stopTimer();setStepRecording(false);processor.requestTrackerStop();setVisible(false);
 }
@@ -157,10 +162,13 @@ void TrackerPatternPanel::refresh(bool speakPosition){
  refreshing=false;
  repaint();if(speakPosition)announce(positionText());
 }
-// Explicit library export only. Alt+S keeps the entire synth/Pattern state
-// inside the standalone .biscot preset; Ctrl+S does not alter that preset.
-void TrackerPatternPanel::saveCurrentPattern(){
+// A named, independent library export. This never modifies the .biscot preset.
+void TrackerPatternPanel::saveCurrentPattern(const juce::String& requestedName){
  const int slot=processor.trackerPatterns.activePattern;
+ auto baseName=trackerLibraryFileStem(requestedName);
+ if(baseName.endsWithIgnoreCase(".biscot1-pattern"))
+  baseName=trackerLibraryFileStem(baseName.dropLastCharacters(16));
+ if(baseName.isEmpty()){announce("Enter a Pattern name");return;}
  const auto root=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                   .getChildFile("Biscot1-Synth");
  const auto singles=root.getChildFile("patterns");
@@ -170,22 +178,19 @@ void TrackerPatternPanel::saveCurrentPattern(){
  if(patternDir.failed() || songDir.failed()){
   announce("Cannot create Biscot1 Pattern/Song library folders");return;
  }
- const auto baseName="Pattern_"+juce::String(slot).paddedLeft('0',3);
  const auto payload=serializeTrackerPattern(currentPattern(),slot);
- // A slot number is not unique across presets. A new preset must not
- // silently overwrite another preset's exported Pattern_004. When a name
- // already exists with different content, choose a collision-safe suffix.
+ // Only re-use a file previously exported by this slot during this session
+ // and under the SAME explicitly chosen file name. Otherwise create a suffix.
  juce::File file;
  const auto saved=patternExportFiles.find(slot);
- if(saved!=patternExportFiles.end() && saved->second.getParentDirectory()==singles)
+ if(saved!=patternExportFiles.end() && saved->second.getParentDirectory()==singles &&
+    saved->second.getFileName().equalsIgnoreCase(baseName+".biscot1-pattern"))
   file=saved->second;
  else{
   for(int suffix=1;suffix<=9999;++suffix){
    const auto name=baseName+(suffix==1?juce::String{}:"_"+juce::String(suffix))+".biscot1-pattern";
    const auto candidate=singles.getChildFile(name);
-   if(!candidate.existsAsFile() || candidate.loadFileAsString().toStdString()==payload){
-    file=candidate;break;
-   }
+   if(!candidate.exists()){file=candidate;break;}
   }
  }
  if(file==juce::File{}){announce("Pattern library has too many duplicate names");return;}
@@ -479,7 +484,11 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   if(code==juce::KeyPress::returnKey){
    const auto txt=numeric.getText().trim();
    const auto purpose=numericPurpose;
+   if(purpose==NumericPurpose::savePatternName && txt.isEmpty()){
+    announceToActiveScreenReader(numeric,"Enter a Pattern file name");return true;
+   }
    numeric.setVisible(false);navigator.grabKeyboardFocus();
+   if(purpose==NumericPurpose::savePatternName){saveCurrentPattern(txt);return true;}
    if(purpose==NumericPurpose::value){
     if(txt.isNotEmpty()){
      double newValue=0;
@@ -506,36 +515,14 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(code==juce::KeyPress::escapeKey && page==2){page=1;parameterSearch.reset();refresh(true);return true;}
  if(code==juce::KeyPress::escapeKey || (m.isAltDown() && letter('q'))){parameterSearch.reset();clearSelection();close();return true;}
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('s')){
-  saveCurrentPattern();return true;
+  openNumericEditor(NumericPurpose::savePatternName,
+   "Save Pattern file name. Enter to save; Escape to cancel",
+   "Pattern_"+juce::String(processor.trackerPatterns.activePattern).paddedLeft('0',3));
+  return true;
  }
  if(m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && letter('o')){
-  auto chooser=std::make_shared<juce::FileChooser>("Import Biscot1 Pattern",
-   juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("Biscot1-Synth").getChildFile("patterns"),
-   "*.biscot1-pattern");
-  juce::Component::SafePointer<TrackerPatternPanel> safe(this);
-  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,
-   [safe,chooser](const juce::FileChooser& selected){
-    if(safe==nullptr)return;
-    const auto file=selected.getResult();
-    if(file==juce::File{}){safe->navigator.grabKeyboardFocus();return;}
-    TrackerPattern imported(false);int original=-1;
-    if(!file.existsAsFile()||file.getSize()>16*1024*1024||
-       !deserializeTrackerPattern(file.loadFileAsString().toStdString(),original,imported)){
-     safe->announce("Invalid Pattern file");safe->navigator.grabKeyboardFocus();return;
-    }
-    auto& bank=safe->processor.trackerPatterns;
-    int slot=original;
-    if(bank.patterns.count(slot)){
-     slot=0;while(slot<1000&&bank.patterns.count(slot))++slot;
-    }
-    if(slot>=1000){safe->announce("Pattern bank is full");safe->navigator.grabKeyboardFocus();return;}
-    bank.patterns.emplace(slot,std::move(imported));bank.activePattern=slot;
-    safe->processor.commitTrackerState();
-    safe->row=-1;safe->tab=0;safe->cell=safe->logicalCell=0;
-    safe->clearSelection();safe->refresh();
-    safe->announce("Imported Pattern "+juce::String(slot)+(slot!=original?"; original number "+juce::String(original):juce::String{}));
-    safe->navigator.grabKeyboardFocus();
-   });return true;
+  if(onLibraryBrowser)onLibraryBrowser();else announce("Library browser unavailable");
+  return true;
  }
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
  if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}

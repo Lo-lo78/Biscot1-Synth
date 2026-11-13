@@ -88,13 +88,15 @@ class TrackerPatternTransport {
 public:
  bool running=false, audition=false;
  int currentStep=-1, nextStep=0, repeatIndex=0, activeNote=-1,lastNote=-1;
+ int previewLimit=0,previewPlayed=0;
  std::array<int,15> activeSubNotes{};int activeSubCount=0;
  double stepRemaining=0,stepLength=0,gateRemaining=-1;
- void start(int step,const TrackerPlayablePattern& p,bool onlyOne=false){
+ void start(int step,const TrackerPlayablePattern& p,bool onlyOne=false,int maxPreviewSteps=0){
   running=true;audition=onlyOne;currentStep=-1;nextStep=std::clamp(step,0,p.length-1);
   repeatIndex=0;activeNote=-1;lastNote=-1;activeSubCount=0;stepRemaining=0;stepLength=0;gateRemaining=-1;
+  previewLimit=std::clamp(maxPreviewSteps,0,1024);previewPlayed=0;
  }
- void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;activeSubCount=0;stepRemaining=0;stepLength=0;gateRemaining=-1;}
+ void stop(){running=false;audition=false;currentStep=-1;activeNote=-1;activeSubCount=0;stepRemaining=0;stepLength=0;gateRemaining=-1;previewLimit=previewPlayed=0;}
  double stepSamples(const TrackerPlayablePattern& p,double rate,double bpm)const{
   const double speed=repeatIndex<(int)p.repeatSpeeds.size()?p.repeatSpeeds[(size_t)repeatIndex]:1.;
   // Original JSFX division_value(slider3==4) = 16, i.e. 16th notes.
@@ -109,8 +111,8 @@ public:
    if(nextStep<0){ev.finished=true;running=false;return ev;}
    currentStep=nextStep;ev.startStep=currentStep;
    stepLength=stepSamples(p,rate,bpm);stepRemaining=stepLength;
-   ++nextStep;
-   if(audition)nextStep=-1;
+   ++nextStep;++previewPlayed;
+   if(audition || (previewLimit>0 && previewPlayed>=previewLimit))nextStep=-1;
    else if(nextStep>=p.length){
     ++repeatIndex;
     nextStep=repeatIndex<p.repeat?0:-1;

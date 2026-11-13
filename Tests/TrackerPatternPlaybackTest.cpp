@@ -39,5 +39,16 @@ int main(){
  require(clock.tick(snapshot,48000,120).startStep==3,"audition requested step");
  bool finished=false;for(int i=0;i<12000;++i){auto t=clock.tick(snapshot,48000,120);if(t.finished){finished=true;break;}}
  require(finished && !clock.running,"audition plays one step only");
+ // Library audition must stop after its limited number of steps even when
+ // the saved Pattern repeats many times, and it must start at a requested note.
+ clock.stop();clock.start(1,snapshot,false,3);
+ require(clock.tick(snapshot,48000,120).startStep==1,"library preview starts at requested row");
+ int played=1;bool libraryFinished=false;
+ for(int i=0;i<100000;++i){
+  const auto tick=clock.tick(snapshot,48000,120);
+  if(tick.startStep>=0)++played;
+  if(tick.finished){libraryFinished=true;break;}
+ }
+ require(libraryFinished && played==3,"library preview stops after three steps");
  std::cout<<"TrackerPatternPlaybackTest OK\n";
 }

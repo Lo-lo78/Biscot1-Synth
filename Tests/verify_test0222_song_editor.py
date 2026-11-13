@@ -31,5 +31,5 @@ assert 'songPanel->open();' in editor
 assert 'songPanel->restoreAfterPreset()' in editor
 assert 'Source/TrackerSongPanel.cpp' in cmake
 assert 'TrackerSongBankTest.exe' in workflow
-assert 'Biscot1-TEST0.2.31-Windows-x64' in workflow
+assert 'Biscot1-TEST0.2.35-Windows-x64' in workflow
 print('OK: Song F2 sparse bank, UI routing, independent preset persistence, honest playback status')

@@ -24,8 +24,8 @@ assert """if(code==juce::KeyPress::returnKey){
    if(const auto* def=currentParameter())""" in panel
 assert 'if(!m.isCtrlDown()){page=1;refresh(true);}' in panel
 assert 'if(page==2){refresh(false);announce("Pattern "+juce::String(target)' in panel
-assert 'VERSION 0.2.31' in cmake
-assert 'TEST0.2.31' in (r/'Source/PluginEditor.cpp').read_text()
+assert 'VERSION 0.2.35' in cmake
+assert 'TEST0.2.35' in (r/'Source/PluginEditor.cpp').read_text()
 assert 'TrackerManualNumericTest.exe' in workflow
 assert 'verify_test02195_enter_value.py' in workflow
 print('OK: Enter value, Alt+Enter Pattern, F2 insertion, numeric validation, version')

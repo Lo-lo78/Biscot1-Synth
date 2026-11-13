@@ -5,6 +5,7 @@
 #include "TrackerSongParameters.h"
 #include "TrackerSongEditing.h"
 #include "IncrementalParameterSearch.h"
+#include "ScreenReaderAnnouncer.h"
 #include <array>
 #include <functional>
 #include <vector>
@@ -21,8 +22,11 @@ public:
  bool keyPressed(const juce::KeyPress&) override;
  void open();
  void restoreAfterPreset();
+ void suspendForLibrary();
+ void announceLibraryResult(const juce::String&);
  void close();
  std::function<void()> onPattern, onExit;
+ std::function<void()> onLibraryBrowser;
  std::function<void(bool)> onPresetBrowser;
 private:
  struct Navigator:juce::ComboBox {
@@ -32,7 +36,16 @@ private:
  } navigator;
  struct Numeric:juce::TextEditor {
   explicit Numeric(TrackerSongPanel& p):juce::TextEditor("Song Numeric"),owner(p){}
-  bool keyPressed(const juce::KeyPress& k) override{return owner.handle(k,true)||juce::TextEditor::keyPressed(k);}
+  bool keyPressed(const juce::KeyPress& k) override{
+   if(owner.handle(k,true))return true;
+   const bool used=juce::TextEditor::keyPressed(k);
+   if((owner.editPurpose==EditPurpose::saveSongName ||
+       owner.editPurpose==EditPurpose::saveAllSongsName ||
+       owner.editPurpose==EditPurpose::songName) &&
+      k.getKeyCode()==32 && !k.getModifiers().isCtrlDown() && !k.getModifiers().isAltDown())
+    announceToActiveScreenReader(*this,"spazio");
+   return used;
+  }
   TrackerSongPanel& owner;
  } numeric;
  BiscotProcessor& processor;
@@ -62,7 +75,7 @@ private:
  void renameSong();
  IncrementalParameterSearch search;
  std::array<int,3> lastStep{0,0,0};
- enum class EditPurpose { value, songNumber, stepNumber, songName };
+ enum class EditPurpose { value, songNumber, stepNumber, songName, saveSongName, saveAllSongsName };
  EditPurpose editPurpose=EditPurpose::value;
  double valueNow() const;
  TrackerSong& song(){return processor.trackerSongs.at(processor.trackerSongs.activeSong);}

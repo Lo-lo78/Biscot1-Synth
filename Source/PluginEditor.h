@@ -7,6 +7,7 @@
 #include "PresetBrowser.h"
 #include "TrackerPatternPanel.h"
 #include "TrackerSongPanel.h"
+#include "TrackerLibraryBrowser.h"
 #include <array>
 #include <vector>
 #include <memory>
@@ -46,6 +47,7 @@ private:
  std::unique_ptr<PresetBrowser> presetBrowser;
  std::unique_ptr<TrackerPatternPanel> trackerPanel;
  std::unique_ptr<TrackerSongPanel> songPanel;
+ std::unique_ptr<TrackerLibraryBrowser> libraryBrowser;
  bool songBrowserReturn=false;
  bool lastTrackerWasSong=false;
  bool trackerBrowserReturn=false;

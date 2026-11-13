@@ -79,6 +79,8 @@ void TrackerSongPanel::open(){
  juce::MessageManager::callAsync([safe]{if(safe!=nullptr&&safe->isShowing()){
   safe->navigator.grabKeyboardFocus();safe->announce(safe->positionText(true));}});
 }
+void TrackerSongPanel::suspendForLibrary(){stopTimer();setVisible(false);}
+void TrackerSongPanel::announceLibraryResult(const juce::String& s){announce(s);}
 void TrackerSongPanel::restoreAfterPreset(){
  lane=0;row=-1;cell=0;logicalCell=0;rememberedRow=0;lastOperatorLane=0;lastStep={0,0,0};
  picker=false;search.reset();history.clear();clipboard={};clearSelection();numeric.setVisible(false);stopTimer();refresh();
@@ -469,7 +471,31 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  const auto letter=[&](char c){return trackerShortcutLetterMatches(code,(int)k.getTextCharacter(),c,m.isCtrlDown());};
  if(editing){
   if(code==juce::KeyPress::returnKey){
-   const auto input=numeric.getText().trim();numeric.setVisible(false);navigator.grabKeyboardFocus();
+   const auto input=numeric.getText().trim();
+   const bool savingSong=editPurpose==EditPurpose::saveSongName;
+   const bool savingAll=editPurpose==EditPurpose::saveAllSongsName;
+   if((savingSong||savingAll)&&input.isEmpty()){
+    announceToActiveScreenReader(numeric,"Enter a Song file name");return true;
+   }
+   numeric.setVisible(false);navigator.grabKeyboardFocus();
+   if(savingSong||savingAll){
+    const auto documents=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    juce::String result;
+    if(savingAll){
+     songpkg::exportAllSongs(processor.trackerSongs,processor.trackerPatterns,documents,result,input);
+    }else{
+     // Saving a named single Song updates its internal name only if the write succeeds.
+     const TrackerSong before=song();
+     auto displayName=input;
+     if(displayName.endsWithIgnoreCase(".biscot1-song"))
+      displayName=displayName.dropLastCharacters(juce::String(".biscot1-song").length());
+     song().name=displayName.toStdString();
+     if(songpkg::exportSong(processor.trackerSongs,processor.trackerPatterns,documents,result,input)){
+      if(before.name!=song().name)commitEdit(before);
+     }else song().name=before.name;
+    }
+    announce(result);return true;
+   }
    if(editPurpose==EditPurpose::songName){
     const TrackerSong before=song();
     auto clean=input.replace("\r"," ").replace("\n"," ").replace("\t"," ").trim();
@@ -518,31 +544,20 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  }
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){
-  juce::String result;
-  songpkg::exportAllSongs(processor.trackerSongs,processor.trackerPatterns,
-    juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),result);
-  announce(result);return true;
+  openNumeric(EditPurpose::saveAllSongsName,
+   "Save all 100 Songs file name. Enter to save; Escape to cancel", "All_Songs");
+  return true;
  }
  if(m.isCtrlDown()&&!m.isAltDown()&&letter('s')){
-  juce::String result;
-  songpkg::exportSong(processor.trackerSongs,processor.trackerPatterns,
-    juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),result);
-  announce(result);return true;
+  const auto songName=juce::String::fromUTF8(song().name.c_str());
+  openNumeric(EditPurpose::saveSongName,
+   "Save current Song file name. Enter to save; Escape to cancel",
+   songName.isNotEmpty()?songName:"Song_"+juce::String(processor.trackerSongs.activeSong));
+  return true;
  }
  if(m.isCtrlDown()&&!m.isAltDown()&&letter('o')){
-  auto chooser=std::make_shared<juce::FileChooser>("Import Biscot1 Song or All Songs",
-   juce::File::getSpecialLocation(juce::File::userDocumentsDirectory).getChildFile("Biscot1-Synth").getChildFile("songs"),"*.biscot1-song;*.biscot1-all-song");
-  juce::Component::SafePointer<TrackerSongPanel> safe(this);
-  chooser->launchAsync(juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,
-   [safe,chooser](const juce::FileChooser& selected){
-    if(safe==nullptr)return;
-    const auto file=selected.getResult();if(file==juce::File{}){safe->navigator.grabKeyboardFocus();return;}
-    juce::String result;
-    if(songpkg::importSong(file,safe->processor.trackerSongs,safe->processor.trackerPatterns,result)){
-     safe->processor.commitTrackerState();safe->processor.commitSongState();safe->restoreAfterPreset();
-    }
-    safe->announce(result);safe->navigator.grabKeyboardFocus();
-   });return true;
+  if(onLibraryBrowser)onLibraryBrowser();else announce("Library browser unavailable");
+  return true;
  }
  if(!m.isCtrlDown()&&code==juce::KeyPress::tabKey){announce(positionText(true));return true;}
  if(m.isAltDown()&&code==juce::KeyPress::returnKey){

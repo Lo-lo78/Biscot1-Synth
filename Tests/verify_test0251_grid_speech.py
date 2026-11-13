@@ -24,5 +24,5 @@ assert 'source.setDescription(text);' not in s
 assert 'juce::AccessibilityHandler::clearCurrentlyFocusedHandler();' in s
 assert 'if(focused!=nullptr && focused!=safe.getComponent())return;' in s
 assert 'grid.setTitle({});grid.setDescription({});' in s
-assert 'TEST0.2.31' in s
+assert 'TEST0.2.35' in s
 print('OK: Grid speech restored once per effective selection; entry focus still quiet')

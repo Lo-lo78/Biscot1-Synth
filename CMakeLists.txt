@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.2.31 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.2.35 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,13 +15,13 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor TEST0.2.31"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor TEST0.2.35"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
   EDITOR_WANTS_KEYBOARD_FOCUS TRUE
   COPY_PLUGIN_AFTER_BUILD FALSE)
-target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/SidMidiNoteState.h Source/SidSeqMemory.h Source/SidAmpEnvelope.h Source/SidLfoCore.h Source/SidIdleSleep.h Source/SidLfoUsage.h Source/SidArpPoolCache.h Source/SidFilterLfoTrigger.h Source/SidArpSustain.h Source/SidArpReleasePool.h Source/SidQuantizedArp.h Source/SidArpTransport.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h Source/TrackerPatternBank.h Source/TrackerPatternText.h Source/TrackerPatternPlayback.h Source/TrackerShortcutKey.h Source/TrackerHeaderNavigation.h Source/TrackerCellPresentation.h Source/TrackerCellNavigation.h Source/TrackerParameterCatalog.h Source/TrackerPatternAutomation.h Source/TrackerPatternInsert.h Source/TrackerManualNumeric.h Source/TrackerPatternPanel.h Source/TrackerPatternPanel.cpp Source/TrackerSongBank.h Source/TrackerSongPackage.h Source/TrackerSongPlayback.h Source/TrackerSongFxCore.h Source/TrackerSongParameters.h Source/TrackerSongPanel.h Source/TrackerSongPanel.cpp Source/TrackerMidiRouting.h Source/TrackerStepRecording.h)
+target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/SidMidiNoteState.h Source/SidSeqMemory.h Source/SidAmpEnvelope.h Source/SidLfoCore.h Source/SidIdleSleep.h Source/SidLfoUsage.h Source/SidArpPoolCache.h Source/SidFilterLfoTrigger.h Source/SidArpSustain.h Source/SidArpReleasePool.h Source/SidQuantizedArp.h Source/SidArpTransport.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h Source/TrackerPatternBank.h Source/TrackerPatternText.h Source/TrackerPatternPlayback.h Source/TrackerShortcutKey.h Source/TrackerHeaderNavigation.h Source/TrackerCellPresentation.h Source/TrackerCellNavigation.h Source/TrackerParameterCatalog.h Source/TrackerPatternAutomation.h Source/TrackerPatternInsert.h Source/TrackerManualNumeric.h Source/TrackerPatternPanel.h Source/TrackerPatternPanel.cpp Source/TrackerSongBank.h Source/TrackerSongPackage.h Source/TrackerLibraryFileNames.h Source/TrackerSongPlayback.h Source/TrackerSongFxCore.h Source/TrackerSongParameters.h Source/TrackerSongPanel.h Source/TrackerSongPanel.cpp Source/BrowserIncrementalSearch.h Source/TrackerLibraryBrowser.h Source/TrackerLibraryBrowser.cpp Source/TrackerMidiRouting.h Source/TrackerStepRecording.h)
 target_compile_features(Biscot1 PRIVATE cxx_std_20)
 target_compile_definitions(Biscot1 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(Biscot1 PRIVATE juce::juce_audio_utils juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
@@ -158,3 +158,7 @@ target_compile_features(TrackerSongEditingTest PRIVATE cxx_std_20)
 # TEST0.2.26: complete Song 0 -> Song 1 transition and independent short previews.
 add_executable(TrackerSongEndPreviewTest Tests/TrackerSongEndPreviewTest.cpp)
 target_compile_features(TrackerSongEndPreviewTest PRIVATE cxx_std_20)
+
+# TEST0.2.35: library preview must reproduce the unmodified three-lane Song timeline.
+add_executable(TrackerSongLibraryPreviewTest Tests/TrackerSongLibraryPreviewTest.cpp)
+target_compile_features(TrackerSongLibraryPreviewTest PRIVATE cxx_std_20)
