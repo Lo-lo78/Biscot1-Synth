@@ -1,11 +1,11 @@
-# Biscot1 Synth VST3 — TEST0.2.42 (F1/F2 tracker navigation)
+# Biscot1 Synth VST3 — TEST0.2.43 (F1/F2 tracker navigation)
 
 In the native Alt+Q Pattern and Song grids, **Ctrl+Up/Down** moves among
 header, remembered steps and footer/repeat regions. **Ctrl+Shift+Up/Down**
 switches the active Pattern (F1) or Song (F2), keeping cursor region and
 position wherever possible. Ctrl+Home/End no longer switches regions in
 the grids. The parameter-picker shortcuts are unchanged. See
-`RELEASE_NOTES_TEST0.2.42.md`. Windows VST3 compilation is pending.
+`RELEASE_NOTES_TEST0.2.43.md`. Windows VST3 compilation is pending.
 
 ---
 
@@ -772,3 +772,7 @@ Song imports via F2 Ctrl+O **replace both Pattern and Song banks**, unlike stand
 Outside Alt+Q, **Ctrl+O and Alt+B** both open the full preset browser; loading `.biscot` requires the same Yes/No confirmation. Merely browsing preset names no longer changes the instrument. Inside Alt+Q, Alt+B does nothing and speaks nothing. The Pattern and Song cursor positions are stored with the instrument state and should survive closing/reopening the REAPER FX editor.
 
 Repeated standalone Pattern Ctrl+S saves create a new suffixed filename instead of silently overwriting the prior Pattern file.
+
+## REAPER song playback automation (TEST0.2.43)
+
+The VST3's **Song Trigger** parameter can be automated from the REAPER track envelope: 0 = Off; 1..100 = Song 0..99. The DAW's Play retriggers a nonzero Song Trigger setting, Stop stops playback. To switch songs mid-project, write a new value to the envelope. Host BPM is respected; tracks can play together with the tracker. Existing F2 Song MIDI note assignments continue to work independently.
