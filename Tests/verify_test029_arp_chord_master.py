@@ -7,11 +7,11 @@ cat=(r/'Source/ParameterCatalog.h').read_text()
 ed=(r/'Source/PluginEditor.cpp').read_text()
 sus=(r/'Source/SidArpSustain.h').read_text()
 w=(r/'.github/workflows/build-windows.yml').read_text()
-assert 'std::array<ParameterDef,232>' in cat
-assert len(re.findall(r'^  \{\d+, "',cat,re.M))==232
+assert 'std::array<ParameterDef,247>' in cat
+assert len(re.findall(r'^  \{\d+, "',cat,re.M))==247
 assert '{230, "Chord Op1 Controls", 0.0f, 1.0f, 1.0f, 0.0f, "Independent|Op1 Master"}' in cat
 assert 'global.insert(pos,{226,230});' in ed
-assert 'std::array<std::atomic<float>*,234>' in h
+assert 'std::array<std::atomic<float>*,249>' in h
 for base in (16,31,34,37,40,43,46):
  assert f'opSharedParam({base},i)' in p,(base,p.count(f'opSharedParam({base},i)'))
 for base in (22,25,28,49,52,55,64,67,70,73,91):

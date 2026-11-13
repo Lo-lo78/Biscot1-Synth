@@ -90,5 +90,158 @@
     "max": 0.95,
     "step": 0.001,
     "description": "Duty cycle of the Square waveform for this LFO (not operator Pulse Width). Zero-point-five is a 50% square."
+  },
+  {
+    "index": 234,
+    "name": "LFO1 Drift Amount",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 235,
+    "name": "LFO1 Drift Cycle",
+    "default": 5.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 236,
+    "name": "LFO1 Lace Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default).",
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 237,
+    "name": "LFO1 Lace Rate",
+    "default": 4.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 238,
+    "name": "LFO1 Lace Mix",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 239,
+    "name": "LFO2 Drift Amount",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 240,
+    "name": "LFO2 Drift Cycle",
+    "default": 5.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 241,
+    "name": "LFO2 Lace Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default).",
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 242,
+    "name": "LFO2 Lace Rate",
+    "default": 4.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 243,
+    "name": "LFO2 Lace Mix",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 244,
+    "name": "LFO3 Drift Amount",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 245,
+    "name": "LFO3 Drift Cycle",
+    "default": 5.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 246,
+    "name": "LFO3 Lace Source",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 3.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default).",
+    "enum": [
+      "Off",
+      "LFO1",
+      "LFO2",
+      "LFO3"
+    ]
+  },
+  {
+    "index": 247,
+    "name": "LFO3 Lace Rate",
+    "default": 4.0,
+    "min": 1.0,
+    "max": 32.0,
+    "step": 1.0,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 248,
+    "name": "LFO3 Lace Mix",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 1.0,
+    "step": 0.001,
+    "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
   }
 ]

@@ -23,6 +23,19 @@ std::array<bool,3> determineUsedLfos(GetParameter value) noexcept {
    used[(std::size_t)i]|=rateActive && (j==i || int(value(rate))==i+1);
   }
  }
+ // Resolve chains deterministically; a source may itself use another source.
+ for(int pass=0;pass<3;++pass){
+  bool changed=false;
+  for(int j=0;j<3;++j){
+   if(!used[(std::size_t)j])continue;
+   const int ex=234+j*5;
+   const int src=(int)value(ex+2);
+   if(src>=1 && src<=3 && value(ex+4)>epsilon && !used[(std::size_t)(src-1)]){
+    used[(std::size_t)(src-1)]=true;changed=true;
+   }
+  }
+  if(!changed)break;
+ }
  return used;
 }
 }

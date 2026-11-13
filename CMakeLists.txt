@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.99.4 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.99.5 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor 0.99.4"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor 0.99.5"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -77,6 +77,8 @@ target_compile_features(SidFilterLfoParityTest PRIVATE cxx_std_20)
 # Point 4: true idle DSP suspension and independent LFO Square PWM regression.
 add_executable(SidIdleAndSquarePwmTest Tests/SidIdleAndSquarePwmTest.cpp)
 target_compile_features(SidIdleAndSquarePwmTest PRIVATE cxx_std_20)
+add_executable(SidLfoLaceDriftTest Tests/SidLfoLaceDriftTest.cpp)
+target_compile_features(SidLfoLaceDriftTest PRIVATE cxx_std_20)
 
 # Regressions for zero-work idle and event-driven classical arp pool refresh.
 add_executable(SidDeepIdleCpuTest Tests/SidDeepIdleCpuTest.cpp)

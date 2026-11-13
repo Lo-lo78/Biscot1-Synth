@@ -22,7 +22,7 @@ int main(){
                 b.tick(0.,0,0.,0.,false,1.,0.,0.,48000.,.95)));
  // Dormant LFO strips remain suspended; ring/sync and cross-rate routes wake
  // their source even when all conventional LFO destination depths are zero.
- std::array<float,234> params{};
+ std::array<float,249> params{};
  auto get=[&](int n){return params[(size_t)n];};
  auto used=determineUsedLfos(get);
  assert(!used[0]&&!used[1]&&!used[2]);

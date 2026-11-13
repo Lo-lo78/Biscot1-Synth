@@ -3,7 +3,7 @@
 #include <cstdint>
 namespace biscot {
 struct ParameterDef {int index; const char* name; float low, high, step, initial; const char* choices;};
-inline constexpr std::array<ParameterDef,232> catalog {{
+inline constexpr std::array<ParameterDef,247> catalog {{
   {2, "Audio Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Stereo|Multichannel"},
   {3, "MIDI Mode", 0.0f, 2.0f, 1.0f, 0.0f, "All Operators Same Note|Chord Allocate 3 Mono Ops|MIDI Channels 1-3"},
   {4, "Hard Restart", 0.0f, 3.0f, 1.0f, 1.0f, "Off|Fast|Env Reset|Full Reset"},
@@ -236,5 +236,20 @@ inline constexpr std::array<ParameterDef,232> catalog {{
   {231, "LFO1 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
   {232, "LFO2 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
   {233, "LFO3 Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""},
+  {234, "LFO1 Drift Amount", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {235, "LFO1 Drift Cycle", 1.0f, 32.0f, 1.000f, 5.000f, ""},
+  {236, "LFO1 Lace Source", 0.0f, 3.0f, 1.000f, 0.000f, "Off|LFO1|LFO2|LFO3"},
+  {237, "LFO1 Lace Rate", 1.0f, 32.0f, 1.000f, 4.000f, ""},
+  {238, "LFO1 Lace Mix", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {239, "LFO2 Drift Amount", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {240, "LFO2 Drift Cycle", 1.0f, 32.0f, 1.000f, 5.000f, ""},
+  {241, "LFO2 Lace Source", 0.0f, 3.0f, 1.000f, 0.000f, "Off|LFO1|LFO2|LFO3"},
+  {242, "LFO2 Lace Rate", 1.0f, 32.0f, 1.000f, 4.000f, ""},
+  {243, "LFO2 Lace Mix", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {244, "LFO3 Drift Amount", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {245, "LFO3 Drift Cycle", 1.0f, 32.0f, 1.000f, 5.000f, ""},
+  {246, "LFO3 Lace Source", 0.0f, 3.0f, 1.000f, 0.000f, "Off|LFO1|LFO2|LFO3"},
+  {247, "LFO3 Lace Rate", 1.0f, 32.0f, 1.000f, 4.000f, ""},
+  {248, "LFO3 Lace Mix", 0.0f, 1.0f, 0.001f, 0.000f, ""},
 }};
 }

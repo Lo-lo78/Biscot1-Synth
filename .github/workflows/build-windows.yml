@@ -93,6 +93,9 @@ jobs:
       - name: Verify TEST0.2.13 smooth CC64 arpeggio release
         shell: pwsh
         run: python Tests/verify_test0213_pedal_click.py
+      - name: Verify new LFO Phase Drift and Lace parameters
+        shell: pwsh
+        run: python Tests/verify_public_lfo_lace_drift_0995.py
       - name: Verify JSFX filter gate and LFO parity wiring
         shell: pwsh
         run: python Tests/verify_test0214_filter_lfo.py
@@ -219,6 +222,9 @@ jobs:
       - name: Test native Song bank and ordered F4 parameter groups
         shell: pwsh
         run: .\build\Release\TrackerSongBankTest.exe
+      - name: Test deterministic LFO Drift and Lace, and legacy-off parity
+        shell: pwsh
+        run: .\build\Release\SidLfoLaceDriftTest.exe
       - name: Test JSFX SID filter and wavetable core
         shell: pwsh
         run: .\build\Release\SidCoreStandaloneTest.exe
@@ -308,9 +314,9 @@ jobs:
         run: |
           $plugin = "build/Biscot1_artefacts/Release/VST3/Biscot1 Synth.vst3"
           if (-not (Test-Path -LiteralPath $plugin)) { throw "VST3 bundle not found: $plugin" }
-          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-0.99.4-Windows-x64.zip" -Force
+          Compress-Archive -LiteralPath $plugin -DestinationPath "Biscot1-0.99.5-Windows-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: Biscot1-0.99.4-Windows-x64
-          path: Biscot1-0.99.4-Windows-x64.zip
+          name: Biscot1-0.99.5-Windows-x64
+          path: Biscot1-0.99.5-Windows-x64.zip
           if-no-files-found: error

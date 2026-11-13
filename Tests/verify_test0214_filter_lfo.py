@@ -8,7 +8,7 @@ assert 'l.noteTrigger(param(122+j*23)>0.5f,param(129+j*23)>0.5f,param(131+j*23))
 assert 'sidFilterLfoShouldTrigger(event.filterRetrigger' in cpp
 assert 'triggerFilterAndLfos(note,sidFilterLfoShouldTrigger' in cpp
 assert 'filterKeyNote=note;' in cpp
-assert 'return l.tick(' in cpp
+assert 'l.tick(inc,' in cpp
 assert 'using Lfo = SidLfoCore;' in hpp
 assert 'if(!active && !oneShot)active=true;' in core
 assert core.index('smoothed=(float)') < core.index('const double squash=')

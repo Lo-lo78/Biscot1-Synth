@@ -15,7 +15,7 @@ namespace {
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
-constexpr auto biscotVersion="0.99.4";
+constexpr auto biscotVersion="0.99.5";
 constexpr auto biscotReleaseDate="13 November 2026";
 constexpr auto biscotProjectUrl="https://github.com/Lo-lo78/Biscot1-Synth";
 constexpr auto biscotContactEmail="vmanolo301@gmail.com";
@@ -38,7 +38,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 0.99.4",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 0.99.5",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | Alt+A: about | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -211,6 +211,12 @@ void BiscotEditor::createGroups(){
   const auto at=std::find(lfoPage.begin(),lfoPage.end(),wave);
   if(at!=lfoPage.end())lfoPage.insert(at+1,pwm);
   else lfoPage.push_back(pwm);
+  const auto insertAt=std::find(lfoPage.begin(),lfoPage.end(),pwm);
+  const int first=234+i*5;
+  if(insertAt!=lfoPage.end()){
+   auto after=insertAt+1;
+   for(int k=0;k<5;++k)after=lfoPage.insert(after,first+k)+1;
+  }
  }
  // Sustain Pedal is an independent CC64 enable switch per operator,
  // placed beside that operator's ADSR controls rather than at the end.
@@ -245,7 +251,7 @@ juce::String BiscotEditor::formatValue(int i) const{
   const int index=juce::jlimit(0,a.size()-1,juce::roundToInt(v));
   if(index<a.size())return a[index];
  }
- if(d.index>=231 && d.index<=233)return juce::String(v,4);
+ if((d.index>=231 && d.index<=233))return juce::String(v,4);
  if(d.step>=1.f)return juce::String(juce::roundToInt(v));
  return juce::String(v,d.step>=0.1f?1:(d.step>=0.01f?2:3));
 }
@@ -272,7 +278,7 @@ void BiscotEditor::selectedFromGrid(){
  const auto& d=currentDef();
  value.setRange(d.low,d.high,d.step>0?d.step:0.001);
  // Native Value announces the same four-decimal duty cycle as Grid.
- if(d.index>=231 && d.index<=233)
+ if((d.index>=231 && d.index<=233))
   value.textFromValueFunction=[](double v){return juce::String(v,4);};
  else value.textFromValueFunction={};
  value.setValue(proc.param(d.index),juce::dontSendNotification);

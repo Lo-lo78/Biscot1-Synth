@@ -1,4 +1,5 @@
 #include "TrackerSongParameters.h"
+#include "SidLfoLace.h"
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "PitchBendRouting.h"
@@ -412,8 +413,22 @@ float BiscotProcessor::processLfo(int i,const std::array<float,3>& prev){
  const double hz=std::max(0.001,tempoBpm)/240. *
    std::max(0.125f,param(b+1))*std::pow(2.,juce::jlimit(-8.,8.,oct));
  const double inc=hz/sampleRateHz;
- return l.tick(inc,integer(param(b+2)),param(b+5),param(b+6),
-               param(b+7)>0.5f,param(b+8),param(b+3),param(b+4),sampleRateHz,param(231+i));
+ const int extra=234+i*5;
+ const float baseWave=l.tick(inc,integer(param(b+2)),param(b+5),param(b+6),
+               param(b+7)>0.5f,param(b+8),param(b+3),param(b+4),sampleRateHz,param(231+i),
+               param(extra),integer(param(extra+1)));
+ const int laceSource=integer(param(extra+2));
+ const float laceMix=param(extra+4);
+ // A deterministic interlace: alternate source and local LFO slots. Read
+ // the previous sample to prevent circular LFO dependencies in audio rate.
+ if(laceSource>0 && laceSource<=3 && laceMix>0.f &&
+    l.active && l.delayAge>=param(b+5)){
+  l.output=sidLfoLace(baseWave,prev[(size_t)(laceSource-1)],
+                       l.phase,integer(param(extra+3)),laceMix);
+   return l.output;
+  }
+ }
+ return baseWave;
 }
 float BiscotProcessor::processFilter(float input,float registerCutoff,int channel,float resonanceMod){
  return (float)filters[(size_t)channel].process(input,registerCutoff,
@@ -978,7 +993,7 @@ void BiscotProcessor::songStopAudio(bool pause) noexcept {
  songPlayingNumber.store(-1,std::memory_order_relaxed);
 }
 int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) const noexcept {
- if(idx<0||idx>=234)return -1;
+ if(idx<0||idx>=249)return -1;
  // Song Patterns use the generic Op1 columns, never the stored live MIDI mode.
  if(idx>=10&&idx<=102){return ((idx-10)%3)==0?idx+lane:-1;}
  // Routing is controlled exclusively by Song Filter Operators, not the Pattern.
@@ -994,6 +1009,7 @@ int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) cons
   }
  }
  if(idx>=231&&idx<=233)return songLfoOwners[(size_t)(idx-231)]==lane+1?idx:-1;
+ if(idx>=234&&idx<=248)return songLfoOwners[(size_t)((idx-234)/5)]==lane+1?idx:-1;
  return idx;
 }
 void BiscotProcessor::songApplyStep(int lane,const TrackerSongLaneTick& e) noexcept {
@@ -1230,7 +1246,7 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
   const bool running=position->getIsPlaying();
   if(!running && lastPlaying && songTransport.running){songStopAudio(false);songMidiTriggerNote=-1;}
   if(running && !lastPlaying){
-   for(int i=0;i<3;++i)if(param(122+i*23)<0.5f){lfos[(size_t)i].phase=param(131+i*23);lfos[(size_t)i].age=0;}
+   for(int i=0;i<3;++i)if(param(122+i*23)<0.5f){lfos[(size_t)i].phase=param(131+i*23);lfos[(size_t)i].age=0;lfos[(size_t)i].cycles=0;}
   }
   lastPlaying=running;
  }

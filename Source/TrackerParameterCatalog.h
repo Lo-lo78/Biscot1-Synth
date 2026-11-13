@@ -7,7 +7,7 @@
 #include <algorithm>
 namespace biscot {
 struct TrackerParam { int id; const char* name; int tab; double min,max,step,initial; int synthIndex; };
-inline constexpr std::array<TrackerParam,106> trackerCatalog {{
+inline constexpr std::array<TrackerParam,121> trackerCatalog {{
  {1,"Note",1,0,127,1,60,0},
  {2,"Gate",1,0.01,1,0.01,0.92,0},
  {3,"Previous value",1,1,1,1,1,0},
@@ -70,6 +70,11 @@ inline constexpr std::array<TrackerParam,106> trackerCatalog {{
  {1123,"LFO1 Rate",3,0.125,512,0.125,1,123},
  {1124,"LFO1 Wave",3,0,6,1,1,124},
  {1231,"LFO1 Square PWM",3,0.05,0.95,0.001,0.5,231},
+ {3000,"LFO1 Drift Amount",3,0,1,0.001,0,234},
+ {3001,"LFO1 Drift Cycle",3,1,32,1,5,235},
+ {3002,"LFO1 Lace Source",3,0,3,1,0,236},
+ {3003,"LFO1 Lace Rate",3,1,32,1,4,237},
+ {3004,"LFO1 Lace Mix",3,0,1,0.001,0,238},
  {1125,"LFO1 Upper Squash",3,0,1,0.01,0,125},
  {1126,"LFO1 Lower Squash",3,0,1,0.01,0,126},
  {1127,"LFO1 Delay",3,0,10,0.001,0,127},
@@ -86,6 +91,11 @@ inline constexpr std::array<TrackerParam,106> trackerCatalog {{
  {1146,"LFO2 Rate",3,0.125,512,0.125,1,146},
  {1147,"LFO2 Wave",3,0,6,1,1,147},
  {1232,"LFO2 Square PWM",3,0.05,0.95,0.001,0.5,232},
+ {3005,"LFO2 Drift Amount",3,0,1,0.001,0,239},
+ {3006,"LFO2 Drift Cycle",3,1,32,1,5,240},
+ {3007,"LFO2 Lace Source",3,0,3,1,0,241},
+ {3008,"LFO2 Lace Rate",3,1,32,1,4,242},
+ {3009,"LFO2 Lace Mix",3,0,1,0.001,0,243},
  {1148,"LFO2 Upper Squash",3,0,1,0.01,0,148},
  {1149,"LFO2 Lower Squash",3,0,1,0.01,0,149},
  {1150,"LFO2 Delay",3,0,10,0.001,0,150},
@@ -102,6 +112,11 @@ inline constexpr std::array<TrackerParam,106> trackerCatalog {{
  {1169,"LFO3 Rate",3,0.125,512,0.125,1,169},
  {1170,"LFO3 Wave",3,0,6,1,1,170},
  {1233,"LFO3 Square PWM",3,0.05,0.95,0.001,0.5,233},
+ {3010,"LFO3 Drift Amount",3,0,1,0.001,0,244},
+ {3011,"LFO3 Drift Cycle",3,1,32,1,5,245},
+ {3012,"LFO3 Lace Source",3,0,3,1,0,246},
+ {3013,"LFO3 Lace Rate",3,1,32,1,4,247},
+ {3014,"LFO3 Lace Mix",3,0,1,0.001,0,248},
  {1171,"LFO3 Upper Squash",3,0,1,0.01,0,171},
  {1172,"LFO3 Lower Squash",3,0,1,0.01,0,172},
  {1173,"LFO3 Delay",3,0,10,0.001,0,173},

@@ -30,7 +30,9 @@ struct SidIdleSleep {
   const double frequency=std::max(0.001,bpm)/240.0*std::max(0.125,rate);
   const double period=frequency*frames/std::max(1.,sampleRate);
   l.phase+=period;
-  l.phase-=std::floor(l.phase);
+  const double whole=std::floor(l.phase);
+  l.phase-=whole;
+  l.cycles+=(unsigned long long)whole;
  }
 };
 }

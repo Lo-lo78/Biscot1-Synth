@@ -123,14 +123,14 @@ inline std::vector<TrackerAutomatedParameter> trackerCompileStepAutomation(const
  const std::vector<std::vector<TrackerCell>>* cached=nullptr){
  std::vector<TrackerAutomatedParameter> out;
  out.reserve(16);
- std::array<bool,234> seen{};
+ std::array<bool,249> seen{};
  const auto copy=cached?std::vector<TrackerCell>{}:trackerFlatten(p,st);
  const auto& current=cached?(*cached)[(size_t)st]:copy;
  TrackerCurveContext context;
  for(const auto& c:current){
   if(c.id==3||c.id==4||c.id==5||c.id==8||c.id==9){trackerUpdateContext(context,c);continue;}
   const auto* def=findTrackerParam(c.id);
-  if(!def || def->synthIndex<=0 || def->synthIndex>=234 || def->synthIndex==3)continue;
+  if(!def || def->synthIndex<=0 || def->synthIndex>=249 || def->synthIndex==3)continue;
   const auto a=trackerMakeAutomation(p,st,c,context,cached);
   out.push_back(a);seen[(size_t)a.synthIndex]=true;
   if(out.size()>=128)return out;
@@ -143,7 +143,7 @@ inline std::vector<TrackerAutomatedParameter> trackerCompileStepAutomation(const
   for(const auto& x:prev){
    if(x.id==3||x.id==4||x.id==5||x.id==8||x.id==9){trackerUpdateContext(c,x);continue;}
    const auto* d=findTrackerParam(x.id);
-   if(!d||d->synthIndex<=0||d->synthIndex>=234||d->synthIndex==3)continue;
+   if(!d||d->synthIndex<=0||d->synthIndex>=249||d->synthIndex==3)continue;
    if(seen[(size_t)d->synthIndex])continue;
    seen[(size_t)d->synthIndex]=true;
    auto a=trackerMakeAutomation(p,ps,x,c,cached);
@@ -164,8 +164,8 @@ trackerCompileAllAutomation(const TrackerPattern&,
  const std::vector<std::vector<TrackerCell>>& flat){
  const int n=(int)flat.size();
  std::vector<std::vector<TrackerAutomatedParameter>> explicitRows((size_t)n);
- std::array<double,234> previousReal{},previousAny{};
- std::array<bool,234> hasReal{},hasAny{};
+ std::array<double,249> previousReal{},previousAny{};
+ std::array<bool,249> hasReal{},hasAny{};
  for(int st=0;st<n;++st){
   TrackerCurveContext context;
   auto& explicitValues=explicitRows[(size_t)st];
@@ -174,7 +174,7 @@ trackerCompileAllAutomation(const TrackerPattern&,
   for(const auto& c:flat[(size_t)st]){
    if(c.id==3||c.id==4||c.id==5||c.id==8||c.id==9){trackerUpdateContext(context,c);continue;}
    const auto* d=findTrackerParam(c.id);
-   if(!d||d->synthIndex<=0||d->synthIndex>=234||d->synthIndex==3)continue;
+   if(!d||d->synthIndex<=0||d->synthIndex>=249||d->synthIndex==3)continue;
    const int sid=d->synthIndex;
    TrackerAutomatedParameter a;
    a.synthIndex=sid;a.sourceStep=st;a.targetStep=st;
@@ -187,14 +187,14 @@ trackerCompileAllAutomation(const TrackerPattern&,
   for(const auto& c:flat[(size_t)st]){
    if(c.id==3){inherited=true;continue;}
    const auto* d=findTrackerParam(c.id);
-   if(!d||d->synthIndex<=0||d->synthIndex>=234||d->synthIndex==3)continue;
+   if(!d||d->synthIndex<=0||d->synthIndex>=249||d->synthIndex==3)continue;
    const int sid=d->synthIndex;
    hasAny[(size_t)sid]=true;previousAny[(size_t)sid]=c.value;
    if(!inherited){hasReal[(size_t)sid]=true;previousReal[(size_t)sid]=c.value;}
   }
  }
- std::array<int,234> nextRealStep;nextRealStep.fill(-1);
- std::array<double,234> nextRealValue{};
+ std::array<int,249> nextRealStep;nextRealStep.fill(-1);
+ std::array<double,249> nextRealValue{};
  for(int st=n-1;st>=0;--st){
   for(auto& a:explicitRows[(size_t)st]){
    const size_t sid=(size_t)a.synthIndex;
@@ -202,35 +202,35 @@ trackerCompileAllAutomation(const TrackerPattern&,
     a.targetStep=nextRealStep[sid];a.to=nextRealValue[sid];
    }
   }
-  std::array<bool,234> first{};
+  std::array<bool,249> first{};
   bool inherited=false;
   for(const auto& c:flat[(size_t)st]){
    if(c.id==3){inherited=true;continue;}
    const auto* d=findTrackerParam(c.id);
-   if(!d||d->synthIndex<=0||d->synthIndex>=234||d->synthIndex==3||inherited)continue;
+   if(!d||d->synthIndex<=0||d->synthIndex>=249||d->synthIndex==3||inherited)continue;
    const size_t sid=(size_t)d->synthIndex;
    if(!first[sid]){first[sid]=true;nextRealStep[sid]=st;nextRealValue[sid]=c.value;}
   }
  }
  std::vector<std::vector<TrackerAutomatedParameter>> result((size_t)n);
- std::array<TrackerAutomatedParameter,234> nearest{};
- std::array<bool,234> known{};
+ std::array<TrackerAutomatedParameter,249> nearest{};
+ std::array<bool,249> known{};
  for(int st=0;st<n;++st){
   auto& dst=result[(size_t)st];
   dst=std::move(explicitRows[(size_t)st]);
-  std::array<bool,234> seen{};
+  std::array<bool,249> seen{};
   for(const auto& a:dst)seen[(size_t)a.synthIndex]=true;
-  for(int sid=1;sid<234 && dst.size()<128;++sid){
+  for(int sid=1;sid<249 && dst.size()<128;++sid){
    if(seen[(size_t)sid]||!known[(size_t)sid])continue;
    const auto& prev=nearest[(size_t)sid];
    if(prev.active() && prev.targetStep>st)dst.push_back(prev);
   }
   // The previous row's FIRST appearance of a parameter establishes the
   // nearest source (the legacy JSFX walks the row in physical order).
-  std::array<bool,234> first{};
+  std::array<bool,249> first{};
   for(const auto& c:flat[(size_t)st]){
    const auto* d=findTrackerParam(c.id);
-   if(!d||d->synthIndex<=0||d->synthIndex>=234||d->synthIndex==3)continue;
+   if(!d||d->synthIndex<=0||d->synthIndex>=249||d->synthIndex==3)continue;
    const size_t sid=(size_t)d->synthIndex;
    if(first[sid])continue;
    first[sid]=true;

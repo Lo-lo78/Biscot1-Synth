@@ -1,3 +1,7 @@
+## Biscot1 Synth 0.99.5 — LFO Phase Drift and Lace
+
+See RELEASE_NOTES_0.99.5.md.
+
 ## Biscot1 Synth 0.99.4 — Silent Song header and Play/Stop origin
 
 See RELEASE_NOTES_0.99.4.md.
