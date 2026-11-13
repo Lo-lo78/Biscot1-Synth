@@ -1,3 +1,10 @@
+## Biscot1 Synth 0.99.2 — Song picker and stereo delay
+
+- F1 Pattern and F2 Song parameter pickers now mark parameters already in the current step with the short **Set,** prefix, including immediately after insertion.
+- Ctrl+Enter inserts a Song parameter and remains inside the picker; a single insertion/already-present announcement is spoken, matching F1. Enter inserts and returns to the step.
+- Delay Ping-Pong uses a circulating stereo feedback path at every nonzero depth, avoiding collapse to mono at intermediate values (especially 50%). The Depth value controls stereo width.
+- F2's short Song-row audition applies all persistent Song FX parameters up to the selected row, allowing the complete delay feedback tail to sound after the three-step musical snippet. Rows without delay keep the normal short preview.
+
 # Biscot1 Synth 0.99.1 — First public release
 
 **Release date:** 13 November 2026. **License:** AGPL-3.0-or-later.

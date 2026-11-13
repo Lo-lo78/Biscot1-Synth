@@ -25,6 +25,10 @@ public:
   release=(float)(1.-std::exp(-1./(sampleRate*0.080)));
   sidechainSource=0;sidechainAmount=delaySpeed=feedback=pingpong=0.f;volume=1.f;
  }
+ void resetForAudition()noexcept{
+  clearDelay();resetSidechain();
+  delaySpeed=feedback=pingpong=0.f;volume=1.f;
+ }
  void clearDelay()noexcept{
   // Clear is for stopped/idle reset only, never on a Song chain transition.
   // Logical clear avoids clearing megabytes in a real-time audio callback.
@@ -62,22 +66,25 @@ public:
   const size_t read=index>=samples?index-samples:index+count-samples;
   const bool reached=validSamples>=samples;
   const float dl=reached?left[read]:0.f,dr=reached?right[read]:0.f;
-  const float cross=pingpong;
-  const float fedL=dl*(1.f-cross)+dr*cross;
-  const float fedR=dr*(1.f-cross)+dl*cross;
-  // Internal feedback cap guards against runaway energy on long note chains.
-  // A centered synth voice has identical L and R samples. Swapping their
-  // feedback alone cannot create audible Ping Pong. As depth approaches 100%,
-  // feed the mono sum into the left delay input only, then cross-feed later
-  // repeats to the right. Keep the dry signal and depth=0 stereo behaviour.
-  const float mono=0.5f*(inputL+inputR);
-  const float injectedL=inputL*(1.f-cross)+mono*cross;
-  const float injectedR=inputR*(1.f-cross);
-  left[index]=std::clamp(injectedL+feedback*fedL,-4.f,4.f);
-  right[index]=std::clamp(injectedR+feedback*fedR,-4.f,4.f);
+  const float depth=pingpong;
+  // At depth 50%, a linear cross-feedback matrix collapses both channels
+  // to mono after the second echo. Keep a true L->R->L circulation instead.
+  // Depth controls the STEREO WIDTH of each echo, not the feedback direction.
+  // With depth zero preserve the normal independent L/R delay unchanged.
+  if(depth>0.f){
+   const float mono=0.5f*(inputL+inputR);
+   left[index]=std::clamp(mono+feedback*dr,-4.f,4.f);
+   right[index]=std::clamp(feedback*dl,-4.f,4.f);
+   const float center=0.5f*(dl+dr);
+   outL+=volume*(center*(1.f-depth)+depth*dl);
+   outR+=volume*(center*(1.f-depth)+depth*dr);
+  }else{
+   left[index]=std::clamp(inputL+feedback*dl,-4.f,4.f);
+   right[index]=std::clamp(inputR+feedback*dr,-4.f,4.f);
+   outL+=dl*volume;outR+=dr*volume;
+  }
   if(++index>=count)index=0;
   if(validSamples<count)++validSamples;
-  outL+=dl*volume;outR+=dr*volume;
   const float peak=std::max({std::abs(inputL),std::abs(inputR),std::abs(dl),std::abs(dr)});
   if(peak>0.000015f)tailTicks=std::max(tailTicks,(int)(samples+sampleRate*0.02));
   else if(tailTicks>0)--tailTicks;

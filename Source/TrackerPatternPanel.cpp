@@ -112,6 +112,11 @@ const TrackerParam* TrackerPatternPanel::currentParameter() const{
  if(page!=2||parameterList.empty())return nullptr;
  return parameterList[(size_t)juce::jlimit(0,(int)parameterList.size()-1,parameterIndex)];
 }
+bool TrackerPatternPanel::parameterAlreadyInStep(int id) const{
+ if(row<0||row>=currentPattern().length)return false;
+ const auto& values=currentPattern().view(row,tab);
+ return std::any_of(values.begin(),values.end(),[id](const TrackerCell& c){return c.id==id;});
+}
 TrackerCell* TrackerPatternPanel::selectedCell(){
  if(page!=1||row<0||row>=currentPattern().length)return nullptr;
  auto& values=currentPattern().cells(row,tab);
@@ -126,7 +131,9 @@ juce::String TrackerPatternPanel::positionText(bool includePattern) const{
  const juce::String prefix=includePattern?"Pattern "+juce::String(processor.trackerPatterns.activePattern)+". ":juce::String{};
  const int n=processor.trackerPatterns.activePattern;
  const auto& p=*processor.trackerPatterns.find(n);
- if(page==2){const auto* def=currentParameter();return "Parameters "+juce::String(sectionNames[tab])+". "+juce::String(def?def->name:"empty");}
+ if(page==2){const auto* def=currentParameter();return "Parameters "+juce::String(sectionNames[tab])+". "+
+  juce::String(def?(parameterAlreadyInStep(def->id)?"Set, ":""):"")+
+  juce::String(def?def->name:"empty");}
  if(row==-1){return prefix+
   (cell==0?("Length, "+juce::String(p.length)):
    cell==1?("MIDI Note, "+(p.midiNote<0?juce::String("Off"):noteName(p.midiNote))):
@@ -150,7 +157,10 @@ void TrackerPatternPanel::refresh(bool speakPosition){
  refreshing=true;navigator.clear(juce::dontSendNotification);
  if(page==2){
   refreshParameterList();
-  for(int i=0;i<(int)parameterList.size();++i)navigator.addItem(juce::String(parameterList[(size_t)i]->name),i+1);
+  for(int i=0;i<(int)parameterList.size();++i){
+   const auto* def=parameterList[(size_t)i];
+   navigator.addItem(juce::String(parameterAlreadyInStep(def->id)?"Set, ":"")+def->name,i+1);
+  }
   navigator.setSelectedId(parameterIndex+1,juce::dontSendNotification);
   header.setText("Biscot1 Tracker - "+juce::String(sectionNames[tab])+" parameter picker",juce::dontSendNotification);
  }else{
@@ -622,9 +632,10 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
      recordUndo();pat=std::move(candidate);processor.commitTrackerState();
     }
     cell=test.index;logicalCell=cell;lastLogicalCell[(size_t)tab]=logicalCell;
+    if(!m.isCtrlDown()){page=1;refresh(false);}else refresh(false);
     announce(juce::String(def->name)+(test.status==TrackerInsertStatus::inserted?" inserted":" already present"));
    }
-   if(!m.isCtrlDown()){page=1;refresh(true);}return true;
+   return true;
   }
   // Multi-character parameter picker search, with the same whole-label/word-prefix,
   // Shift-reverse and repeated-letter cycling used by Biscot1's main grid.

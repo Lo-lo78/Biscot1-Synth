@@ -132,10 +132,16 @@ juce::String TrackerSongPanel::paramLabel(int id,double v)const{
  if(id==22)return label+", "+juce::String((int)v)+" of 32";
  return label+", "+number(v);
 }
+bool TrackerSongPanel::parameterAlreadyInStep(int id)const{
+ if(!realStep())return false;
+ const auto* entry=song().findStep(lane,row);
+ return entry!=nullptr && entry->contains(id);
+}
 juce::String TrackerSongPanel::positionText(bool full)const{
  const juce::String prefix=full?("Song "+juce::String(processor.trackerSongs.activeSong)+
   (song().name.empty()?juce::String{}:" "+juce::String::fromUTF8(song().name.c_str()))+". "):juce::String{};
- if(picker)return "Song parameters. "+juce::String(songParameters[(size_t)juce::jlimit(0,(int)songParameters.size()-1,pickerIndex)].name);
+ if(picker){const auto& def=songParameters[(size_t)juce::jlimit(0,(int)songParameters.size()-1,pickerIndex)];
+  return "Song parameters. "+juce::String(parameterAlreadyInStep(def.id)?"Set, ":"")+def.name;}
  if(lane==3)return prefix+"Global. Song End, "+(song().songEnd<0?juce::String("Off"):juce::String(song().songEnd));
  const juce::String laneText=prefix+(full?("Operator "+juce::String(lane+1)+". "):juce::String{});
  if(row<0)return laneText+(cell==0?"Length, "+juce::String(length()):"MIDI Note, "+midiLabel(song().midiNote));
@@ -178,7 +184,10 @@ void TrackerSongPanel::refresh(bool speak){
  refreshing=true;
  navigator.clear(juce::dontSendNotification);
  if(picker){
-  for(int i=0;i<(int)songParameters.size();++i)navigator.addItem(songParameters[(size_t)i].name,i+1);
+  for(int i=0;i<(int)songParameters.size();++i){
+   const auto& def=songParameters[(size_t)i];
+   navigator.addItem(juce::String(parameterAlreadyInStep(def.id)?"Set, ":"")+def.name,i+1);
+  }
   pickerIndex=juce::jlimit(0,(int)songParameters.size()-1,pickerIndex);
   navigator.setSelectedId(pickerIndex+1,juce::dontSendNotification);
  }else if(lane==3){
@@ -383,8 +392,9 @@ void TrackerSongPanel::insertSelectedParameter(bool remain){
   cell=(int)std::distance(after.begin(),it);logicalCell=cell;
   commitEdit(before);
  }
+ if(!remain){picker=false;clearSelection();refresh(false);}
+ else refresh(false); // Do not mask the insertion announcement with the picker label.
  announce(juce::String(songParameters[(size_t)pickerIndex].name)+(added?" inserted":" already present"));
- if(!remain){picker=false;clearSelection();refresh(true);}else refresh(true);
 }
 void TrackerSongPanel::eraseCurrent(){
  if(lane<3&&row<0&&cell==1&&song().midiNote>=0){

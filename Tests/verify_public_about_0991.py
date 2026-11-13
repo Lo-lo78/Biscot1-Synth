@@ -11,8 +11,8 @@ for phrase in ('aboutInfo', 'aboutProject', 'aboutContact', 'aboutClose'):
 for fname in ('TrackerPatternPanel','TrackerSongPanel'):
     assert 'onAbout' in (r/f'Source/{fname}.h').read_text()
     assert 'onAbout()' in (r/f'Source/{fname}.cpp').read_text()
-assert 'VERSION 0.99.1' in cmake
-assert 'Biscot1-0.99.1-Windows-x64.zip' in workflow
+assert 'VERSION '+__import__('release_version_guard').release_version in cmake
+assert 'Biscot1-'+__import__('release_version_guard').release_version+'-Windows-x64.zip' in workflow
 print('OK: public About, Alt+A routing and 0.99.1 version')
 
 # JUCE TextEditor does not support setKeyHandler: use a typed subclass.

@@ -90,6 +90,7 @@ private:
  bool speedRow()const{return lane<3&&row>length();}
  int visibleCount()const;
  int selectedParameter()const;
+ bool parameterAlreadyInStep(int id) const;
  void announce(const juce::String&);
  juce::String positionText(bool full=false)const;
  juce::String paramLabel(int id,double value)const;

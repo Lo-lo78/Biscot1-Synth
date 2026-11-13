@@ -1174,7 +1174,9 @@ void BiscotProcessor::processBlock(juce::AudioBuffer<float>& buffer,juce::MidiBu
    // that may follow Song End only to another Song embedded in that file.
    const bool library=(songCommand==-4);
    songLibraryPreviewRunning=library;
-   if(library)for(auto& fx:songFx)fx.resetSidechain();
+   // Each preview starts from its own FX controls, never the previous Song's
+   // feedback/ping-pong state. Clearing the logical history allocates nothing.
+   for(auto& fx:songFx)fx.resetForAudition();
    songChainSnapshot=library?songLibraryChainMap.load(std::memory_order_acquire):nullptr;
    const int divisions=library?songLibraryPreviewDivisions.load(std::memory_order_acquire):0;
    songLibraryPreviewSamplesLeft=divisions>0

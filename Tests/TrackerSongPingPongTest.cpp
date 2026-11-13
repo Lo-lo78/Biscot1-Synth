@@ -21,6 +21,17 @@ int main(){
  // At 100% a center-panned impulse must NOT echo identically in L/R.
  assert(echoL1>0.9f && std::fabs(echoR1)<0.001f);
  assert(std::fabs(echoL2)<0.001f && echoR2>0.7f);
+ // A 50% linear cross-feedback matrix previously collapsed the second
+ // and following echoes to mono. Both repeats must keep alternating.
+ effect.prepare(1000.);step.value[20]=50;effect.setRow(step);
+ float half1L=0,half1R=0,half2L=0,half2R=0,half3L=0,half3R=0;
+ for(int n=0;n<205;++n){float l=0,r=0;
+  effect.process(n==0?1.f:0.f,n==0?1.f:0.f,l,r,120.);
+  if(n==63){half1L=l;half1R=r;}
+  if(n==126){half2L=l;half2R=r;}
+  if(n==189){half3L=l;half3R=r;}
+ }
+ assert(half1L>half1R && half2R>half2L && half3L>half3R);
  // At depth zero the same centered impulse remains centered.
  effect.prepare(1000.);step.value[20]=0;effect.setRow(step);
  for(int n=0;n<64;++n){float l=0,r=0;effect.process(n==0?1.f:0.f,n==0?1.f:0.f,l,r,120.);

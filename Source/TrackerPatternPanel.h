@@ -103,6 +103,7 @@ private:
  TrackerPattern& currentPattern(){return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
  const TrackerPattern& currentPattern() const {return processor.trackerPatterns.at(processor.trackerPatterns.activePattern);}
  const TrackerParam* currentParameter() const;
+ bool parameterAlreadyInStep(int id) const;
  TrackerCell* selectedCell();
  void refresh(bool speakPosition=false);
  void announce(const juce::String&);

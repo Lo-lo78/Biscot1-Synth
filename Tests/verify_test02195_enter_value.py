@@ -23,7 +23,7 @@ assert "if(letter('e')){openSelectedValueEditor();return true;}" in panel
 assert 'parseTrackerManualNumeric(txt.toStdString(),newValue)' in panel
 assert """if(code==juce::KeyPress::returnKey){
    if(const auto* def=currentParameter())""" in panel
-assert 'if(!m.isCtrlDown()){page=1;refresh(true);}' in panel
+assert 'if(!m.isCtrlDown()){page=1;refresh(false);}else refresh(false);' in panel
 assert 'if(page==2){refresh(false);announce("Pattern "+juce::String(target)' in panel
 assert release_cmake in cmake
 assert release_test in (r/'Source/PluginEditor.cpp').read_text()

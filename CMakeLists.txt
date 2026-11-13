@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Biscot1 VERSION 0.99.1 LANGUAGES C CXX)
+project(Biscot1 VERSION 0.99.2 LANGUAGES C CXX)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
@@ -15,7 +15,7 @@ juce_add_plugin(Biscot1
   PLUGIN_CODE Bs01
   FORMATS VST3
   PRODUCT_NAME "Biscot1 Synth"
-  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor 0.99.1"
+  DESCRIPTION "Biscot1 synth native VST3 port - accessible editor and native Song editor 0.99.2"
   IS_SYNTH TRUE
   NEEDS_MIDI_INPUT TRUE
   NEEDS_MIDI_OUTPUT FALSE
@@ -160,6 +160,8 @@ add_executable(TrackerSongEndPreviewTest Tests/TrackerSongEndPreviewTest.cpp)
 target_compile_features(TrackerSongEndPreviewTest PRIVATE cxx_std_20)
 
 # TEST0.2.39: library preview must reproduce the unmodified three-lane Song timeline.
+add_executable(TrackerSongRowAuditionFxTest Tests/TrackerSongRowAuditionFxTest.cpp)
+target_compile_features(TrackerSongRowAuditionFxTest PRIVATE cxx_std_20)
 add_executable(TrackerSongPingPongTest Tests/TrackerSongPingPongTest.cpp)
 target_compile_features(TrackerSongPingPongTest PRIVATE cxx_std_20)
 add_executable(TrackerSongLibraryPreviewTest Tests/TrackerSongLibraryPreviewTest.cpp)

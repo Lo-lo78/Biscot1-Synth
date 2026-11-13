@@ -153,6 +153,20 @@ inline std::shared_ptr<const TrackerPlayableSong> compileTrackerSongRowPreview(
  result->mixer={0.f,0.f,0.f};result->mixer[(size_t)lane]=1.f; // audition even when this lane is muted in the full Song
  result->filterOwner=song.filterOwner;result->filterMask=song.filterMask;result->lfoOwners=song.lfoOwners;
  result->songEnd=-1;result->midiNote=-1;
+ // The short row audition still needs the accumulated Song FX state.
+ // Song Delay/Feedback/Volume/Ping-Pong often live on earlier sparse rows.
+ // Recreate those controls at the preview's row zero; the normal Song
+ // engine will then render the entire wet tail after the few audible steps.
+ TrackerSongRowFx auditionFx;auditionFx.songRow=0;
+ const auto& sourceFx=song.fxRows[(size_t)lane];
+ for(const auto& [fxRow,fx]:sourceFx){
+  if(fxRow>row)break;
+  for(int id=10;id<=20;++id)if(fx.present[(size_t)id]){
+   auditionFx.present[(size_t)id]=true;
+   auditionFx.value[(size_t)id]=fx.value[(size_t)id];
+  }
+ }
+ if(auditionFx.any())result->fxRows[(size_t)lane].emplace(0,auditionFx);
  auto clip=*it;
  clip.songRow=0;clip.startOffset=0;
  clip.repeat=1;

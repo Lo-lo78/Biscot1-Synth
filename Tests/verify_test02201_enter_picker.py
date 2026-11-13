@@ -13,7 +13,7 @@ assert 'if(code==juce::KeyPress::homeKey){setCurrentValueExtreme(true);return tr
 assert 'if(code==juce::KeyPress::endKey){setCurrentValueExtreme(false);return true;}' in s
 # Both parameter picker insertion modes still work, including Ctrl+Enter.
 assert 'if(code==juce::KeyPress::returnKey){\n   if(const auto* def=currentParameter())' in s
-assert 'if(!m.isCtrlDown()){page=1;refresh(true);}' in s
+assert 'if(!m.isCtrlDown()){page=1;refresh(false);}else refresh(false);' in s
 assert 'if(code==juce::KeyPress::escapeKey && page==2)' in s
 assert 'NumericPurpose::patternNumber,"Go to Pattern 0 to 999"' in s
 assert release_artifact in workflow
