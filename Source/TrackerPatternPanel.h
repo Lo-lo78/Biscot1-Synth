@@ -31,6 +31,7 @@ public:
  std::function<void()> onClose;
  std::function<void()> onOpenSong;
  std::function<void()> onLibraryBrowser;
+ std::function<void()> onAbout;
  std::function<void(bool)> onPresetBrowser;
 private:
  struct Navigator : juce::ComboBox {

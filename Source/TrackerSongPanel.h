@@ -29,6 +29,7 @@ public:
  void close();
  std::function<void()> onPattern, onExit;
  std::function<void()> onLibraryBrowser;
+ std::function<void()> onAbout;
  std::function<void(bool)> onPresetBrowser;
 private:
  struct Navigator:juce::ComboBox {

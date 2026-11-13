@@ -1,4 +1,14 @@
-# Biscot1 Synth VST3 — TEST0.2.44 (F1/F2 tracker navigation)
+# Biscot1 Synth 0.99.1 — First public release
+
+**Release date:** 13 November 2026. **License:** AGPL-3.0-or-later.
+
+**About:** Alt+A opens the accessible About structure adapted from LJuno-116: version, release date, license, GitHub project and contact. Tab/Shift+Tab moves between read-only About text, Project, Contact and Close; Esc or Alt+C closes and returns focus. Alt+A is available in F1 Pattern and F2 Song.
+
+The public version is 0.99.1. The native synth, Pattern/Song tracker, library and Song Trigger automation are retained. No DSP or preset serialization changes intended.
+
+---
+
+# Biscot1 Synth VST3 — 0.99.1 (first public release)
 
 In the native Alt+Q Pattern and Song grids, **Ctrl+Up/Down** moves among
 header, remembered steps and footer/repeat regions. **Ctrl+Shift+Up/Down**

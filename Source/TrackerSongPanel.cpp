@@ -514,6 +514,7 @@ bool TrackerSongPanel::keyPressed(const juce::KeyPress& k){return handle(k,false
 bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  const auto m=k.getModifiers();const int code=k.getKeyCode();
  const auto letter=[&](char c){return trackerShortcutLetterMatches(code,(int)k.getTextCharacter(),c,m.isCtrlDown());};
+ if(m.isAltDown()&&!m.isCtrlDown()&&!m.isShiftDown()&&letter('a')){if(onAbout)onAbout();return true;}
  if(editing){
   if(code==juce::KeyPress::returnKey){
    const auto input=numeric.getText().trim();

@@ -11,6 +11,6 @@ _match = re.search(r"^project\(Biscot1 VERSION (\d+\.\d+\.\d+) LANGUAGES C CXX\)
 if not _match:
     raise AssertionError("Missing or malformed Biscot1 CMake project version")
 release_version = _match.group(1)
-release_test = "TEST" + release_version
+release_test = release_version if int(release_version.split(".")[1]) >= 90 else "TEST" + release_version
 release_cmake = "VERSION " + release_version
 release_artifact = "Biscot1-" + release_test + "-Windows-x64"

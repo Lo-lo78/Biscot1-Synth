@@ -15,6 +15,11 @@ namespace {
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
+constexpr auto biscotVersion="0.99.1";
+constexpr auto biscotReleaseDate="13 November 2026";
+constexpr auto biscotProjectUrl="https://github.com/Lo-lo78/Biscot1-Synth";
+constexpr auto biscotContactEmail="vmanolo301@gmail.com";
+constexpr auto biscotLicense="GNU Affero General Public License v3 or later (AGPL-3.0-or-later)";
 }
 // Native focus events already communicate roles and labels to NVDA.
 // Do not generate a second UIA grabFocus, and do not mutate title/description
@@ -33,9 +38,9 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.44",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 0.99.1",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
- instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
+ instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | Alt+A: about | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
   l->setColour(juce::Label::textColourId,foreground);
   l->setAccessible(false); // purely visual: no long startup announcement
@@ -56,6 +61,48 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  resetYes.onClick=[this]{finishFactoryReset(true);};
  resetNo.onClick=[this]{finishFactoryReset(false);};
  addAndMakeVisible(resetYes);addAndMakeVisible(resetNo);
+ const auto aboutText=juce::String("Biscot1 Synth\nVersion: ")+biscotVersion
+  +"\nRelease date: "+biscotReleaseDate
+  +"\nLicense: "+biscotLicense
+  +"\nProject: "+biscotProjectUrl
+  +"\nContact: "+biscotContactEmail;
+ aboutInfo.setTitle("About Biscot1 Synth");
+ aboutInfo.setMultiLine(true,true);
+ aboutInfo.setReturnKeyStartsNewLine(false);
+ aboutInfo.setReadOnly(true);
+ aboutInfo.setScrollbarsShown(true);
+ aboutInfo.setCaretVisible(true);
+ aboutInfo.setPopupMenuEnabled(false);
+ aboutInfo.setTabKeyUsedAsCharacter(false);
+ aboutInfo.setText(aboutText,false);
+ aboutInfo.setDescription(aboutText); // Full information available to NVDA at focus.
+ aboutInfo.setColour(juce::TextEditor::backgroundColourId,background);
+ aboutInfo.setColour(juce::TextEditor::textColourId,foreground);
+ aboutInfo.setColour(juce::TextEditor::outlineColourId,foreground);
+ aboutInfo.setBorder(juce::BorderSize<int>(12));
+ aboutInfo.setWantsKeyboardFocus(true);
+ aboutInfo.setExplicitFocusOrder(1);
+ aboutInfo.setKeyHandler([this](const juce::KeyPress& key){return handleAboutKey(key);});
+ aboutInfo.onEscapeKey=[this]{closeAbout();};
+ addAndMakeVisible(aboutInfo);aboutInfo.setVisible(false);
+ aboutProject.setButtonText(juce::String("Project: ")+biscotProjectUrl);
+ aboutProject.setDescription("Biscot1 Synth GitHub project. Enter opens the link.");
+ aboutProject.setWantsKeyboardFocus(true);aboutProject.setExplicitFocusOrder(2);
+ aboutProject.onClick=[this]{
+  if(!juce::URL(biscotProjectUrl).launchInDefaultBrowser())announce(aboutProject,"Cannot open Biscot1 Synth project page");
+ };
+ addAndMakeVisible(aboutProject);aboutProject.setVisible(false);
+ aboutContact.setButtonText(juce::String("Contact: ")+biscotContactEmail);
+ aboutContact.setDescription("Contact email. Enter opens the email application.");
+ aboutContact.setWantsKeyboardFocus(true);aboutContact.setExplicitFocusOrder(3);
+ aboutContact.onClick=[this]{
+  if(!juce::URL(juce::String("mailto:")+biscotContactEmail).launchInDefaultBrowser())announce(aboutContact,"Cannot open email application");
+ };
+ addAndMakeVisible(aboutContact);aboutContact.setVisible(false);
+ aboutClose.setButtonText("Close");aboutClose.setDescription("Close About. Escape or Alt+C.");
+ aboutClose.setWantsKeyboardFocus(true);aboutClose.setExplicitFocusOrder(4);
+ aboutClose.onClick=[this]{closeAbout();};
+ addAndMakeVisible(aboutClose);aboutClose.setVisible(false);
  presetBrowser=std::make_unique<PresetBrowser>(presetManager);
  addAndMakeVisible(*presetBrowser);
  presetBrowser->setVisible(false);
@@ -92,6 +139,8 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  trackerPanel->onLibraryBrowser=[this]{
   trackerPanel->suspendForLibrary();libraryBrowser->open(TrackerLibraryBrowser::Mode::patterns);
  };
+ songPanel->onAbout=[this]{openAbout();};
+ trackerPanel->onAbout=[this]{openAbout();};
  songPanel->onLibraryBrowser=[this]{
   songPanel->suspendForLibrary();libraryBrowser->open(TrackerLibraryBrowser::Mode::songs);
  };
@@ -327,7 +376,7 @@ void BiscotEditor::focus(Control c,bool deferred){
  if(deferred)juce::MessageManager::callAsync(action);else action();
 }
 void BiscotEditor::initialFocus(){
- if((libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
+ if(aboutOpen || (libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
  if(initialFocusPending)return;
  initialFocusPending=true;
  // LB-303 pattern: do not hand off focus until the native UIA child exists.
@@ -354,12 +403,60 @@ void BiscotEditor::initialFocus(){
 }
 void BiscotEditor::focusGained(FocusChangeType){initialFocus();}
 bool BiscotEditor::keyPressed(const juce::KeyPress& key){
+ if(aboutOpen)return handleAboutKey(key);
  if(libraryBrowser && libraryBrowser->isVisible())return libraryBrowser->keyPressed(key);
  if(trackerPanel && trackerPanel->isVisible())return trackerPanel->keyPressed(key);
  if(songPanel && songPanel->isVisible())return songPanel->keyPressed(key);
  if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(key);
  const Control c=edit.hasKeyboardFocus(true)?Control::edit:value.hasKeyboardFocus(true)?Control::value:Control::grid;
  return handleKey(key,c);
+}
+void BiscotEditor::openAbout(){
+ if(aboutOpen || resetConfirming || (presetBrowser && presetBrowser->active()) ||
+    (libraryBrowser && libraryBrowser->isVisible()))return;
+ aboutReturnFocus=juce::Component::getCurrentlyFocusedComponent();
+ aboutOpen=true;
+ for(auto* c:{static_cast<juce::Component*>(&aboutInfo),static_cast<juce::Component*>(&aboutProject),
+              static_cast<juce::Component*>(&aboutContact),static_cast<juce::Component*>(&aboutClose)}){
+  c->setVisible(true);c->toFront(false);
+ }
+ aboutInfo.setCaretPosition(0);
+ aboutInfo.grabKeyboardFocus();
+ if(auto* handler=aboutInfo.getAccessibilityHandler())handler->grabFocus();
+ repaint();
+}
+void BiscotEditor::closeAbout(){
+ if(!aboutOpen)return;
+ aboutOpen=false;
+ for(auto* c:{static_cast<juce::Component*>(&aboutInfo),static_cast<juce::Component*>(&aboutProject),
+              static_cast<juce::Component*>(&aboutContact),static_cast<juce::Component*>(&aboutClose)})
+  c->setVisible(false);
+ if(auto* target=aboutReturnFocus.getComponent())target->grabKeyboardFocus();
+ else focus(Control::grid,true);
+ repaint();
+}
+bool BiscotEditor::handleAboutKey(const juce::KeyPress& key){
+ if(!aboutOpen)return false;
+ const auto code=key.getKeyCode();const auto mods=key.getModifiers();
+ const auto ch=juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+ if(code==juce::KeyPress::escapeKey || (mods.isAltDown() && ch=='c')){closeAbout();return true;}
+ if(code==juce::KeyPress::tabKey){
+  juce::Component* controls[]{&aboutInfo,&aboutProject,&aboutContact,&aboutClose};
+  int current=0;
+  auto* focused=juce::Component::getCurrentlyFocusedComponent();
+  for(int i=0;i<4;++i)if(controls[i]==focused){current=i;break;}
+  controls[(current+(mods.isShiftDown()?3:1))%4]->grabKeyboardFocus();
+  return true;
+ }
+ if(code==juce::KeyPress::returnKey){
+  if(aboutProject.hasKeyboardFocus(false)){aboutProject.onClick();return true;}
+  if(aboutContact.hasKeyboardFocus(false)){aboutContact.onClick();return true;}
+  if(aboutClose.hasKeyboardFocus(false)){closeAbout();return true;}
+  return true;
+ }
+ // Read-only TextEditor provides caret movement, selection and Ctrl+C itself.
+ // Other shortcuts cannot change the synth while About is open.
+ return juce::Component::getCurrentlyFocusedComponent()==&aboutInfo?false:true;
 }
 void BiscotEditor::openFactoryResetConfirmation(){
  if(resetConfirming)return;
@@ -401,7 +498,10 @@ bool BiscotEditor::handleFactoryResetKey(const juce::KeyPress& k){
  return true;
 }
 bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
+ if(aboutOpen)return handleAboutKey(k);
  if(resetConfirming)return handleFactoryResetKey(k);
+ if(k.getModifiers().isAltDown() && !k.getModifiers().isCtrlDown() && !k.getModifiers().isShiftDown() &&
+    juce::CharacterFunctions::toLowerCase(k.getTextCharacter())=='a'){openAbout();return true;}
  if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(k);
  const auto m=k.getModifiers();const int code=k.getKeyCode();
  // Reuse the proven LB-303 incremental search: leading words, Shift-backward,
@@ -603,10 +703,17 @@ void BiscotEditor::resized(){
  if(trackerPanel)trackerPanel->setBounds(getLocalBounds().reduced(9));
  if(songPanel)songPanel->setBounds(getLocalBounds().reduced(9));
  if(libraryBrowser)libraryBrowser->setBounds(getLocalBounds().reduced(9));
+ auto aboutArea=getLocalBounds().withSizeKeepingCentre(700,430);
+ auto closeArea=aboutArea.removeFromBottom(42);aboutArea.removeFromBottom(8);
+ auto contactArea=aboutArea.removeFromBottom(38);aboutArea.removeFromBottom(8);
+ auto projectArea=aboutArea.removeFromBottom(38);aboutArea.removeFromBottom(8);
+ aboutInfo.setBounds(aboutArea);aboutProject.setBounds(projectArea);
+ aboutContact.setBounds(contactArea);
+ aboutClose.setBounds(closeArea.withSizeKeepingCentre(140,36));
 }
 void BiscotEditor::paint(juce::Graphics& g){
  g.fillAll(background);
- if((libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
+ if(aboutOpen || (libraryBrowser && libraryBrowser->isVisible()) || (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()))return;
  const auto& entries=groups[(size_t)group];
  const int columns=((int)entries.size()+rowsPerColumn-1)/rowsPerColumn;
  if(columns<=0 || drawingArea.isEmpty())return;

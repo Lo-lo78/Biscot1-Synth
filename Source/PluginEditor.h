@@ -48,6 +48,22 @@ private:
  std::unique_ptr<TrackerPatternPanel> trackerPanel;
  std::unique_ptr<TrackerSongPanel> songPanel;
  std::unique_ptr<TrackerLibraryBrowser> libraryBrowser;
+ // Public release About: native accessible text and keyboard-operable links.
+ struct AboutButton final : juce::TextButton {
+  AboutButton(BiscotEditor& editor,const juce::String& text):juce::TextButton(text),owner(editor){}
+  bool keyPressed(const juce::KeyPress& key) override {return owner.handleAboutKey(key);}
+  BiscotEditor& owner;
+ };
+ juce::TextEditor aboutInfo{"About Biscot1 Synth"};
+ AboutButton aboutProject{*this,"Project"};
+ AboutButton aboutContact{*this,"Contact"};
+ AboutButton aboutClose{*this,"Close"};
+ bool aboutOpen=false;
+ juce::Component::SafePointer<juce::Component> aboutReturnFocus;
+ void openAbout();
+ void closeAbout();
+ bool handleAboutKey(const juce::KeyPress&);
+
  bool songBrowserReturn=false;
  bool lastTrackerWasSong=false;
  bool trackerBrowserReturn=false;
