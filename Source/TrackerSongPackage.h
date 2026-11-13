@@ -177,10 +177,14 @@ inline bool importSong(const juce::File& file,TrackerSongBank& songs,TrackerPatt
  const auto raw=file.loadFileAsString().toStdString();
  std::istringstream in(raw);in.imbue(std::locale::classic());std::string magic;
  if(!std::getline(in,magic)){message="Invalid Song format";return false;}
+ if(magic.size()>=3 && (unsigned char)magic[0]==0xef && (unsigned char)magic[1]==0xbb && (unsigned char)magic[2]==0xbf)magic.erase(0,3);
+ if(!magic.empty()&&magic.back()=='\r')magic.pop_back();
  const bool single=magic=="BISCOT1_SINGLE_SONG_BUNDLE_V3";
  const bool all=magic=="BISCOT1_ALL_SONG_BUNDLE_V3";
  const bool legacy=magic=="BISCOT1_SONG_BUNDLE_V2";
- if(!single&&!all&&!legacy){message="Unsupported Song library format";return false;}
+ if(!single&&!all&&!legacy){
+  message="Unsupported Song library format. Header: "+juce::String::fromUTF8(magic.substr(0,100).c_str());return false;
+ }
  if((single&&!file.hasFileExtension(".biscot1-song")) || (all&&!file.hasFileExtension(".biscot1-all-song"))){
   message="File extension does not match Song library format";return false;
  }

@@ -27,5 +27,5 @@ assert 'songPreviewPlayable.store' in processor
 assert 'previewLimit>0 && previewPlayed>=previewLimit' in transport
 assert 'if(audition || ' in transport
 assert 'Source/TrackerLibraryBrowser.cpp' in (r/'CMakeLists.txt').read_text()
-assert '0.2.35' in (r/'CMakeLists.txt').read_text()
+assert '0.2.36' in (r/'CMakeLists.txt').read_text()
 print('OK TEST0.2.35 native library browser and bounded preview protection')

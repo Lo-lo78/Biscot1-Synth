@@ -63,7 +63,7 @@ void TrackerSongPanel::timerCallback(){
   processor.commitSongState();
   picker=false;search.reset();clearSelection();
   if(lane==3)lane=lastOperatorLane;
-  row=0;cell=logicalCell=0;lastStep={(int)0,(int)0,(int)0};
+  if(lane<3){row=juce::jlimit(0,length()-1,row);lastStep[(size_t)lane]=row;}
   refresh(false);
   announce("Song "+juce::String(playing)+" started. "+positionText());
  }
@@ -213,8 +213,16 @@ void TrackerSongPanel::changeLane(int next){
 void TrackerSongPanel::changeSong(int next){
  next=juce::jlimit(0,TrackerSongBank::maxSongs-1,next);
  if(next==processor.trackerSongs.activeSong)return;
+ const int oldLength=length(),oldRow=row,oldCell=cell;
  processor.trackerSongs.activeSong=next;processor.trackerSongs.at(next);
- row=-1;cell=0;logicalCell=0;picker=false;search.reset();clearSelection();lastStep={0,0,0};
+ picker=false;search.reset();clearSelection();
+ if(lane<3){
+  if(oldRow<0)row=-1;
+  else if(oldRow<oldLength)row=juce::jlimit(0,length()-1,oldRow);
+  else if(oldRow==oldLength)row=length();
+  else row=juce::jlimit(length()+1,length()+(song().laneRepeats[(size_t)lane]+9)/10,length()+oldRow-oldLength);
+ }
+ cell=oldCell;logicalCell=cell;
  processor.commitSongState();refresh(false);announce(positionText(true));
 }
 void TrackerSongPanel::vertical(int delta){
@@ -516,9 +524,11 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
      clearSelection();row=value;lastStep[(size_t)lane]=row;cell=0;logicalCell=0;refresh(true);
     }else announce("Invalid step number");
    }else announce("Enter an integer number");
+   if(shortcutEdit){shortcutEdit=false;lane=shortcutLane;row=shortcutRow;cell=shortcutCell;logicalCell=cell;refresh(false);}
    return true;
   }
-  if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();return true;}
+  if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();
+   if(shortcutEdit){shortcutEdit=false;lane=shortcutLane;row=shortcutRow;cell=shortcutCell;logicalCell=cell;refresh(false);}return true;}
   return false;
  }
  if(code==juce::KeyPress::escapeKey){
@@ -542,7 +552,7 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
     announce("Song playback started from step "+juce::String(lane<3&&realStep()?row:0));}
   }return true;
  }
- if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
+ if(m.isAltDown()&&!m.isCtrlDown()&&letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
  if(m.isAltDown()&&!m.isCtrlDown()&&letter('s')){
   openNumeric(EditPurpose::saveAllSongsName,
    "Save all 100 Songs file name. Enter to save; Escape to cancel", "All_Songs");
@@ -562,6 +572,21 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
  if(!m.isCtrlDown()&&code==juce::KeyPress::tabKey){announce(positionText(true));return true;}
  if(m.isAltDown()&&code==juce::KeyPress::returnKey){
   openNumeric(EditPurpose::songNumber,"Go to Song 0 to 99",juce::String(processor.trackerSongs.activeSong));return true;
+ }
+ // Direct F1/F2-compatible numeric shortcuts. Keep the original cursor
+ // and restore it after Enter or Escape, including when editing from steps.
+ if(!picker && !m.isCtrlDown() && !m.isAltDown() && !m.isShiftDown() && lane<3){
+  char command=0;
+  for(char c:{'l','m','p','r','d','s'})if(letter(c)){command=c;break;}
+  if(command){
+   shortcutLane=lane;shortcutRow=row;shortcutCell=cell;shortcutEdit=true;
+   if(command=='l'||command=='m'){row=-1;cell=command=='l'?0:1;}
+   else if(command=='p'||command=='r'){row=length();cell=0;}
+   else {row=length()+1;cell=0;}
+   refresh(false);openCurrentNumeric();
+   if(!numeric.isVisible()){shortcutEdit=false;row=shortcutRow;cell=shortcutCell;refresh(false);}
+   return true;
+  }
  }
  if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::upKey){changeSong(processor.trackerSongs.activeSong-1);return true;}
  if(m.isCtrlDown()&&!m.isAltDown()&&code==juce::KeyPress::downKey){changeSong(processor.trackerSongs.activeSong+1);return true;}
@@ -657,5 +682,21 @@ bool TrackerSongPanel::handle(const juce::KeyPress& k,bool editing){
   if(next!=cell){clearSelection();cell=next;if(realStep())logicalCell=cell;refresh(true);}return true;
  }
  return true; // keep the Alt+Q keyboard focus inside the native Song grid
+}
+}
+
+namespace biscot {
+int TrackerSongPanel::cursorRegion() const {
+ if(lane>=3||row<0)return 0;
+ if(row<length())return 1;
+ return row==length()?2:3;
+}
+void TrackerSongPanel::setCursorRegion(int region){
+ if(lane>=3)lane=lastOperatorLane;
+ if(region==0)row=-1;
+ else if(region==1)row=juce::jlimit(0,length()-1,lastStep[(size_t)lane]);
+ else if(region==2)row=length();
+ else row=length()+1;
+ cell=logicalCell=0;refresh(false);
 }
 }

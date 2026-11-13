@@ -23,5 +23,5 @@ assert 'automaticPreview.patterns' in t and 'automaticPreview.songs' in t
 assert 'compileTrackerSongLibraryPreview' in s and 'compileTrackerSongLibraryPreview(compileTrackerSong(song,slot,patterns),divisions)' in c
 assert 'return std::make_shared<const TrackerPlayableSong>(song)' in s
 assert 'compileTrackerSongRowPreview(*live,lane,row,steps)' in c
-assert '0.2.35' in (r/'CMakeLists.txt').read_text()
+assert '0.2.36' in (r/'CMakeLists.txt').read_text()
 print('OK TEST0.2.35 incremental search, navigation and three-operator library audio preview')

@@ -33,7 +33,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 TEST0.2.35",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 TEST0.2.36",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -89,7 +89,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  };
  songPanel->onPattern=[this]{
   lastTrackerWasSong=false;proc.state.state.setProperty(juce::Identifier("trackerLastMode"),0,nullptr);
-  showSynthWidgets(false);if(trackerPanel)trackerPanel->open();};
+  showSynthWidgets(false);if(trackerPanel){trackerPanel->setCursorRegion(songPanel->cursorRegion());trackerPanel->open();}};
  songPanel->onExit=[this]{songPanel->setVisible(false);showSynthWidgets(true);focus(Control::grid,true);};
  songPanel->onPresetBrowser=[this](bool save){
   songBrowserReturn=true;songPanel->close();
@@ -99,6 +99,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
   if(!songPanel)return;
   trackerPanel->suspendForSong();
   lastTrackerWasSong=true;
+  songPanel->setCursorRegion(trackerPanel->cursorRegion());
   proc.state.state.setProperty(juce::Identifier("trackerLastMode"),1,nullptr);
   songPanel->open();
  };

@@ -143,7 +143,7 @@ void TrackerLibraryBrowser::selectionChanged(bool speak,bool doPreview){
  if(doPreview)preview();
 }
 void TrackerLibraryBrowser::parentFolder(){
- if(folder==root){announce("Library root");return;}
+ if(folder==root)return;
  const auto previousFolder=folder;
  stopPreview();folder=folder.getParentDirectory();selected=0;scan(false);
  for(int i=0;i<(int)entries.size();++i)if(entries[(size_t)i].path==previousFolder){
@@ -165,7 +165,7 @@ void TrackerLibraryBrowser::navigate(int step){
  const int next=juce::jlimit(0,(int)entries.size()-1,selected+step);
  if(next!=selected){selected=next;refreshing=true;list.setSelectedId(selected+1,juce::dontSendNotification);
   refreshing=false;selectionChanged(true,automaticPreview);}
- else announce(entryLabel(selected));
+ else { /* silent list boundary */ }
 }
 void TrackerLibraryBrowser::preview(){
  if(entries.empty() || entries[(size_t)selected].directory){announce("Select a library file to preview");return;}

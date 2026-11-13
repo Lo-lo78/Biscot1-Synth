@@ -25,5 +25,5 @@ assert 'constexpr std::array<int,7> lengths' in b
 assert 'requestLibrarySongPreview(*s,slot,*previewPatterns,*previewSongs,previewSteps)' in b
 assert 'compileTrackerSongRowPreview(*live,lane,row,steps)' in c
 assert 'Biscot1' in (p/'Source/PresetBrowser.cpp').read_text()
-assert '0.2.35' in (p/'CMakeLists.txt').read_text()
+assert '0.2.36' in (p/'CMakeLists.txt').read_text()
 print('OK: faithful Pattern and Song library auditions, archive-only chaining and length limit')

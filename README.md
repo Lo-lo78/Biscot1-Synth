@@ -709,3 +709,6 @@ In Alt+Q, **Pattern browser** (`F1`, `Ctrl+O`) and **Song browser** (`F2`, `Ctrl
 - The short, selected-operator preview used while moving through F2 cells is separate and unchanged.
 
 See `RELEASE_NOTES_TEST0.2.35.md`.
+
+
+TEST0.2.36: See RELEASE_NOTES_TEST0.2.36.md for cursor, shortcut and library diagnostics.

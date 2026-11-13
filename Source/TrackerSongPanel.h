@@ -21,6 +21,8 @@ public:
  std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
  bool keyPressed(const juce::KeyPress&) override;
  void open();
+ int cursorRegion() const;
+ void setCursorRegion(int region);
  void restoreAfterPreset();
  void suspendForLibrary();
  void announceLibraryResult(const juce::String&);
@@ -53,6 +55,7 @@ private:
  // lane 0..2 => operators, lane 3 => Song global.
  int lane=0,row=-1,cell=0,logicalCell=0,rememberedRow=0,lastOperatorLane=0;
  int pickerIndex=0;bool picker=false,refreshing=false;
+ bool shortcutEdit=false;int shortcutRow=-1,shortcutCell=0,shortcutLane=0;
  int lastObservedPlayingSong=-1;
  void timerCallback()override;
  void previewCurrentStep();

@@ -22,6 +22,8 @@ public:
  std::unique_ptr<juce::AccessibilityHandler> createAccessibilityHandler() override;
  bool keyPressed(const juce::KeyPress&) override;
  void open();
+ int cursorRegion() const;
+ void setCursorRegion(int region);
  void suspendForSong();
  void suspendForLibrary();
  void announceLibraryResult(const juce::String&);
@@ -56,6 +58,7 @@ private:
  NumericPurpose numericPurpose=NumericPurpose::value;
  std::array<int,5> jumpSizes{1,5,10,15,20};
  int jumpIndex=0;
+ bool shortcutEdit=false;int shortcutRow=-1,shortcutCell=0;
  std::array<int,3> lastParam{0,0,0};
  bool refreshing=false;
  bool stepRecording=false,recordSustainDown=false;

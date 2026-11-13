@@ -382,7 +382,15 @@ void TrackerPatternPanel::jumpToPattern(int target){
  if(target<0||target>=TrackerPatternBank::maxPatterns){announce("Invalid pattern number");return;}
  auto& bank=processor.trackerPatterns;
  if(target==bank.activePattern){announce("Pattern "+juce::String(target));return;}
- clearSelection();bank.activePattern=target;row=-1;cell=0;logicalCell=0;lastRealStep=0;lastLogicalCell={0,0,0};
+ const int oldLength=currentPattern().length;
+ const int oldRow=row,oldCell=cell;
+ clearSelection();bank.activePattern=target;
+ const auto& replacement=currentPattern();
+ if(oldRow<0)row=-1;
+ else if(oldRow<oldLength)row=juce::jlimit(0,replacement.length-1,oldRow);
+ else if(oldRow==oldLength)row=replacement.length;
+ else row=juce::jlimit(replacement.length+1,replacement.length+(replacement.repeat+4)/5,replacement.length+oldRow-oldLength);
+ cell=oldCell;logicalCell=cell;lastRealStep=juce::jlimit(0,replacement.length-1,lastRealStep);
  processor.commitTrackerState();
  if(page==2){refresh(false);announce("Pattern "+juce::String(target)+". "+positionText());}
  else {refresh(false);announce(positionText(true));}
@@ -505,9 +513,11 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
     else jumpToStep(n);
    }else if(txt.isNotEmpty())announce(purpose==NumericPurpose::patternNumber?
      "Invalid pattern number":"Invalid step number");
+   if(shortcutEdit){shortcutEdit=false;row=shortcutRow;cell=shortcutCell;logicalCell=cell;refresh(false);}
    return true;
   }
-  if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();return true;}
+  if(code==juce::KeyPress::escapeKey){numeric.setVisible(false);navigator.grabKeyboardFocus();
+   if(shortcutEdit){shortcutEdit=false;row=shortcutRow;cell=shortcutCell;logicalCell=cell;refresh(false);}return true;}
   return false;
  }
  // Inside the parameter picker, Esc returns to the Pattern editor; a second
@@ -525,7 +535,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
   return true;
  }
  if(m.isAltDown() && !m.isCtrlDown() && letter('s')){if(onPresetBrowser)onPresetBrowser(true);return true;}
- if(m.isAltDown() && !m.isCtrlDown() && letter('b')){if(onPresetBrowser)onPresetBrowser(false);return true;}
+ if(m.isAltDown() && !m.isCtrlDown() && letter('b')){announce("Preset browser is available outside Alt+Q");return true;}
  if(code==juce::KeyPress::F1Key){page=1;parameterSearch.reset();refresh(true);return true;}
  if(code==32){
   if(m.isCtrlDown() && !m.isAltDown()){pauseAtAudibleStep();return true;}
@@ -670,8 +680,12 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
    if(letter(command)){
     const auto target=trackerHeaderShortcut(command,m.isShiftDown(),
       currentPattern().length,currentPattern().repeat,row,cell);
-    if(target.valid){clearSelection();row=target.row;cell=target.cell;
-     refresh(true);}
+    if(target.valid){
+     shortcutRow=row;shortcutCell=cell;shortcutEdit=true;
+     row=target.row;cell=target.cell;
+     refresh(false);openSelectedValueEditor();
+     if(!numeric.isVisible()){shortcutEdit=false;row=shortcutRow;cell=shortcutCell;refresh(false);}
+    }
     return true;
    }
   }
@@ -684,7 +698,7 @@ bool TrackerPatternPanel::handle(const juce::KeyPress& k,bool editing){
  if(m.isCtrlDown() && !m.isShiftDown() && (code==juce::KeyPress::upKey||code==juce::KeyPress::downKey)){
   auto& bank=processor.trackerPatterns;
   const int next=juce::jlimit(0,999,bank.activePattern+(code==juce::KeyPress::upKey?-1:1));
-  if(next!=bank.activePattern){clearSelection();bank.activePattern=next;row=-1;cell=0;logicalCell=0;lastRealStep=0;lastLogicalCell={0,0,0};processor.commitTrackerState();refresh(false);announce(positionText(true));}return true;
+  if(next!=bank.activePattern){jumpToPattern(next);}return true;
  }
  if(m.isCtrlDown() && letter('z')){
   const int n=processor.trackerPatterns.activePattern;
@@ -848,5 +862,21 @@ void TrackerPatternPanel::timerCallback(){
   if(event.type==1){if(!recordSustainDown){recordSustainDown=true;recordMidiStep(0,true);}continue;}
   if(event.type==0)recordMidiStep(event.note,false);
  }
+}
+}
+
+namespace biscot {
+int TrackerPatternPanel::cursorRegion() const {
+ if(row<0)return 0;
+ if(row<currentPattern().length)return 1;
+ return row==currentPattern().length?2:3;
+}
+void TrackerPatternPanel::setCursorRegion(int region){
+ if(page!=1)page=1;
+ if(region==0)row=-1;
+ else if(region==1)row=juce::jlimit(0,currentPattern().length-1,lastRealStep);
+ else if(region==2)row=currentPattern().length;
+ else row=currentPattern().length+1;
+ cell=0;logicalCell=0;refresh(false);
 }
 }
