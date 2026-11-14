@@ -89,7 +89,11 @@ private:
   float vel=1.f,bend=0.f,drift=0.f,oscPrev=0.f,arpPitch=0.f;
   uint32_t noiseSeed=0x12345678u;
   uint64_t cleanNoiseSeed=1234567, sidNoiseSeed=5930003;
-  double noiseClock=0;float noise=0.f;
+  // Independent clocks: the legacy clean-noise generator steps four times
+  // per oscillator cycle, while SID noise clocks on bit 19 rises (16/cycle).
+  // Keeping them separate preserves the clean-noise sound and old presets.
+  double noiseClock=0,cleanNoiseClock=0;
+  float noise=0.f,cleanNoiseValue=0.f,sidNoiseValue=0.f;
   SidAmpEnvelope amp,mod;
   bool pedalLatched=false;int pedalChannel=1;
   int arpStep=0;bool arpGoingUp=true;

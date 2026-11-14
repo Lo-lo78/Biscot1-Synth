@@ -585,26 +585,38 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    if(phaseActive){
     v.phase+=increments[(size_t)i]/oversample;
     if(v.phase>=1.)v.phase-=std::floor(v.phase);
-    v.noiseClock+=increments[(size_t)i]*4./oversample;
+    // The clean noise retains its original 4 updates per oscillator cycle.
+    // SID's 23-bit shift register is clocked at the rising edge of phase
+    // accumulator bit 19: 16 rises per 24-bit oscillator cycle.
+    const double clockDelta=increments[(size_t)i]/oversample;
+    v.cleanNoiseClock+=clockDelta*4.;
+    v.noiseClock+=clockDelta*16.;
+    bool updated=false;
+    while(v.cleanNoiseClock>=1.){
+     v.cleanNoiseClock-=1.;
+     v.cleanNoiseSeed=(v.cleanNoiseSeed*1103515245ULL+12345ULL)%2147483647ULL;
+     v.cleanNoiseValue=(float)((double)v.cleanNoiseSeed/1073741823.5-1.);
+     updated=true;
+    }
+    // Always advance the SID register, even when Noise Character is zero:
+    // automating the blend must never alter its phase or sequence.
     while(v.noiseClock>=1.){
      v.noiseClock-=1.;
-     v.cleanNoiseSeed=(v.cleanNoiseSeed*1103515245ULL+12345ULL)%2147483647ULL;
-     const double clean=(double)v.cleanNoiseSeed/1073741823.5-1.;
+     uint32_t sid=(uint32_t)(v.sidNoiseSeed&0x7fffffULL);
+     if(sid==0)sid=0x7fffffU;
+     const uint32_t feedback=((sid>>17)^(sid>>22))&1U;
+     sid=((sid<<1)&0x7fffffU)|feedback;
+     v.sidNoiseSeed=sid;
+     const int dac=((sid>>22)&1U)*128+((sid>>20)&1U)*64+
+       ((sid>>16)&1U)*32+((sid>>13)&1U)*16+
+       ((sid>>11)&1U)*8+((sid>>7)&1U)*4+
+       ((sid>>4)&1U)*2+((sid>>2)&1U);
+     v.sidNoiseValue=(float)(dac/127.5-1.);
+     updated=true;
+    }
+    if(updated){
      const float character=limit(param(9),0.f,1.f);
-     if(character<=0.f)v.noise=(float)clean;
-     else{
-      uint32_t sid=(uint32_t)(v.sidNoiseSeed%8388608ULL);
-      if(sid==0)sid=8388607U;
-      const uint32_t feedback=((sid>>17)^(sid>>22))&1U;
-      sid=((sid<<1)&0x7fffffU)|feedback;
-      v.sidNoiseSeed=sid;
-      const int dac=((sid>>22)&1U)*128+((sid>>20)&1U)*64+
-        ((sid>>16)&1U)*32+((sid>>13)&1U)*16+
-        ((sid>>11)&1U)*8+((sid>>7)&1U)*4+
-        ((sid>>4)&1U)*2+((sid>>2)&1U);
-      const double coloured=dac/127.5-1.;
-      v.noise=(float)(clean*(1.-character)+coloured*character);
-     }
+     v.noise=v.cleanNoiseValue*(1.f-character)+v.sidNoiseValue*character;
     }
    }
    msb[(size_t)i]=(v.oldPhase<0.5 && v.phase>=0.5);
@@ -1086,7 +1098,7 @@ void BiscotProcessor::enterColdIdle() noexcept {
  for(int i=0;i<3;++i){
   auto& v=voices[(size_t)i];
   v.note=-1;v.noteSmooth=-1;v.phase=v.oldPhase=0.;
-  v.noiseClock=0.;v.noise=0.f;v.oscPrev=0.f;v.arpPitch=0.f;
+  v.noiseClock=0.;v.cleanNoiseClock=0.;v.noise=0.f;v.cleanNoiseValue=0.f;v.sidNoiseValue=0.f;v.oscPrev=0.f;v.arpPitch=0.f;
   v.arpPhase=0.;v.arpStep=0;v.gate=false;v.pedalLatched=false;
   v.amp={};v.mod={};v.quantizedArp.reset();
   sidSeq[(size_t)i].clearAll();
