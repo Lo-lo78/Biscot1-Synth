@@ -96,6 +96,9 @@ jobs:
       - name: Verify new LFO Phase Drift and Lace parameters
         shell: pwsh
         run: python Tests/verify_public_lfo_lace_drift_0995.py
+      - name: Verify LFO processor function scope (MSVC C2059 guard)
+        shell: pwsh
+        run: python Tests/verify_public_lfo_processor_scope_0995.py
       - name: Verify JSFX filter gate and LFO parity wiring
         shell: pwsh
         run: python Tests/verify_test0214_filter_lfo.py

@@ -7,3 +7,8 @@
 - Available in the accessible main LFO pages and Pattern/Song LFO parameter pickers, including host automation.
 - Original wave, filter, tracker, song, and audio effect behavior remains unchanged with the new controls Off.
 - This is a Biscot1 extension inspired by SIDStation techniques, not a claim of exact SIDStation DSP emulation.
+
+## GitHub Actions build fix (same version)
+
+- Corrected one unmatched closing brace inside `BiscotProcessor::processLfo()` in `Source/PluginProcessor.cpp` that caused MSVC C2059 at `return baseWave;` and cascading compiler errors.
+- Added a dedicated scope regression check to the Windows workflow. LFO DSP behavior and parameter defaults are unchanged.

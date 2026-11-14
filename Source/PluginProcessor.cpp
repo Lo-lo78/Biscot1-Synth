@@ -427,7 +427,6 @@ float BiscotProcessor::processLfo(int i,const std::array<float,3>& prev){
                        l.phase,integer(param(extra+3)),laceMix);
    return l.output;
   }
- }
  return baseWave;
 }
 float BiscotProcessor::processFilter(float input,float registerCutoff,int channel,float resonanceMod){
