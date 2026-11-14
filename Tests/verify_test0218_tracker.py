@@ -1,5 +1,5 @@
 from release_version_guard import release_version, release_test, release_cmake, release_artifact
-from audio_reference import without_native_song_fx
+from audio_reference import without_native_song_fx, restore_legacy_sid_noise_dsp
 """TEST0.2.21: first native F1/F2 tracker; preserve trusted synth/audio code."""
 from pathlib import Path
 import hashlib,re
@@ -30,14 +30,14 @@ assert (root/'Reference/LegacyTracker/Biscot1_TrackerControl_0.166.lua').exists(
 assert (root/'Reference/LegacyTracker/Biscot1_Tracker_Project_Startup_Loader_0.166.lua').exists()
 assert len(re.findall(r'^ \{\d+,"', (root/'Source/TrackerParameterCatalog.h').read_text(), re.M))>=106
 assert 'paramHeight' in panel and 'code==juce::KeyPress::F1Key' in panel
-# Keep the exact audio process and original MIDI handling, since this test
-# version deliberately does not connect the tracker to the live synth.
+# Preserve the original synth/MIDI baseline, allowing only the separately
+# fingerprint-verified SID noise-clock experiment (see audio_reference.py).
 for begin,end,expected in [
  ('void BiscotProcessor::renderOne(','void BiscotProcessor::advanceIdleLfos(', 'd6e631be7980f9840d4c44e30b3dd6bd02c632f8cb5ea6df40297c0aa6e27914'),
 
 ]:
  fragment=source[source.index(begin):source.index(end)]
  assert 'if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];' in fragment
- assert hashlib.sha256(without_native_song_fx(fragment).encode()).hexdigest()==expected
+ assert hashlib.sha256(without_native_song_fx(restore_legacy_sid_noise_dsp(fragment)).encode()).hexdigest()==expected
 assert 'sidLatchArpReleasePool(' in source and 'rebuildArpPools(true);return;' in source
 print('OK: native tracker F1/F2, persistent Pattern data, original MIDI and DSP preserved')
