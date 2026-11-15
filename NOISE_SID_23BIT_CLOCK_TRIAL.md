@@ -1,6 +1,6 @@
 # Biscot1 Synth 0.99.5 — SID 23-bit Noise Clock listening trial
 
-This is an **experimental listening build**, not a new public release.
+This document originated as **experimental pre-release listening notes**. The source of the 0.99.5 GitHub-ready release includes the SID noise-clock change; its musical effect still requires user listening comparison. The test instructions below retain their original pre-release baseline context.
 
 ## Scope
 - Correct the 23-bit SID-inspired LFSR stepping rate to **16 updates per oscillator cycle**, corresponding to the rising edge of phase accumulator bit 19 on a 24-bit SID oscillator.

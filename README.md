@@ -1,3 +1,19 @@
+# Biscot1 Synth — Windows VST3
+
+**Current version: 0.99.5 (15 November 2026).** Free and open-source SID-inspired synthesizer with an accessible three-operator Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
+
+**Latest changes since the first public release (0.99.1):**
+- **0.99.5:** LFO1/LFO2/LFO3 Phase Drift and Lace controls (off by default, accessible from the main parameters and tracker). The source also includes an experimental SID-noise clock listening trial; see `NOISE_SID_23BIT_CLOCK_TRIAL.md` for its status.
+- **0.99.4:** corrected silent boundary in the Song Length header and preserved Play/Stop starting position across Song chaining.
+- **0.99.3:** operator-switching keys 1/2/3 now act only in tracker Steps, and Song playback position follows chained Songs correctly.
+- **0.99.2:** clearer Set indicator and Ctrl+Enter in Pattern/Song parameter pickers; stereo Ping-Pong delay and row-specific Song preview.
+
+**Documentation:** [Release notes for 0.99.5](RELEASE_NOTES_0.99.5.md) · [English update guide](Docs/BISCOT1_0.99.5_GUIDE_EN.md) · [Guida italiana](Docs/BISCOT1_0.99.5_GUIDA_IT.md). Older version notes remain in this repository.
+
+**GitHub release:** Create the stable tag `v0.99.5` after the Windows build passes, and attach the matching `Biscot1-0.99.5-Windows-x64.zip` workflow artifact. For direct downloads from a website using the `*.vst3.zip` asset convention, upload an identical copy named `Biscot1-0.99.5-Windows-x64.vst3.zip` instead; the VST3 contents must be identical. The About page opens with Alt+A.
+
+---
+
 ## Biscot1 Synth 0.99.5 — LFO Phase Drift and Lace
 
 See RELEASE_NOTES_0.99.5.md.
@@ -10,7 +26,7 @@ See RELEASE_NOTES_0.99.4.md.
 
 See RELEASE_NOTES_0.99.3.md.
 
-## Biscot1 Synth 0.99.3 — Song picker and stereo delay
+## Biscot1 Synth 0.99.2 — Song picker and stereo delay
 
 - F1 Pattern and F2 Song parameter pickers now mark parameters already in the current step with the short **Set,** prefix, including immediately after insertion.
 - Ctrl+Enter inserts a Song parameter and remains inside the picker; a single insertion/already-present announcement is spoken, matching F1. Enter inserts and returns to the step.
@@ -23,7 +39,7 @@ See RELEASE_NOTES_0.99.3.md.
 
 **About:** Alt+A opens the accessible About structure adapted from LJuno-116: version, release date, license, GitHub project and contact. Tab/Shift+Tab moves between read-only About text, Project, Contact and Close; Esc or Alt+C closes and returns focus. Alt+A is available in F1 Pattern and F2 Song.
 
-The public version is 0.99.1. The native synth, Pattern/Song tracker, library and Song Select and Song Transport automation are available. No DSP or preset serialization changes intended.
+At the first public release, the version was 0.99.1. The native synth, Pattern/Song tracker, library and Song Select and Song Transport automation were available. No DSP or preset serialization changes were intended in that initial release.
 
 ---
 
