@@ -243,5 +243,68 @@
     "max": 1.0,
     "step": 0.001,
     "description": "Deterministic clock-based LFO interlace / phase drift (off by default)."
+  },
+  {
+    "index": 249,
+    "name": "Op1 Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 250,
+    "name": "Op2 Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 251,
+    "name": "Op3 Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 252,
+    "name": "Op1 Mod Env Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 253,
+    "name": "Op2 Mod Env Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 254,
+    "name": "Op3 Mod Env Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 255,
+    "name": "Filter Hold",
+    "default": 0.0,
+    "min": 0.0,
+    "max": 5.0,
+    "step": 0.001,
+    "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
   }
 ]

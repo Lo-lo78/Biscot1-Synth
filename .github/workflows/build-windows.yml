@@ -7,6 +7,9 @@ jobs:
     runs-on: windows-2022 # VS 2022; windows-latest currently uses VS 2026
     steps:
       - uses: actions/checkout@v4
+      - name: Verify TEST0.2.46 AHDSR parameter compatibility and wiring
+        shell: pwsh
+        run: python Tests/verify_test0246_ahdsr_hold.py
       - name: Verify TEST0.2.45 REAPER automation shortcut and NVDA indicator
         shell: pwsh
         run: python Tests/verify_test0245_reaper_envelope_automation.py
@@ -258,6 +261,9 @@ jobs:
       - name: Test ADSR and per-operator sustain regression
         shell: pwsh
         run: .\build\Release\SidSustainPedalTest.exe
+      - name: Test TEST0.2.46 seven AHDSR Hold envelopes
+        shell: pwsh
+        run: .\build\Release\SidAhdsrHoldTest.exe
       - name: Test CC64 arp continuation and Chord master
         shell: pwsh
         run: .\build\Release\SidArpSustainTest.exe

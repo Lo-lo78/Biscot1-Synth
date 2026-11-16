@@ -7,7 +7,7 @@
 #include <algorithm>
 namespace biscot {
 struct TrackerParam { int id; const char* name; int tab; double min,max,step,initial; int synthIndex; };
-inline constexpr std::array<TrackerParam,121> trackerCatalog {{
+inline constexpr std::array<TrackerParam,124> trackerCatalog {{
  {1,"Note",1,0,127,1,60,0},
  {2,"Gate",1,0.01,1,0.01,0.92,0},
  {3,"Previous value",1,1,1,1,1,0},
@@ -24,6 +24,7 @@ inline constexpr std::array<TrackerParam,121> trackerCatalog {{
  {2006,"OP Fine Pitch",1,-100,100,0.1,0,28},
  {2007,"OP PWM",1,-64,64,0.1,0,31},
  {2008,"OP Attack",1,0,5,0.001,0,34},
+ {3015,"OP Hold",1,0,5,0.001,0,249},
  {2009,"OP Decay",1,0,5,0.001,0.12,37},
  {2010,"OP Sustain",1,0,1,0.001,0.7,40},
  {2250,"OP Sustain Pedal",1,0,1,1,0,227},
@@ -35,6 +36,7 @@ inline constexpr std::array<TrackerParam,121> trackerCatalog {{
  {2016,"OP LFO Rate Mod Target",1,0,3,1,0,58},
  {2017,"OP LFO Rate Mod Depth",1,-2,2,0.01,0,61},
  {2018,"OP Mod Env Attack",1,0,2,0.001,0,64},
+ {3016,"OP Mod Env Hold",1,0,5,0.001,0,252},
  {2019,"OP Mod Env Decay",1,0,2,0.001,0.12,67},
  {2020,"OP Mod Env Sustain",1,0,1,0.001,0,70},
  {2021,"OP Mod Env Release",1,0,3,0.001,0.12,73},
@@ -63,6 +65,7 @@ inline constexpr std::array<TrackerParam,121> trackerCatalog {{
  {1116,"Op3 To Filter",2,0,1,1,1,116},
  {1117,"Filter Env Amount",2,-2047,2047,1,0,117},
  {1118,"Filter Attack",2,0,2,0.001,0.002,118},
+ {3017,"Filter Hold",2,0,5,0.001,0,255},
  {1119,"Filter Decay",2,0,2,0.001,0.12,119},
  {1120,"Filter Sustain",2,0,1,0.001,0.7,120},
  {1121,"Filter Release",2,0,3,0.001,0.12,121},

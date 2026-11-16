@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #if JUCE_WINDOWS
  #ifndef NOMINMAX
   #define NOMINMAX
@@ -233,7 +234,7 @@ void BiscotEditor::createGroups(){
   else if((i>=94&&i<=103)||(i>=191&&i<=202))g=9;
   else if((i>=104&&i<=107)||(i>=203&&i<=210))g=10;
   else if((i>=58&&i<=63)||(i>=211&&i<=225))g=11;
-  else if(i>=108&&i<=121)g=4;
+  else if((i>=108&&i<=121)||i==255)g=4;
   else if(juce::String(d.name).startsWith("Op1 "))g=1;
   else if(juce::String(d.name).startsWith("Op2 "))g=2;
   else if(juce::String(d.name).startsWith("Op3 "))g=3;
@@ -256,6 +257,21 @@ void BiscotEditor::createGroups(){
    for(int k=0;k<5;++k)after=lfoPage.insert(after,first+k)+1;
   }
  }
+ // Append-only VCA / Mod AHDSR Hold params navigate immediately after Attack.
+ for(int i=0;i<3;++i){
+  auto& op=groups[(size_t)(i+1)];
+  for(const auto& pair: {std::pair<int,int>{34+i,249+i}, {64+i,252+i}}){
+   const auto current=std::find(op.begin(),op.end(),pair.second);
+   if(current!=op.end())op.erase(current);
+   const auto attack=std::find(op.begin(),op.end(),pair.first);
+   if(attack!=op.end())op.insert(attack+1,pair.second);
+  }
+ }
+ auto& filterPage=groups[4];
+ const auto filterHold=std::find(filterPage.begin(),filterPage.end(),255);
+ if(filterHold!=filterPage.end())filterPage.erase(filterHold);
+ const auto filterAttack=std::find(filterPage.begin(),filterPage.end(),118);
+ if(filterAttack!=filterPage.end())filterPage.insert(filterAttack+1,255);
  // Sustain Pedal is an independent CC64 enable switch per operator,
  // placed beside that operator's ADSR controls rather than at the end.
  for(int i=0;i<3;++i){

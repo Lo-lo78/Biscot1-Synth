@@ -1,5 +1,5 @@
 from release_version_guard import release_version, release_test, release_cmake, release_artifact
-from audio_reference import without_native_song_fx, restore_legacy_sid_noise_dsp
+from audio_reference import without_native_song_fx, restore_legacy_sid_noise_dsp, restore_legacy_ahdsr_dsp
 """TEST0.2.21: first native F1/F2 tracker; preserve trusted synth/audio code."""
 from pathlib import Path
 import hashlib,re
@@ -38,6 +38,6 @@ for begin,end,expected in [
 ]:
  fragment=source[source.index(begin):source.index(end)]
  assert 'if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];' in fragment
- assert hashlib.sha256(without_native_song_fx(restore_legacy_sid_noise_dsp(fragment)).encode()).hexdigest()==expected
+ assert hashlib.sha256(without_native_song_fx(restore_legacy_sid_noise_dsp(restore_legacy_ahdsr_dsp(fragment))).encode()).hexdigest()==expected
 assert 'sidLatchArpReleasePool(' in source and 'rebuildArpPools(true);return;' in source
 print('OK: native tracker F1/F2, persistent Pattern data, original MIDI and DSP preserved')

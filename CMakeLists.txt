@@ -48,6 +48,8 @@ add_executable(SidSeqMemoryTest Tests/SidSeqMemoryTest.cpp)
 target_compile_features(SidSeqMemoryTest PRIVATE cxx_std_20)
 
 # Independent regression test of all three ADSRs, CC64 latch/release semantics.
+add_executable(SidAhdsrHoldTest Tests/SidAhdsrHoldTest.cpp)
+target_compile_features(SidAhdsrHoldTest PRIVATE cxx_std_20)
 add_executable(SidSustainPedalTest Tests/SidSustainPedalTest.cpp)
 target_compile_features(SidSustainPedalTest PRIVATE cxx_std_20)
 

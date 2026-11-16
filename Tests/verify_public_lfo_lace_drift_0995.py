@@ -9,10 +9,10 @@ p=(r/'Source/PluginProcessor.cpp').read_text()
 core=(r/'Source/SidLfoCore.h').read_text()
 editor=(r/'Source/PluginEditor.cpp').read_text()
 native=json.loads((r/'Reference/NativeParameters.json').read_text())
-assert 'std::array<ParameterDef,247>' in cat
-assert 'std::array<TrackerParam,121>' in tracker
-assert 'std::array<std::atomic<float>*,249>' in h
-assert [d['index'] for d in native[-15:]]==list(range(234,249))
+assert 'std::array<ParameterDef,254>' in cat
+assert 'std::array<TrackerParam,124>' in tracker
+assert 'std::array<std::atomic<float>*,256>' in h
+assert [d['index'] for d in native if 234<=d['index']<=248]==list(range(234,249))
 for i in range(1,4):
  for suffix in ('Drift Amount','Drift Cycle','Lace Source','Lace Rate','Lace Mix'):
   assert f'"LFO{i} {suffix}"' in cat

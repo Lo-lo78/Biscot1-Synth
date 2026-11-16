@@ -1,5 +1,5 @@
 from release_version_guard import release_version, release_test, release_cmake, release_artifact
-from audio_reference import without_native_song_fx, restore_legacy_sid_noise_dsp
+from audio_reference import without_native_song_fx, restore_legacy_sid_noise_dsp, restore_legacy_ahdsr_dsp
 from pathlib import Path
 import re
 import hashlib
@@ -26,7 +26,7 @@ midi=p[p.index('void BiscotProcessor::onMidi('):p.index('float BiscotProcessor::
 assert 'if(songMixActive)oscOut[(size_t)i]*=songMixer[(size_t)i];' in dsp
 # Keep the historic byte-for-byte DSP guard while allowing ONLY the audited
 # experimental SID noise-clock block; verify the changed region separately.
-baseline_dsp=restore_legacy_sid_noise_dsp(dsp)
+baseline_dsp=restore_legacy_sid_noise_dsp(restore_legacy_ahdsr_dsp(dsp))
 assert hashlib.sha256(without_native_song_fx(baseline_dsp).encode()).hexdigest()=='d6e631be7980f9840d4c44e30b3dd6bd02c632f8cb5ea6df40297c0aa6e27914'
 
 assert 'rebuildArpPools(true);return;' in midi and 'noteOff(ch,note);' in midi

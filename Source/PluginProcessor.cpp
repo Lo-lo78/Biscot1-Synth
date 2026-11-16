@@ -586,8 +586,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
-  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz);
-  mod[(size_t)i]=v.mod.tick(param(64+i),param(67+i),param(70+i),sampleRateHz);
+  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz);
+  mod[(size_t)i]=v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),sampleRateHz);
   // JSFX retains SID Seq during Release and clears it only after the VCA
   // has completed its release tail (not immediately on Note Off).
   if(wasActive && v.amp.stage==0 && !v.gate){
@@ -597,7 +597,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }
   v.noteSmooth=v.noteSmooth<0 && v.note>=0?v.note:v.noteSmooth;
  }
- const float filterEnv=filterEnvelope.tick(param(118),param(119),param(120),sampleRateHz);
+ const float filterEnv=filterEnvelope.tick(param(118),param(255),param(119),param(120),sampleRateHz);
  for(int i=0;i<3;++i)previous[(size_t)i]=lfoUsedCached[(size_t)i]?lfos[(size_t)i].previous:0.f;
  for(int i=0;i<3;++i)lfo[(size_t)i]=lfoUsedCached[(size_t)i]?processLfo(i,previous):0.f;
  for(int i=0;i<3;++i)lfos[(size_t)i].previous=lfo[(size_t)i];
@@ -1149,11 +1149,14 @@ void BiscotProcessor::songStopAudio(bool pause) noexcept {
  songPlayingNumber.store(-1,std::memory_order_relaxed);
 }
 int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) const noexcept {
- if(idx<0||idx>=249)return -1;
+ if(idx<0||idx>=256)return -1;
  // Song Patterns use the generic Op1 columns, never the stored live MIDI mode.
  if(idx>=10&&idx<=102){return ((idx-10)%3)==0?idx+lane:-1;}
  // Routing is controlled exclusively by Song Filter Operators, not the Pattern.
  if(idx>=114&&idx<=116)return -1;
+ if(idx>=249&&idx<=251)return idx==249?idx+lane:-1; // VCA Hold follows OP lane
+ if(idx>=252&&idx<=254)return idx==252?idx+lane:-1; // Mod Hold follows OP lane
+ if(idx==255)return songFilterOwner==lane+1?idx:-1; // shared filter
  if(idx==6||idx==7||(idx>=108&&idx<=121))return songFilterOwner==lane+1?idx:-1;
  // The three LFO wave generators are shared; depths belong to individual OPs.
  for(int j=0;j<3;++j){
@@ -1776,6 +1779,18 @@ void BiscotProcessor::setStateInformation(const void* ptr,int length){
   if(!readTrackerBank(tree.getProperty(trackerStateKey).toString(),restored))restored.reset();
   TrackerSongBank restoredSongs;
   if(!readSongBank(tree.getProperty(trackerSongStateKey).toString(),restoredSongs))restoredSongs.reset();
+  // Legacy .biscot / REAPER projects have no Hold parameter nodes. Explicitly
+  // insert zero values so recalling them cannot retain non-zero Hold settings
+  // left by the previously loaded preset (or automation).
+  for(int index=249;index<=255;++index){
+   const auto key=id(index);
+   if(!tree.getChildWithProperty(juce::Identifier("id"),key).isValid()){
+    juce::ValueTree parameterNode(juce::Identifier("PARAM"));
+    parameterNode.setProperty(juce::Identifier("id"),key,nullptr);
+    parameterNode.setProperty(juce::Identifier("value"),0.0f,nullptr);
+    tree.addChild(parameterNode,-1,nullptr);
+   }
+  }
   state.replaceState(tree);
   trackerPatterns=std::move(restored);
   trackerSongs=std::move(restoredSongs);

@@ -1,3 +1,7 @@
+## TEST0.2.46 — AHDSR Hold (source test, public v0.99.5 unchanged)
+
+All seven ADSR envelopes now have an optional peak Hold between Attack and Decay: three VCA operator envelopes, three Mod Env operator envelopes, and the shared Filter envelope. Each Hold runs from 0 to 5 seconds in 1 ms steps and defaults to zero. Existing parameters, SID-style Attack/Decay/Release curves, MIDI Trigger/Legato, sustain pedal, accessible navigation and REAPER Ctrl+Shift+A host automation are retained. The native Pattern parameter picker includes OP Hold, OP Mod Env Hold, and Filter Hold. See `RELEASE_NOTES_TEST0.2.46.md`.
+
 # Biscot1 Synth — Windows VST3
 
 **Current version: 0.99.5 (15 November 2026).** Free and open-source SID-inspired synthesizer with an accessible three-operator Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.

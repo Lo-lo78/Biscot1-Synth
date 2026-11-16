@@ -1,3 +1,7 @@
+## Novità TEST0.2.46 — AHDSR Hold
+
+Tutti i sette inviluppi hanno Hold dopo Attack: Op1/Op2/Op3, tre Mod Env e Filter. Intervallo 0–5 s, passo 0,001 s, default 0. Hold resta al picco prima di Decay; Note Off avvia Release anche da Hold. CTRL+MAIUSC+A attiva/disattiva l’automazione del parametro selezionato in REAPER. In F1 Pattern i tre controlli si chiamano OP Hold, OP Mod Env Hold e Filter Hold.
+
 # Biscot1 Synth 0.99.5 — Guida alle novità accessibili
 
 **15 novembre 2026 · VST3 per Windows x64**

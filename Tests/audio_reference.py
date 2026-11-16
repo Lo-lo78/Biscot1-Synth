@@ -39,3 +39,24 @@ def restore_legacy_sid_noise_dsp(dsp: str) -> str:
     assert hashlib.sha256(noise_block.encode()).hexdigest()=='ce013539add218a58aefa55ee3e88f351288665c7cb26175c0afb66712ca70f7', 'SID noise implementation changed unexpectedly'
     legacy_noise_block='    v.noiseClock+=increments[(size_t)i]*4./oversample;\n    while(v.noiseClock>=1.){\n     v.noiseClock-=1.;\n     v.cleanNoiseSeed=(v.cleanNoiseSeed*1103515245ULL+12345ULL)%2147483647ULL;\n     const double clean=(double)v.cleanNoiseSeed/1073741823.5-1.;\n     const float character=limit(param(9),0.f,1.f);\n     if(character<=0.f)v.noise=(float)clean;\n     else{\n      uint32_t sid=(uint32_t)(v.sidNoiseSeed%8388608ULL);\n      if(sid==0)sid=8388607U;\n      const uint32_t feedback=((sid>>17)^(sid>>22))&1U;\n      sid=((sid<<1)&0x7fffffU)|feedback;\n      v.sidNoiseSeed=sid;\n      const int dac=((sid>>22)&1U)*128+((sid>>20)&1U)*64+\n        ((sid>>16)&1U)*32+((sid>>13)&1U)*16+\n        ((sid>>11)&1U)*8+((sid>>7)&1U)*4+\n        ((sid>>4)&1U)*2+((sid>>2)&1U);\n      const double coloured=dac/127.5-1.;\n      v.noise=(float)(clean*(1.-character)+coloured*character);\n     }\n    }\n'
     return dsp.replace(noise_block, legacy_noise_block, 1)
+
+
+def restore_legacy_ahdsr_dsp(dsp: str) -> str:
+    """Normalize only the three audited TEST0.2.46 AHDSR renderOne calls.
+
+    This keeps historic SHA-256 regressions meaningful; it does not allow any
+    other oscillator/filter/DSP edits. Independent Hold sample-clock behavior
+    is covered by SidAhdsrHoldTest.cpp.
+    """
+    replacements = {
+        'v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz)':
+            'v.amp.tick(opSharedParam(34,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz)',
+        'v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),sampleRateHz)':
+            'v.mod.tick(param(64+i),param(67+i),param(70+i),sampleRateHz)',
+        'filterEnvelope.tick(param(118),param(255),param(119),param(120),sampleRateHz)':
+            'filterEnvelope.tick(param(118),param(119),param(120),sampleRateHz)',
+    }
+    for new, legacy in replacements.items():
+        assert dsp.count(new)==1, 'Unreviewed AHDSR DSP modification: '+new
+        dsp=dsp.replace(new,legacy,1)
+    return dsp

@@ -119,7 +119,7 @@ private:
  std::atomic<std::shared_ptr<const TrackerSongChainMap>> songChainMap{};
  std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
  int songMidiTriggerNote=-1;
- // Dedicated host automation parameter: never mapped through the 249 DSP slots.
+ // Dedicated host automation parameter: never mapped through the 256 DSP slots.
  std::atomic<float>* hostSongTriggerParameter=nullptr;
  std::atomic<float>* hostSongTransportParameter=nullptr;
  int hostSongLastSelection=-1,hostSongLastTransport=-1,hostSongPending=-1;
@@ -171,8 +171,8 @@ private:
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerLibraryPlayable{};
  std::atomic<int> trackerLibraryPreviewSteps{0}; // 0: full Pattern, including all repeats
  TrackerPatternTransport trackerTransport{}; // audio thread only
- std::array<std::atomic<float>,249> trackerOverrideValues{};
- std::array<std::atomic<bool>,249> trackerOverrideMask{};
+ std::array<std::atomic<float>,256> trackerOverrideValues{};
+ std::array<std::atomic<bool>,256> trackerOverrideMask{};
  std::atomic<bool> trackerOverridesEnabled{false};
  void trackerSetOverride(int index,float value) noexcept;
  void trackerClearOverrides() noexcept;
@@ -193,7 +193,7 @@ private:
  std::array<bool,3> lfoUsedCached{};
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,249> parameters{};
+ std::array<std::atomic<float>*,256> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;

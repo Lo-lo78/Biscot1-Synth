@@ -1,3 +1,7 @@
+## TEST0.2.46 — AHDSR Hold
+
+All seven envelopes now have Hold after Attack: three operator VCA envelopes, three operator modulation envelopes, and the global filter. Range 0–5 s, 0.001 s resolution, default 0. Note Off during Hold enters Release. REAPER Ctrl+Shift+A automation works normally. F1 Pattern controls: OP Hold, OP Mod Env Hold, Filter Hold.
+
 # Biscot1 Synth 0.99.5 — Accessible update guide
 
 **15 November 2026 · Windows x64 VST3**

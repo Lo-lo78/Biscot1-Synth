@@ -3,7 +3,7 @@
 #include <cstdint>
 namespace biscot {
 struct ParameterDef {int index; const char* name; float low, high, step, initial; const char* choices;};
-inline constexpr std::array<ParameterDef,247> catalog {{
+inline constexpr std::array<ParameterDef,254> catalog {{
   {2, "Audio Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Stereo|Multichannel"},
   {3, "MIDI Mode", 0.0f, 2.0f, 1.0f, 0.0f, "All Operators Same Note|Chord Allocate 3 Mono Ops|MIDI Channels 1-3"},
   {4, "Hard Restart", 0.0f, 3.0f, 1.0f, 1.0f, "Off|Fast|Env Reset|Full Reset"},
@@ -251,5 +251,12 @@ inline constexpr std::array<ParameterDef,247> catalog {{
   {246, "LFO3 Lace Source", 0.0f, 3.0f, 1.000f, 0.000f, "Off|LFO1|LFO2|LFO3"},
   {247, "LFO3 Lace Rate", 1.0f, 32.0f, 1.000f, 4.000f, ""},
   {248, "LFO3 Lace Mix", 0.0f, 1.0f, 0.001f, 0.000f, ""},
+  {249, "Op1 Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {250, "Op2 Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {251, "Op3 Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {252, "Op1 Mod Env Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {253, "Op2 Mod Env Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {254, "Op3 Mod Env Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  {255, "Filter Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
 }};
 }

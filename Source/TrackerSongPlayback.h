@@ -35,7 +35,7 @@ inline int trackerSongResourceFlags(const TrackerPlayablePattern& pat)noexcept {
  int flags=0;
  for(const auto& row:pat.rows)for(const auto& a:row.automation){
   const int sid=a.synthIndex;
-  if(sid==6||sid==7||(sid>=108&&sid<=121&&!(sid>=114&&sid<=116)))flags|=1;
+  if(sid==6||sid==7||sid==255||(sid>=108&&sid<=121&&!(sid>=114&&sid<=116)))flags|=1;
   if(sid>=122&&sid<=144)flags|=2;
   if(sid>=145&&sid<=167)flags|=4;
   if(sid>=168&&sid<=190)flags|=8;
@@ -112,7 +112,7 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
     for(int st=0;st<=clip.patternStart;++st)
      for(const auto& aut:compiled->rows[(size_t)st].automation){
       const int idx=aut.synthIndex;
-      if(idx>=0&&idx<249)
+      if(idx>=0&&idx<256)
        seen[idx]=(float)trackerCurveAt(aut,clip.patternStart,0.);
      }
     for(const auto& [idx,value]:seen)clip.initialParams.emplace_back(idx,value);
