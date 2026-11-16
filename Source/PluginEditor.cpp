@@ -12,6 +12,41 @@
 
 namespace biscot {
 namespace {
+// Matches LSampler-24 TEST187: only real activation/deactivation actions
+// count; Show/Hide changes just the visibility of an envelope.
+enum class HostEnvelopeCommand { none, show, hide, toggle, activate, deactivate };
+HostEnvelopeCommand classifyHostEnvelopeItem(const juce::String& original)
+{
+    auto label = original.toLowerCase().trim();
+    if (label.isEmpty() || label.contains("all envelope") || label.contains("all automation")
+        || label.contains("tutte") || label.contains("tutti")
+        || label.contains("write") || label.contains("record") || label.contains("learn")
+        || label.contains("mode") || label.contains("arm") || label.contains("modulation"))
+        return HostEnvelopeCommand::none;
+    label = label.replace("&", "").replace("...", "").trim();
+    const bool envelope = label.contains("envelope") || label.contains("automation lane")
+        || label.contains("automation track") || label.contains("automation for parameter")
+        || label.contains("parameter automation") || label.contains("inviluppo")
+        || label.contains("corsia di automazione") || label.contains("traccia di automazione")
+        || label.contains("pista de automatizaci") || label.contains("courbe d'automation")
+        || label.contains("automationsspur");
+    if (!envelope) return HostEnvelopeCommand::none;
+    if (label.startsWith("disable ") || label.startsWith("deactivate ") || label.startsWith("bypass ")
+        || label.startsWith("disattiva ")) return HostEnvelopeCommand::deactivate;
+    if (label.startsWith("enable ") || label.startsWith("activate ")
+        || label.startsWith("attiva ")) return HostEnvelopeCommand::activate;
+    if (label.startsWith("hide ") || label.startsWith("remove ")
+        || label.startsWith("nascondi ") || label.startsWith("ocultar ")
+        || label.startsWith("masquer ") || label.contains(" ausblenden"))
+        return HostEnvelopeCommand::hide;
+    if (label.startsWith("show ") || label.startsWith("display ")
+        || label.startsWith("mostra ") || label.startsWith("visualizza ")
+        || label.startsWith("mostrar ") || label.startsWith("afficher ")
+        || label.contains(" anzeigen")) return HostEnvelopeCommand::show;
+    if (label.startsWith("toggle ") || label.startsWith("commuta ")
+        || label.startsWith("attiva/disattiva ")) return HostEnvelopeCommand::toggle;
+    return HostEnvelopeCommand::none;
+}
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
@@ -47,12 +82,12 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
   addAndMakeVisible(*l);
  }
  grid.setName("Grid");grid.setTitle({});grid.setDescription({});grid.setWantsKeyboardFocus(true);grid.setExplicitFocusOrder(1);
- grid.setEditableText(false);grid.setJustificationType(juce::Justification::centredLeft);
+ grid.addKeyListener(this);grid.setEditableText(false);grid.setJustificationType(juce::Justification::centredLeft);
  grid.onChange=[this]{selectedFromGrid();};addAndMakeVisible(grid);
- value.setSliderStyle(juce::Slider::LinearHorizontal);
+ value.addKeyListener(this);value.setSliderStyle(juce::Slider::LinearHorizontal);
  value.setTextBoxStyle(juce::Slider::TextBoxRight,false,130,25);
  value.setWantsKeyboardFocus(true);value.setTitle({});value.setDescription({});value.setExplicitFocusOrder(2);addAndMakeVisible(value);
- edit.setMultiLine(false);edit.setName("Edit");edit.setTitle({});edit.setDescription({});edit.setWantsKeyboardFocus(true);edit.setExplicitFocusOrder(3);addAndMakeVisible(edit);
+ edit.addKeyListener(this);edit.setMultiLine(false);edit.setName("Edit");edit.setTitle({});edit.setDescription({});edit.setWantsKeyboardFocus(true);edit.setExplicitFocusOrder(3);addAndMakeVisible(edit);
  resetPrompt.setText("Reset complete Biscot1 instrument, all Patterns and all Songs?",juce::dontSendNotification);
  resetPrompt.setColour(juce::Label::textColourId,foreground);
  resetPrompt.setVisible(false);addAndMakeVisible(resetPrompt);
@@ -176,6 +211,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
 }
 BiscotEditor::~BiscotEditor(){
  stopTimer();
+ grid.removeKeyListener(this);value.removeKeyListener(this);edit.removeKeyListener(this);
  if(libraryBrowser){libraryBrowser->onClose={};libraryBrowser.reset();}
  if(songPanel){songPanel->onLibraryBrowser={};songPanel->onPattern={};songPanel->onExit={};songPanel->onPresetBrowser={};songPanel.reset();}
  if(trackerPanel){trackerPanel->onLibraryBrowser={};trackerPanel->onOpenSong={};trackerPanel->onClose={};trackerPanel->onPresetBrowser={};trackerPanel.reset();}
@@ -244,6 +280,121 @@ void BiscotEditor::createGroups(){
   global.insert(pos,{226,230});
  }
 }
+// The selected catalog ID is already the physical VST3 parameter ID.
+// No new parameters and no changes to .biscot or REAPER project serialization.
+juce::AudioProcessorParameter* BiscotEditor::selectedAutomationParameter() const{
+ if(!juce::isPositiveAndBelow(group,(int)groups.size()) ||
+    !juce::isPositiveAndBelow(selected,(int)groups[(size_t)group].size()))return nullptr;
+ return proc.state.getParameter(BiscotProcessor::id(currentIndex()));
+}
+int BiscotEditor::getHostAutomationEnvelopeState(juce::AudioProcessorParameter* param) const{
+ if(param==nullptr)return -1;
+ if(proc.hasReaperEnvelopeApi())return proc.getReaperEnvelopeActive(param);
+ auto* host=getHostContext();
+ if(host==nullptr)return -1;
+ auto menuContext=host->getContextMenuForParameter(param);
+ if(menuContext==nullptr)return -1;
+ const auto menu=menuContext->getEquivalentPopupMenu();
+ juce::PopupMenu::MenuItemIterator iterator(menu,true);
+ int matches=0,state=-1;
+ while(iterator.next()){
+  const auto& item=iterator.getItem();
+  if(!item.isEnabled || !item.action || item.isSeparator || item.isSectionHeader)continue;
+  const auto kind=classifyHostEnvelopeItem(item.text);
+  if(kind==HostEnvelopeCommand::none)continue;
+  if(++matches>1)return -1;
+  state=kind==HostEnvelopeCommand::deactivate?1:kind==HostEnvelopeCommand::activate?0:-1;
+ }
+ return matches==1?state:-1;
+}
+bool BiscotEditor::syncAutomationIndicator(bool forceQuery){
+ auto* param=selectedAutomationParameter();
+ if(!forceQuery && param==observedAutomationParameter)return false;
+ const int state=getHostAutomationEnvelopeState(param);
+ if(param==observedAutomationParameter && state==observedAutomationState)return false;
+ observedAutomationParameter=param;
+ observedAutomationState=state;
+ return true;
+}
+void BiscotEditor::updateAutomationAccessibilityNames(){
+ if(!juce::isPositiveAndBelow(group,(int)groups.size()) ||
+    !juce::isPositiveAndBelow(selected,(int)groups[(size_t)group].size()))return;
+ const auto name=juce::String(currentDef().name)
+   +(observedAutomationState==1?", Auto":"");
+ value.setName("Value. "+name);
+ edit.setName("Edit. "+name);
+}
+bool BiscotEditor::toggleHostAutomationEnvelope(juce::AudioProcessorParameter* param,juce::Component& focused){
+ if(param==nullptr)return false;
+ bool success=false;
+ if(proc.hasReaperEnvelopeApi()){
+  success=proc.toggleReaperEnvelopeActive(param);
+  if(!success){announce(focused,"Automation unavailable for this FX");return true;}
+ }else{
+  auto* host=getHostContext();
+  if(host==nullptr)return false;
+  auto menuContext=host->getContextMenuForParameter(param);
+  if(menuContext==nullptr)return false;
+  const auto menu=menuContext->getEquivalentPopupMenu();
+  juce::PopupMenu::MenuItemIterator iterator(menu,true);
+  std::function<void()> action;
+  int matches=0;
+  while(iterator.next()){
+   const auto& item=iterator.getItem();
+   if(!item.isEnabled || !item.action || item.isSeparator || item.isSectionHeader)continue;
+   const auto kind=classifyHostEnvelopeItem(item.text);
+   if(kind!=HostEnvelopeCommand::activate && kind!=HostEnvelopeCommand::deactivate)continue;
+   if(++matches>1)break;
+   action=item.action;
+  }
+  if(matches!=1 || !action)return false;
+  action(); // Execute while host menu remains alive.
+  success=true;
+ }
+ if(success){
+  syncAutomationIndicator(true);
+  updateAutomationAccessibilityNames();
+  refreshLabels(true);
+  // One UIA notification; do not force focus or make NVDA reread the role.
+  announce(focused,labelFor(selected));
+ }
+ return success;
+}
+bool BiscotEditor::handleAutomationShortcut(const juce::KeyPress& key,juce::Component& source){
+ const auto mods=key.getModifiers();
+ const auto code=key.getKeyCode();
+ // JUCE on Windows aliases Ctrl and Command: do NOT require !isCommandDown().
+ const bool chord=mods.isCtrlDown() && mods.isShiftDown() && !mods.isAltDown() &&
+   (juce::CharacterFunctions::toLowerCase(static_cast<juce::juce_wchar>(code))=='a' ||
+    juce::CharacterFunctions::toLowerCase(key.getTextCharacter())=='a');
+ if(!chord)return false;
+ if(aboutOpen || resetConfirming || (presetBrowser && presetBrowser->active()) ||
+    (trackerPanel && trackerPanel->isVisible()) || (songPanel && songPanel->isVisible()) ||
+    (libraryBrowser && libraryBrowser->isVisible()))return false;
+ auto* param=selectedAutomationParameter();
+ if(param==nullptr){announce(source,"No automatable parameter selected");return true;}
+ if(toggleHostAutomationEnvelope(param,source))return true;
+ announce(source,"Direct automation toggle unavailable. Last touched: "+param->getName(160));
+ param->beginChangeGesture();
+ param->setValueNotifyingHost(param->getValue());
+ param->endChangeGesture();
+ return true;
+}
+bool BiscotEditor::keyPressed(const juce::KeyPress& key,juce::Component* source){
+ if(source!=&grid && source!=&value && source!=&edit)return false;
+ return handleAutomationShortcut(key,*source);
+}
+void BiscotEditor::pollAutomationIndicator(){
+ if(!isShowing() || aboutOpen || resetConfirming ||
+    (presetBrowser && presetBrowser->active()) ||
+    (trackerPanel && trackerPanel->isVisible()) ||
+    (songPanel && songPanel->isVisible()) ||
+    (libraryBrowser && libraryBrowser->isVisible()))return;
+ if(syncAutomationIndicator(true)){
+  updateAutomationAccessibilityNames();
+  refreshLabels(true);
+ }
+}
 int BiscotEditor::currentIndex() const {return groups[(size_t)group][(size_t)selected];}
 const ParameterDef& BiscotEditor::currentDef() const {return catalog[(size_t)(currentIndex()-2)];}
 juce::String BiscotEditor::formatValue(int i) const{
@@ -259,7 +410,8 @@ juce::String BiscotEditor::formatValue(int i) const{
 }
 juce::String BiscotEditor::labelFor(int row) const{
  const int index=groups[(size_t)group][(size_t)row];
- return juce::String(catalog[(size_t)(index-2)].name)+", "+formatValue(index);
+ return juce::String(catalog[(size_t)(index-2)].name)+", "+formatValue(index)
+  +((row==selected && observedAutomationParameter==selectedAutomationParameter() && observedAutomationState==1)?", Auto":"");
 }
 void BiscotEditor::populateGroup(){
  updating=true;grid.clear(juce::dontSendNotification);
@@ -277,6 +429,7 @@ void BiscotEditor::selectedFromGrid(){
  selected=n;lastSelected[(size_t)group]=n;
  rememberLocation();
  attachment.reset();
+ syncAutomationIndicator(true);
  const auto& d=currentDef();
  value.setRange(d.low,d.high,d.step>0?d.step:0.001);
  // Native Value announces the same four-decimal duty cycle as Grid.
@@ -284,10 +437,10 @@ void BiscotEditor::selectedFromGrid(){
   value.textFromValueFunction=[](double v){return juce::String(v,4);};
  else value.textFromValueFunction={};
  value.setValue(proc.param(d.index),juce::dontSendNotification);
- value.setName("Value. "+juce::String(d.name));
- edit.setName("Edit. "+juce::String(d.name));
+ updateAutomationAccessibilityNames();
  edit.setText(formatValue(d.index),juce::dontSendNotification);
  attachment=std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(proc.state,BiscotProcessor::id(d.index),value);
+ refreshLabels(true);
  repaint(drawingArea);
 }
 void BiscotEditor::refreshLabels(bool force){
@@ -302,7 +455,7 @@ void BiscotEditor::refreshLabels(bool force){
  if(changed){grid.setSelectedId(selected+1,juce::dontSendNotification);repaint(drawingArea);}
  if(!edit.hasKeyboardFocus(true))edit.setText(formatValue(currentIndex()),juce::dontSendNotification);
 }
-void BiscotEditor::timerCallback(){if(!presetBrowser || !presetBrowser->active())refreshLabels();}
+void BiscotEditor::timerCallback(){pollAutomationIndicator();if(!presetBrowser || !presetBrowser->active())refreshLabels();}
 void BiscotEditor::select(int i){
  i=juce::jlimit(0,(int)groups[(size_t)group].size()-1,i);
  if(i==selected)return; // silent boundaries: no selection change, no speech
@@ -550,6 +703,7 @@ bool BiscotEditor::handleFactoryResetKey(const juce::KeyPress& k){
 bool BiscotEditor::handleKey(const juce::KeyPress& k,Control c){
  if(aboutOpen)return handleAboutKey(k);
  if(resetConfirming)return handleFactoryResetKey(k);
+ if(handleAutomationShortcut(k,c==Control::grid?static_cast<juce::Component&>(grid):c==Control::value?static_cast<juce::Component&>(value):static_cast<juce::Component&>(edit)))return true;
  if(k.getModifiers().isAltDown() && !k.getModifiers().isCtrlDown() && !k.getModifiers().isShiftDown() &&
     juce::CharacterFunctions::toLowerCase(k.getTextCharacter())=='a'){openAbout();return true;}
  if(presetBrowser && presetBrowser->active())return presetBrowser->shortcut(k);

@@ -35,3 +35,8 @@ This source snapshot also changes the SID-inspired 23-bit noise clock. Its tonal
 ## Updating
 
 After the Windows build is successful, use the `Biscot1-0.99.5-Windows-x64.zip` build artifact for the GitHub release `v0.99.5`. For sites that recognise `*.vst3.zip` for a direct download, upload the **same ZIP contents** with the release filename `Biscot1-0.99.5-Windows-x64.vst3.zip`. Keep a backup of your saved presets and projects before replacing a previous VST3 build.
+
+
+### TEST0.2.45 — Accessible automation in REAPER
+
+On the 12 main parameter pages, press **Ctrl+Shift+A** on the selected parameter (Grid, Value or Edit) to activate/deactivate its REAPER envelope. NVDA reads **`, Auto`** when the envelope is active. Existing automation points are preserved. This does not change the Alt+Q tracker. Development test only; public release remains 0.99.5.

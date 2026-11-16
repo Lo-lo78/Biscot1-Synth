@@ -27,9 +27,16 @@
 #include <cstdint>
 
 namespace biscot {
+class BiscotReaperHostExtension;
 class BiscotProcessor final : public juce::AudioProcessor {
 public:
  BiscotProcessor();
+ ~BiscotProcessor() override;
+ // REAPER native VST3 extension: toggle the ACTIVE flag, never just lane visibility.
+ juce::VST3ClientExtensions* getVST3ClientExtensions() override;
+ bool hasReaperEnvelopeApi() const noexcept;
+ int getReaperEnvelopeActive(juce::AudioProcessorParameter*) const;
+ bool toggleReaperEnvelopeActive(juce::AudioProcessorParameter*);
  void prepareToPlay(double,int) override;
  void releaseResources() override {}
  void processBlock(juce::AudioBuffer<float>&,juce::MidiBuffer&) override;
@@ -82,6 +89,7 @@ public:
  }
  static juce::String id(int slider){return "s"+juce::String(slider).paddedLeft('0',3);}
 private:
+ std::unique_ptr<BiscotReaperHostExtension> reaperHostExtension;
  static juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
  struct Voice {
   int note=-1,channel=1;bool gate=false;

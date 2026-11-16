@@ -36,3 +36,8 @@ Il sorgente allegato contiene anche una variazione sperimentale della frequenza 
 ## Pubblicazione
 
 Dopo l'esito positivo del workflow Windows, utilizza l'artefatto `Biscot1-0.99.5-Windows-x64.zip` per la release stabile GitHub con tag `v0.99.5`. Per il collegamento diretto da siti che riconoscono `*.vst3.zip`, allega una **copia identica** rinominata `Biscot1-0.99.5-Windows-x64.vst3.zip`. Prima di sostituire il VST3 precedente, conserva una copia dei preset e dei progetti importanti.
+
+
+### TEST0.2.45 — Automazione accessibile in REAPER
+
+Nelle 12 pagine dei parametri principali, premi **Ctrl+Shift+A** su un parametro selezionato (Grid, Value o Edit) per attivare o disattivare la sua envelope in REAPER. NVDA annuncia **«, Auto»** quando l'automazione è attiva. I punti di automazione già registrati vengono conservati. Il comando non modifica il tracker Alt+Q. Questa è una versione di prova; la release pubblica rimane 0.99.5.

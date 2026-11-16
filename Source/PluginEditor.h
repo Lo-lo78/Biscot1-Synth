@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace biscot {
-class BiscotEditor final : public juce::AudioProcessorEditor, private juce::Timer {
+class BiscotEditor final : public juce::AudioProcessorEditor, private juce::Timer, private juce::KeyListener {
 public:
  explicit BiscotEditor(BiscotProcessor&);
  ~BiscotEditor() override;
@@ -85,6 +85,16 @@ private:
  int group=0, selected=0;
  std::array<int,12> lastSelected{};
  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
+ juce::AudioProcessorParameter* observedAutomationParameter=nullptr;
+ int observedAutomationState=-1;
+ juce::AudioProcessorParameter* selectedAutomationParameter() const;
+ int getHostAutomationEnvelopeState(juce::AudioProcessorParameter*) const;
+ bool syncAutomationIndicator(bool forceQuery=false);
+ bool toggleHostAutomationEnvelope(juce::AudioProcessorParameter*,juce::Component&);
+ bool handleAutomationShortcut(const juce::KeyPress&,juce::Component&);
+ bool keyPressed(const juce::KeyPress&,juce::Component*) override;
+ void updateAutomationAccessibilityNames();
+ void pollAutomationIndicator();
  // Accessible factory-reset prompt, initial choice No.
  struct ResetChoice final : juce::TextButton {
   ResetChoice(BiscotEditor& e,const juce::String& label):juce::TextButton(label),owner(e){}

@@ -2,6 +2,8 @@
 
 **Current version: 0.99.5 (15 November 2026).** Free and open-source SID-inspired synthesizer with an accessible three-operator Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
 
+**TEST0.2.45 (development only):** Ctrl+Shift+A toggles the selected REAPER VST3 envelope in Grid, Value and Edit, with the NVDA `, Auto` indicator. See [test notes](RELEASE_NOTES_TEST0.2.45.md). The published version remains 0.99.5.
+
 **Latest changes since the first public release (0.99.1):**
 - **0.99.5:** LFO1/LFO2/LFO3 Phase Drift and Lace controls (off by default, accessible from the main parameters and tracker). The source also includes an experimental SID-noise clock listening trial; see `NOISE_SID_23BIT_CLOCK_TRIAL.md` for its status.
 - **0.99.4:** corrected silent boundary in the Song Length header and preserved Play/Stop starting position across Song chaining.
