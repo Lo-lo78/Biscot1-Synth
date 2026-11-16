@@ -51,8 +51,8 @@ HostEnvelopeCommand classifyHostEnvelopeItem(const juce::String& original)
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
-constexpr auto biscotVersion="0.99.5";
-constexpr auto biscotReleaseDate="15 November 2026";
+constexpr auto biscotVersion="0.99.6";
+constexpr auto biscotReleaseDate="16 November 2026";
 constexpr auto biscotProjectUrl="https://github.com/Lo-lo78/Biscot1-Synth";
 constexpr auto biscotContactEmail="vmanolo301@gmail.com";
 constexpr auto biscotLicense="GNU Affero General Public License v3 or later (AGPL-3.0-or-later)";
@@ -74,7 +74,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 0.99.5",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 0.99.6",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | Alt+A: about | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -99,8 +99,10 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  addAndMakeVisible(resetYes);addAndMakeVisible(resetNo);
  const auto aboutText=juce::String("Biscot1 Synth\nVersion: ")+biscotVersion
   +"\nRelease date: "+biscotReleaseDate
-  +"\nNew in 0.99.5: LFO Phase Drift and Lace for all three LFOs."
-  +"\nAlso updated: Song navigation, Pattern and Song parameter pickers, stereo Ping-Pong delay."
+  +"\nNew in 0.99.6: AHDSR Hold for all seven envelopes (Op1-3, Mod Env1-3, Filter)."
+  +"\nHold: 0-5 seconds, 1 ms resolution, default zero to preserve preset sound."
+  +"\nREAPER Ctrl+Shift+A toggles active parameter automation and preserves points; NVDA announces , Auto."
+  +"\nAlso included from 0.99.5: LFO Phase Drift and Lace on all three LFOs."
   +"\nLicense: "+biscotLicense
   +"\nProject: "+biscotProjectUrl
   +"\nContact: "+biscotContactEmail;

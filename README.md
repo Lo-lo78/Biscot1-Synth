@@ -1,24 +1,21 @@
-## TEST0.2.46 — AHDSR Hold (source test, public v0.99.5 unchanged)
-
-All seven ADSR envelopes now have an optional peak Hold between Attack and Decay: three VCA operator envelopes, three Mod Env operator envelopes, and the shared Filter envelope. Each Hold runs from 0 to 5 seconds in 1 ms steps and defaults to zero. Existing parameters, SID-style Attack/Decay/Release curves, MIDI Trigger/Legato, sustain pedal, accessible navigation and REAPER Ctrl+Shift+A host automation are retained. The native Pattern parameter picker includes OP Hold, OP Mod Env Hold, and Filter Hold. See `RELEASE_NOTES_TEST0.2.46.md`.
-
 # Biscot1 Synth — Windows VST3
 
-**Current version: 0.99.5 (15 November 2026).** Free and open-source SID-inspired synthesizer with an accessible three-operator Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
+**Current public release candidate: 0.99.6 (16 November 2026).** Free/open-source SID-inspired three-operator synthesizer, with an accessible Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
 
-**TEST0.2.45 (development only):** Ctrl+Shift+A toggles the selected REAPER VST3 envelope in Grid, Value and Edit, with the NVDA `, Auto` indicator. See [test notes](RELEASE_NOTES_TEST0.2.45.md). The published version remains 0.99.5.
+## New in 0.99.6 — Seven AHDSR Holds and accessible automation
 
-**Latest changes since the first public release (0.99.1):**
-- **0.99.5:** LFO1/LFO2/LFO3 Phase Drift and Lace controls (off by default, accessible from the main parameters and tracker). The source also includes an experimental SID-noise clock listening trial; see `NOISE_SID_23BIT_CLOCK_TRIAL.md` for its status.
-- **0.99.4:** corrected silent boundary in the Song Length header and preserved Play/Stop starting position across Song chaining.
-- **0.99.3:** operator-switching keys 1/2/3 now act only in tracker Steps, and Song playback position follows chained Songs correctly.
-- **0.99.2:** clearer Set indicator and Ctrl+Enter in Pattern/Song parameter pickers; stereo Ping-Pong delay and row-specific Song preview.
+- **AHDSR:** independent Hold on all three VCA operator envelopes, all three operator Mod Env envelopes and the global Filter envelope. Hold follows Attack and precedes Decay.
+- **0–5 seconds, 1 ms steps, default 0:** preserves the existing preset sound. Note Off during Hold enters Release.
+- **REAPER Ctrl+Shift+A:** toggles the selected parameter's active automation envelope in Grid / Value / Edit while preserving existing points; NVDA announces **`, Auto`** when active.
+- **Tracker Alt+Q, F1 Pattern:** OP Hold, OP Mod Env Hold and Filter Hold are available to steps and Song lanes.
+- Appended new VST3 IDs **249–255**; historic IDs preserved. Earlier `.biscot` presets and projects remain compatible.
+- Earlier Phase Drift/Lace for all three LFOs, Song playback, SID filters and the experimental noise-clock trial remain in the source. The noise-clock trial's tonal benefit is not claimed as verified.
 
-**Documentation:** [Release notes for 0.99.5](RELEASE_NOTES_0.99.5.md) · [English update guide](Docs/BISCOT1_0.99.5_GUIDE_EN.md) · [Guida italiana](Docs/BISCOT1_0.99.5_GUIDA_IT.md). Older version notes remain in this repository.
+**Docs:** [0.99.6 release notes](RELEASE_NOTES_0.99.6.md) · [English guide](Docs/BISCOT1_0.99.6_GUIDE_EN.md) · [Guida italiana](Docs/BISCOT1_0.99.6_GUIDA_IT.md) · [GitHub release description](Docs/GITHUB_RELEASE_0.99.6_BODY_EN.md).
 
-**GitHub release:** Create the stable tag `v0.99.5` after the Windows build passes, and attach the matching `Biscot1-0.99.5-Windows-x64.zip` workflow artifact. For direct downloads from a website using the `*.vst3.zip` asset convention, upload an identical copy named `Biscot1-0.99.5-Windows-x64.vst3.zip` instead; the VST3 contents must be identical. The About page opens with Alt+A.
+**Release workflow:** push the project source to GitHub, verify the Windows x64 VST3 build and publish tag **`v0.99.6`** with `Biscot1-0.99.6-Windows-x64.zip`. If required by the direct-download website, attach the **identical archive** as `Biscot1-0.99.6-Windows-x64.vst3.zip`. The Alt+A About dialog shows the current version.
 
----
+## Earlier public versions
 
 ## Biscot1 Synth 0.99.5 — LFO Phase Drift and Lace
 
