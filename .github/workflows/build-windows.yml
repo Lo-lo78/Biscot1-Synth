@@ -267,6 +267,12 @@ jobs:
       - name: Test TEST0.2.46 seven AHDSR Hold envelopes
         shell: pwsh
         run: .\build\Release\SidAhdsrHoldTest.exe
+      - name: Test TEST0.2.47 live envelope automation without a Note On
+        shell: pwsh
+        run: .\build\Release\SidLiveAutomationTest.exe
+      - name: Verify TEST0.2.47 automation wiring in the native processor
+        shell: pwsh
+        run: python Tests/verify_live_automation_wiring.py
       - name: Test CC64 arp continuation and Chord master
         shell: pwsh
         run: .\build\Release\SidArpSustainTest.exe

@@ -13,7 +13,7 @@ assert 'v.cleanNoiseClock+=clockDelta*4.;' in cpp
 assert 'v.noiseClock+=clockDelta*16.;' in cpp
 assert 'while(v.cleanNoiseClock>=1.)' in cpp
 assert 'while(v.noiseClock>=1.)' in cpp
-assert 'v.cleanNoiseValue*(1.f-character)+v.sidNoiseValue*character' in cpp
+assert 'v.cleanNoiseValue*(1.f-noiseCharacter)+v.sidNoiseValue*noiseCharacter' in cpp
 assert 'v.sidNoiseSeed=sid;' in cpp
 assert 'double noiseClock=0,cleanNoiseClock=0;' in h
 assert 'v.cleanNoiseClock=0.;' in cpp

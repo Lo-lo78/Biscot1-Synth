@@ -60,3 +60,42 @@ def restore_legacy_ahdsr_dsp(dsp: str) -> str:
         assert dsp.count(new)==1, 'Unreviewed AHDSR DSP modification: '+new
         dsp=dsp.replace(new,legacy,1)
     return dsp
+
+
+def restore_live_automation_dsp(dsp: str) -> str:
+    """Undo exactly the reviewed TEST0.2.47 live-control wiring for old hashes.
+
+    The original TEST0.2.15 SHA-256 reference remains the authority for every
+    unchanged sample equation. Unknown edits are never normalized: each of the
+    seven intended modifications is matched verbatim and counted once.
+    New live behavior is tested independently by SidLiveAutomationTest.cpp and
+    verify_live_automation_wiring.py.
+    """
+    patches = {
+      'v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),opSharedParam(43,i),sampleRateHz)':
+      'v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz)',
+      'v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),param(73+i),sampleRateHz)':
+      'v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),sampleRateHz)',
+      'filterEnvelope.tick(param(118),param(255),param(119),param(120),param(121),sampleRateHz)':
+      'filterEnvelope.tick(param(118),param(255),param(119),param(120),sampleRateHz)',
+      '  const float pitch=arpBase+param(25+i)+param(28+i)/100.f+v.bend*param(91+i)\n'
+      '    +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch\n'
+      '    +v.drift*param(13+i)*0.50f;':
+      '  const float pitch=arpBase+param(25+i)+param(28+i)/100.f+v.bend*param(91+i)+v.drift\n'
+      '    +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch;',
+      ' // Blend noise on the same sample the host changes its Character control,\n'
+      ' // even at low oscillator frequency when neither LFSR clock advances.\n'
+      ' const float noiseCharacter=limit(param(9),0.f,1.f);\n'
+      ' const bool noiseCharacterChanged=noiseCharacter!=noiseCharacterLast;\n'
+      ' noiseCharacterLast=noiseCharacter;\n': '',
+      '    if(updated || (noiseCharacterChanged && sub==0))\n'
+      '     v.noise=v.cleanNoiseValue*(1.f-noiseCharacter)+v.sidNoiseValue*noiseCharacter;':
+      '    if(updated){\n'
+      '     const float character=limit(param(9),0.f,1.f);\n'
+      '     v.noise=v.cleanNoiseValue*(1.f-character)+v.sidNoiseValue*character;\n'
+      '    }',
+    }
+    for new, legacy in patches.items():
+        assert dsp.count(new)==1, 'Unreviewed live DSP alteration: '+new[:75]
+        dsp=dsp.replace(new, legacy, 1)
+    return dsp

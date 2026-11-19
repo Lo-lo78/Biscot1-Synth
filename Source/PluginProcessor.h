@@ -109,6 +109,7 @@ private:
  };
  using Lfo = SidLfoCore;
  std::array<Voice,3> voices{};
+ float noiseCharacterLast=-1.f; // Reblend cached noise immediately on automation.
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPlayable{};
  std::atomic<std::shared_ptr<const TrackerPlayableSong>> songPreviewPlayable{};

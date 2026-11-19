@@ -50,6 +50,10 @@ target_compile_features(SidSeqMemoryTest PRIVATE cxx_std_20)
 # Independent regression test of all three ADSRs, CC64 latch/release semantics.
 add_executable(SidAhdsrHoldTest Tests/SidAhdsrHoldTest.cpp)
 target_compile_features(SidAhdsrHoldTest PRIVATE cxx_std_20)
+
+# TEST0.2.47: audio-rate host automation while the MIDI gate is no longer held.
+add_executable(SidLiveAutomationTest Tests/SidLiveAutomationTest.cpp)
+target_compile_features(SidLiveAutomationTest PRIVATE cxx_std_20)
 add_executable(SidSustainPedalTest Tests/SidSustainPedalTest.cpp)
 target_compile_features(SidSustainPedalTest PRIVATE cxx_std_20)
 

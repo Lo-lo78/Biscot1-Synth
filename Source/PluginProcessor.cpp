@@ -209,7 +209,7 @@ bool BiscotProcessor::isBusesLayoutSupported(const BusesLayout& l)const{
  return true;
 }
 void BiscotProcessor::prepareToPlay(double sr,int){
- sampleRateHz=sr>0?sr:44100.;for(auto& fx:songFx)fx.prepare(sampleRateHz);songFxModeActive=false;voices={};lfos={};filters={};pressed={};pressedCounts={};arpPoolCounts={};nextPress=0;heldNotes.clear();filterKeyNote=60;
+ sampleRateHz=sr>0?sr:44100.;for(auto& fx:songFx)fx.prepare(sampleRateHz);songFxModeActive=false;voices={};noiseCharacterLast=-1.f;lfos={};filters={};pressed={};pressedCounts={};arpPoolCounts={};nextPress=0;heldNotes.clear();filterKeyNote=60;
  for(auto& seq:sidSeq)seq.clearAll();
  for(auto& s:outputStages)s.prepare(sampleRateHz);
  waveCore.prepare();
@@ -245,7 +245,7 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
  }
  v.channel=channel;v.gate=true;v.pedalLatched=false;
  v.vel=limit(v.vel,0.f,1.f);
- if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed)*param(13+i)*0.50f;
+ if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed); // Store the random draw, not a frozen Drift amount.
  if(retrigger){
   // First note of an arpeggio starts the ADSR once. Subsequent Trigger
   // notes restart only the arp SEQUENCE (scheduled at the next clock edge).
@@ -586,8 +586,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
-  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),sampleRateHz);
-  mod[(size_t)i]=v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),sampleRateHz);
+  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),opSharedParam(43,i),sampleRateHz);
+  mod[(size_t)i]=v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),param(73+i),sampleRateHz);
   // JSFX retains SID Seq during Release and clears it only after the VCA
   // has completed its release tail (not immediately on Note Off).
   if(wasActive && v.amp.stage==0 && !v.gate){
@@ -597,7 +597,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }
   v.noteSmooth=v.noteSmooth<0 && v.note>=0?v.note:v.noteSmooth;
  }
- const float filterEnv=filterEnvelope.tick(param(118),param(255),param(119),param(120),sampleRateHz);
+ const float filterEnv=filterEnvelope.tick(param(118),param(255),param(119),param(120),param(121),sampleRateHz);
  for(int i=0;i<3;++i)previous[(size_t)i]=lfoUsedCached[(size_t)i]?lfos[(size_t)i].previous:0.f;
  for(int i=0;i<3;++i)lfo[(size_t)i]=lfoUsedCached[(size_t)i]?processLfo(i,previous):0.f;
  for(int i=0;i<3;++i)lfos[(size_t)i].previous=lfo[(size_t)i];
@@ -701,8 +701,9 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
     arpBase=(float)heldNotes.chord.top();
    else arpBase=(float)sidSeq[(size_t)i].releaseRoot;
   }
-  const float pitch=arpBase+param(25+i)+param(28+i)/100.f+v.bend*param(91+i)+v.drift
-    +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch;
+  const float pitch=arpBase+param(25+i)+param(28+i)/100.f+v.bend*param(91+i)
+    +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch
+    +v.drift*param(13+i)*0.50f;
   frequencies[(size_t)i]=std::min(sampleRateHz*0.45,440.*std::pow(2.,juce::jlimit(-130.,130.,(double)(pitch-69.)/12.)));
  }
  // Advance all three SID phase accumulators together. This follows the JSFX
@@ -717,6 +718,11 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  std::array<double,3> widths{};
  for(int i=0;i<3;++i)widths[(size_t)i]=limit(
      0.5f+opSharedParam(31,i)/128.f+pwmMod[(size_t)i]+mod[(size_t)i]*param(55+i),0.f,1.f);
+ // Blend noise on the same sample the host changes its Character control,
+ // even at low oscillator frequency when neither LFSR clock advances.
+ const float noiseCharacter=limit(param(9),0.f,1.f);
+ const bool noiseCharacterChanged=noiseCharacter!=noiseCharacterLast;
+ noiseCharacterLast=noiseCharacter;
  std::array<double,3> accumulated{};
  for(int sub=0;sub<oversample;++sub){
   std::array<bool,3> msb{};
@@ -759,10 +765,8 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
      v.sidNoiseValue=(float)(dac/127.5-1.);
      updated=true;
     }
-    if(updated){
-     const float character=limit(param(9),0.f,1.f);
-     v.noise=v.cleanNoiseValue*(1.f-character)+v.sidNoiseValue*character;
-    }
+    if(updated || (noiseCharacterChanged && sub==0))
+     v.noise=v.cleanNoiseValue*(1.f-noiseCharacter)+v.sidNoiseValue*noiseCharacter;
    }
    msb[(size_t)i]=(v.oldPhase<0.5 && v.phase>=0.5);
   }
