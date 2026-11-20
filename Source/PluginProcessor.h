@@ -9,6 +9,7 @@
 #include <memory>
 #include "SidOutputStage.h"
 #include "SidPingPongPan.h"
+#include "SidPitchGlideMotion.h"
 #include "SidFilterCore.h"
 #include "SidWaveCore.h"
 #include "SidMidiNoteState.h"

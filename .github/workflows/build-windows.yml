@@ -7,6 +7,12 @@ jobs:
     runs-on: windows-2022 # VS 2022; windows-latest currently uses VS 2026
     steps:
       - uses: actions/checkout@v4
+      - name: Verify TEST0.2.52 pitch-synchronous Ping Pong Pan
+        shell: pwsh
+        run: python Tests/verify_test0252_glide_pan_sync.py
+      - name: Verify TEST0.2.51 immediate Pan on AHDSR Attack
+        shell: pwsh
+        run: python Tests/verify_test0251_pan_attack_sync.py
       - name: Verify TEST0.2.50 arpeggiator note/step Ping Pong Pan routing
         shell: pwsh
         run: python Tests/verify_test0250_arp_pingpong.py
@@ -285,6 +291,12 @@ jobs:
       - name: Test even-length arp Ping Pong Pan (2, 4, 6, 8)
         shell: pwsh
         run: .\build\Release\SidPingPongArpStepTest.exe
+      - name: Test Pan side change on first AHDSR Attack sample
+        shell: pwsh
+        run: .\build\Release\SidPingPongAttackSyncTest.exe
+      - name: Test Pan follows portamento, SID Seq and classical Arp Glide
+        shell: pwsh
+        run: .\build\Release\SidPitchGlidePanSyncTest.exe
       - name: Test TEST0.2.47 live envelope automation without a Note On
         shell: pwsh
         run: .\build\Release\SidLiveAutomationTest.exe

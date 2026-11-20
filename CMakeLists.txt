@@ -21,7 +21,7 @@ juce_add_plugin(Biscot1
   NEEDS_MIDI_OUTPUT FALSE
   EDITOR_WANTS_KEYBOARD_FOCUS TRUE
   COPY_PLUGIN_AFTER_BUILD FALSE)
-target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/SidMidiNoteState.h Source/SidSeqMemory.h Source/SidAmpEnvelope.h Source/SidPingPongPan.h Source/SidLfoCore.h Source/SidIdleSleep.h Source/SidLfoUsage.h Source/SidArpPoolCache.h Source/SidFilterLfoTrigger.h Source/SidArpSustain.h Source/SidArpReleasePool.h Source/SidQuantizedArp.h Source/SidArpTransport.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h Source/TrackerPatternBank.h Source/TrackerPatternText.h Source/TrackerPatternPlayback.h Source/TrackerShortcutKey.h Source/TrackerHeaderNavigation.h Source/TrackerCellPresentation.h Source/TrackerCellNavigation.h Source/TrackerParameterCatalog.h Source/TrackerPatternAutomation.h Source/TrackerPatternInsert.h Source/TrackerManualNumeric.h Source/TrackerPatternPanel.h Source/TrackerPatternPanel.cpp Source/TrackerSongBank.h Source/TrackerSongPackage.h Source/TrackerLibraryFileNames.h Source/TrackerSongPlayback.h Source/TrackerSongFxCore.h Source/TrackerSongParameters.h Source/TrackerSongPanel.h Source/TrackerSongPanel.cpp Source/BrowserIncrementalSearch.h Source/TrackerLibraryBrowser.h Source/TrackerLibraryBrowser.cpp Source/TrackerMidiRouting.h Source/TrackerStepRecording.h)
+target_sources(Biscot1 PRIVATE Source/PluginProcessor.cpp Source/PluginProcessor.h Source/SidMidiNoteState.h Source/SidSeqMemory.h Source/SidAmpEnvelope.h Source/SidPingPongPan.h Source/SidPitchGlideMotion.h Source/SidLfoCore.h Source/SidIdleSleep.h Source/SidLfoUsage.h Source/SidArpPoolCache.h Source/SidFilterLfoTrigger.h Source/SidArpSustain.h Source/SidArpReleasePool.h Source/SidQuantizedArp.h Source/SidArpTransport.h Source/PluginEditor.cpp Source/PluginEditor.h Source/ParameterCatalog.h Source/PitchBendRouting.h Source/SidOutputStage.h Source/SidFilterCore.h Source/SidWaveCore.h Source/IncrementalParameterSearch.h Source/ParameterSearchKey.h Source/PresetBrowser.cpp Source/PresetBrowser.h Source/PresetManager.cpp Source/PresetManager.h Source/PresetBrowserMemory.h Source/ScreenReaderAnnouncer.cpp Source/ScreenReaderAnnouncer.h Source/TrackerPatternBank.h Source/TrackerPatternText.h Source/TrackerPatternPlayback.h Source/TrackerShortcutKey.h Source/TrackerHeaderNavigation.h Source/TrackerCellPresentation.h Source/TrackerCellNavigation.h Source/TrackerParameterCatalog.h Source/TrackerPatternAutomation.h Source/TrackerPatternInsert.h Source/TrackerManualNumeric.h Source/TrackerPatternPanel.h Source/TrackerPatternPanel.cpp Source/TrackerSongBank.h Source/TrackerSongPackage.h Source/TrackerLibraryFileNames.h Source/TrackerSongPlayback.h Source/TrackerSongFxCore.h Source/TrackerSongParameters.h Source/TrackerSongPanel.h Source/TrackerSongPanel.cpp Source/BrowserIncrementalSearch.h Source/TrackerLibraryBrowser.h Source/TrackerLibraryBrowser.cpp Source/TrackerMidiRouting.h Source/TrackerStepRecording.h)
 target_compile_features(Biscot1 PRIVATE cxx_std_20)
 target_compile_definitions(Biscot1 PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(Biscot1 PRIVATE juce::juce_audio_utils juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
@@ -59,6 +59,13 @@ target_compile_features(SidPingPongPanTest PRIVATE cxx_std_20)
 # TEST0.2.50: alternate at internal arp clock edges, including even-size chords.
 add_executable(SidPingPongArpStepTest Tests/SidPingPongArpStepTest.cpp)
 target_compile_features(SidPingPongArpStepTest PRIVATE cxx_std_20)
+# TEST0.2.51: no 3ms pan-side leak on the first cyclic or MIDI Attack.
+add_executable(SidPingPongAttackSyncTest Tests/SidPingPongAttackSyncTest.cpp)
+target_compile_features(SidPingPongAttackSyncTest PRIVATE cxx_std_20)
+
+# TEST0.2.52: Pan follows the precise pitch glide fraction at every sample.
+add_executable(SidPitchGlidePanSyncTest Tests/SidPitchGlidePanSyncTest.cpp)
+target_compile_features(SidPitchGlidePanSyncTest PRIVATE cxx_std_20)
 
 # TEST0.2.47: audio-rate host automation while the MIDI gate is no longer held.
 add_executable(SidLiveAutomationTest Tests/SidLiveAutomationTest.cpp)

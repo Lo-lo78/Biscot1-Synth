@@ -14,9 +14,9 @@ assert 'std::array<std::atomic<float>*,262>' in h
 for i in range(3):
  assert f'{{{259+i}, "Op{i+1} Ping Pong Pan", -1.0f, 1.0f, 0.01f, 0.0f, ""}}' in c
  assert native[-3+i]['index']==259+i
-assert 'if(!arpOn)v.pingPongPan.advance();' in p
-assert 'pingPongEvent[(size_t)i]=param(256+i)>0.5f && v.gate && v.amp.stage==0;' in p
-assert 'v.pingPongPan.tick(param(259+i))' in p
+assert 'if(!arpOn){' in p and 'else v.pingPongPan.advanceAtAttack(param(259+i));' in p
+assert 'pingPongEvent[(size_t)i]=ahdsrReattack;' in p
+assert 'v.pingPongPan.tick(param(259+i),panPitchCoefficient[(size_t)i])' in p
 assert 'for(int index=249;index<=261;++index)' in p
 assert 'if(idx>=259&&idx<=261)return idx==259?idx+lane:-1;' in p
 assert 'const int pingPong=259+i,basePan=19+i;' in e

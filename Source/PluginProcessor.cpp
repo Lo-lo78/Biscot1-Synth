@@ -243,6 +243,7 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
  const bool opLegato=param((mode==1)?10:10+i)>0.5f;
  const bool soundingAlready=wasHeld || v.pedalLatched || (arpOn && pedalPhrase);
  const bool retrigger=sidShouldRetrigger(arpOn,soundingAlready,opLegato);
+ const bool resetAmp=retrigger && (integer(param(4))>=2 || (!arpOn && !opLegato && v.amp.stage!=0));
  const float portamento=opSharedParam(46,i);
  // In ARP mode, adding a held key must not retune the oscillator immediately.
  if(!arpOn || !soundingAlready){
@@ -252,14 +253,22 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
  // With Arp Off, each physical Note On is an audible new pitch event.
  // With Arp On, the grid steps (not the number of held MIDI keys) decide
  // stereo alternation. Otherwise even-size chords cancel the ping-pong.
- if(!arpOn)v.pingPongPan.advance();
+ if(!arpOn){
+  // A genuine new AHDSR Attack must start on the new stereo side. Only
+  // legato/non-retriggered notes use the old de-click slew on live audio.
+  // Tie the L/R transition to the SAME portamento trajectory as noteSmooth.
+  // With no moving pitch the side jumps on the Note On, not 3 ms later.
+  const bool noteGlides=portamento>0.f && v.noteSmooth>=0.
+       && std::abs(v.noteSmooth-(double)note)>1.e-7;
+  if(noteGlides)v.pingPongPan.advance();
+  else v.pingPongPan.advanceAtAttack(param(259+i));
+ }
  v.channel=channel;v.gate=true;v.pedalLatched=false;
  v.vel=limit(v.vel,0.f,1.f);
  if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed); // Store the random draw, not a frozen Drift amount.
  if(retrigger){
   // First note of an arpeggio starts the ADSR once. Subsequent Trigger
   // notes restart only the arp SEQUENCE (scheduled at the next clock edge).
-  const bool resetAmp=integer(param(4))>=2 || (!arpOn && !opLegato && v.amp.stage!=0);
   v.amp.noteOn(resetAmp);
   v.mod.noteOn(resetAmp);
   if(param(4)>=1){v.phase=0;v.oldPhase=0;}
@@ -596,12 +605,19 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  // At most one pan alternation per operator and sample: an AHDSR reattack
  // may coincide with an arpeggiator grid edge.
  std::array<bool,3> pingPongEvent{};
+ std::array<SidPitchGlideMotion,3> panPitchMotion{};
+ std::array<float,3> panPitchCoefficient{1.f,1.f,1.f};
+ // Skip glide math entirely for legacy presets with Ping Pong Pan Off.
+ std::array<bool,3> panPitchSyncActive{};
+ for(int i=0;i<3;++i)panPitchSyncActive[(size_t)i]=
+  param(259+i)!=0.f || voices[(size_t)i].pingPongPan.depth!=0.f;
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
   // A cyclic AHDSR reattack also requests a pan flip. Merge with any
   // simultaneous arp grid edge below instead of flipping twice.
-  pingPongEvent[(size_t)i]=param(256+i)>0.5f && v.gate && v.amp.stage==0;
+  const bool ahdsrReattack=param(256+i)>0.5f && v.gate && v.amp.stage==0;
+  pingPongEvent[(size_t)i]=ahdsrReattack;
   amp[(size_t)i]=v.amp.tickTrigger(param(256+i)>0.5f,v.gate,
       opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),
       opSharedParam(40,i),opSharedParam(43,i),sampleRateHz);
@@ -686,8 +702,10 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    const float target=seq.target;
    const float glide=std::max(0.f,param(88+i));
    const float coefficient=glide>0.f?1.f/(1.f+glide*glide*2000.f):1.f;
+   const float arpBefore=v.arpPitch;
    v.arpPitch+=(target-v.arpPitch)*coefficient;
    if(std::abs(target-v.arpPitch)<0.00001f)v.arpPitch=target;
+   if(panPitchSyncActive[(size_t)i])panPitchMotion[(size_t)i].add(arpBefore,target,v.arpPitch);
   }else if(arpMode>1 && v.note>=0 && sidArpClockActive(v.gate,v.amp.stage)){
    const bool live=arpPoolCounts[(size_t)i]>0;
    const auto& pool=live?arpPools[(size_t)i]:arpReleasePools[(size_t)i];
@@ -699,19 +717,25 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    if(event.note>=0){
     const float destination=(float)event.note-(float)v.note;
     const float glide=param(88+i);
+    const float arpBefore=v.arpPitch;
     v.arpPitch+=(destination-v.arpPitch)*(glide<=0.f?1.f:limit(1.f/(float)(sampleRateHz*(0.002+glide*0.3)),0.0001f,1.f));
+    if(panPitchSyncActive[(size_t)i])panPitchMotion[(size_t)i].add(arpBefore,destination,v.arpPitch);
    }
   }else if(arpMode<=0){
    v.quantizedArp.reset();v.arpPitch=0;
   } // Through Release, keep the clocked frequency arp; never retrigger the ADSR.
-  if(pingPongEvent[(size_t)i])v.pingPongPan.advance();
  }
  std::array<double,3> frequencies{};
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   if(v.note<0 && v.amp.stage==0 && v.mod.stage==0){frequencies[(size_t)i]=0;continue;}
   if(v.note>=0){const float port=opSharedParam(46,i);
    const double smoothing=port<=0?1.:1.-std::exp(-1./(sampleRateHz*port));
+   const double noteBefore=v.noteSmooth;
    v.noteSmooth+=(v.note-v.noteSmooth)*smoothing;
+   // SID Seq uses its own latched root instead of noteSmooth; in all other
+   // modes the oscillator's pitch includes both portamento and arpPitch.
+   if(panPitchSyncActive[(size_t)i] && !(integer(param(76+i))==1 && sidSeq[(size_t)i].latch.count>0))
+    panPitchMotion[(size_t)i].add(noteBefore,v.note,v.noteSmooth);
   }
   float arpBase=(float)v.noteSmooth;
   if(integer(param(76+i))==1 && sidSeq[(size_t)i].latch.count>0){
@@ -725,6 +749,15 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
     +mod[(size_t)i]*param(52+i)+pitchMod[(size_t)i]+v.arpPitch
     +v.drift*param(13+i)*0.50f;
   frequencies[(size_t)i]=std::min(sampleRateHz*0.45,440.*std::pow(2.,juce::jlimit(-130.,130.,(double)(pitch-69.)/12.)));
+  if(panPitchSyncActive[(size_t)i])panPitchCoefficient[(size_t)i]=panPitchMotion[(size_t)i].coefficient();
+  if(pingPongEvent[(size_t)i]){
+   // One flip per audible arp grid or cyclical AHDSR Attack. When pitch
+   // slides, the side will use the exact SAME glide rate on this sample.
+   // When pitch jumps (or remains unchanged), switch immediately.
+   if(panPitchMotion[(size_t)i].moving() && panPitchCoefficient[(size_t)i]<1.f)
+    v.pingPongPan.advance();
+   else v.pingPongPan.advanceAtAttack(param(259+i));
+  }
  }
  // Advance all three SID phase accumulators together. This follows the JSFX
  // sub-sample order, including the source-oscillator MSB edges for Ring/Sync.
@@ -829,7 +862,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   // Add a signed L/R alternating offset before the legacy pan clamp;
   // old presets are bit-exact because Ping Pong Pan defaults to zero.
   xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i]
-                      +v.pingPongPan.tick(param(259+i)),-1.f,1.f);
+                      +v.pingPongPan.tick(param(259+i),panPitchCoefficient[(size_t)i]),-1.f,1.f);
  }
  float filterInput[2]{},dry[2]{};
  const float filterInputGain=gain(param(6));

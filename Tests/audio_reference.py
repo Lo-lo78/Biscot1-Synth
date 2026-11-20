@@ -71,11 +71,76 @@ def restore_live_automation_dsp(dsp: str) -> str:
     New live behavior is tested independently by SidLiveAutomationTest.cpp and
     verify_live_automation_wiring.py.
     """
+    # TEST0.2.52: restore only the audited sample-synchronous glide routing
+    # before the existing 0.2.49-0.2.51/historical DSP checksum normalizers.
+    # All original pitch and synthesis equations remain byte-for-byte guarded.
+    def restore_exact(new, old, label):
+        nonlocal dsp
+        assert dsp.count(new)==1, 'Unreviewed glide change: '+label
+        dsp=dsp.replace(new,old,1)
+
+    # 0.2.52 default-zero fast path: no pitch-motion calculations when off.
+    restore_exact(' // Skip glide math entirely for legacy presets with Ping Pong Pan Off.\n'
+                  ' std::array<bool,3> panPitchSyncActive{};\n'
+                  ' for(int i=0;i<3;++i)panPitchSyncActive[(size_t)i]=\n'
+                  '  param(259+i)!=0.f || voices[(size_t)i].pingPongPan.depth!=0.f;\n',
+                  '', 'zero-depth CPU fast path')
+    restore_exact('if(panPitchSyncActive[(size_t)i])panPitchMotion[(size_t)i].add(arpBefore,target,v.arpPitch);',
+                  'panPitchMotion[(size_t)i].add(arpBefore,target,v.arpPitch);',
+                  'SID Seq conditional motion')
+    restore_exact('if(panPitchSyncActive[(size_t)i])panPitchMotion[(size_t)i].add(arpBefore,destination,v.arpPitch);',
+                  'panPitchMotion[(size_t)i].add(arpBefore,destination,v.arpPitch);',
+                  'classical conditional motion')
+    restore_exact('if(panPitchSyncActive[(size_t)i] && !(integer(param(76+i))==1 && sidSeq[(size_t)i].latch.count>0))',
+                  'if(!(integer(param(76+i))==1 && sidSeq[(size_t)i].latch.count>0))',
+                  'portamento conditional motion')
+    restore_exact('if(panPitchSyncActive[(size_t)i])panPitchCoefficient[(size_t)i]=panPitchMotion[(size_t)i].coefficient();',
+                  'panPitchCoefficient[(size_t)i]=panPitchMotion[(size_t)i].coefficient();',
+                  'conditional coefficient')
+    restore_exact(
+      ' std::array<bool,3> pingPongEvent{};\n'
+      ' std::array<SidPitchGlideMotion,3> panPitchMotion{};\n'
+      ' std::array<float,3> panPitchCoefficient{1.f,1.f,1.f};\n',
+      ' std::array<bool,3> pingPongEvent{},pingPongAttack{};\n',
+      'per-sample glide buffers')
+    restore_exact('pingPongEvent[(size_t)i]=ahdsrReattack;',
+                  'pingPongEvent[(size_t)i]=pingPongAttack[(size_t)i]=ahdsrReattack;',
+                  'retrigger event')
+    restore_exact('   const float arpBefore=v.arpPitch;\n'
+                  '   v.arpPitch+=(target-v.arpPitch)*coefficient;\n'
+                  '   if(std::abs(target-v.arpPitch)<0.00001f)v.arpPitch=target;\n'
+                  '   panPitchMotion[(size_t)i].add(arpBefore,target,v.arpPitch);',
+                  '   v.arpPitch+=(target-v.arpPitch)*coefficient;\n'
+                  '   if(std::abs(target-v.arpPitch)<0.00001f)v.arpPitch=target;',
+                  'SID Seq pitch sampling')
+    restore_exact('    const float arpBefore=v.arpPitch;\n'
+                  '    v.arpPitch+=(destination-v.arpPitch)*(glide<=0.f?1.f:limit(1.f/(float)(sampleRateHz*(0.002+glide*0.3)),0.0001f,1.f));\n'
+                  '    panPitchMotion[(size_t)i].add(arpBefore,destination,v.arpPitch);',
+                  '    v.arpPitch+=(destination-v.arpPitch)*(glide<=0.f?1.f:limit(1.f/(float)(sampleRateHz*(0.002+glide*0.3)),0.0001f,1.f));',
+                  'classical arp pitch sampling')
+    restore_exact('   const double noteBefore=v.noteSmooth;\n'
+                  '   v.noteSmooth+=(v.note-v.noteSmooth)*smoothing;\n'
+                  '   // SID Seq uses its own latched root instead of noteSmooth; in all other\n'
+                  '   // modes the oscillator\'s pitch includes both portamento and arpPitch.\n'
+                  '   if(!(integer(param(76+i))==1 && sidSeq[(size_t)i].latch.count>0))\n'
+                  '    panPitchMotion[(size_t)i].add(noteBefore,v.note,v.noteSmooth);',
+                  '   v.noteSmooth+=(v.note-v.noteSmooth)*smoothing;',
+                  'portamento pitch sampling')
+    restore_exact('  frequencies[(size_t)i]=std::min(sampleRateHz*0.45,440.*std::pow(2.,juce::jlimit(-130.,130.,(double)(pitch-69.)/12.)));\n  panPitchCoefficient[(size_t)i]=panPitchMotion[(size_t)i].coefficient();\n  if(pingPongEvent[(size_t)i]){\n   // One flip per audible arp grid or cyclical AHDSR Attack. When pitch\n   // slides, the side will use the exact SAME glide rate on this sample.\n   // When pitch jumps (or remains unchanged), switch immediately.\n   if(panPitchMotion[(size_t)i].moving() && panPitchCoefficient[(size_t)i]<1.f)\n    v.pingPongPan.advance();\n   else v.pingPongPan.advanceAtAttack(param(259+i));\n  }\n',
+                  '  frequencies[(size_t)i]=std::min(sampleRateHz*0.45,440.*std::pow(2.,juce::jlimit(-130.,130.,(double)(pitch-69.)/12.)));\n',
+                  'glide pan event after note and arp pitch')
+    restore_exact('  } // Through Release, keep the clocked frequency arp; never retrigger the ADSR.\n }\n std::array<double,3> frequencies{};',
+                  '  } // Through Release, keep the clocked frequency arp; never retrigger the ADSR.\n  if(pingPongEvent[(size_t)i]){\n   // The automatic AHDSR reattack is an Attack *on this sample*, not a\n   // continuous-pan modulation. Snap before the oscillator is mixed.\n   if(pingPongAttack[(size_t)i])v.pingPongPan.advanceAtAttack(param(259+i));\n   else v.pingPongPan.advance();\n  }\n }\n std::array<double,3> frequencies{};',
+                  'original event placement')
+    restore_exact('v.pingPongPan.tick(param(259+i),panPitchCoefficient[(size_t)i])',
+                  'v.pingPongPan.tick(param(259+i))','output pan coefficient')
+
     # TEST0.2.49: narrowly undo only the new alternate-pan wiring. Every
     # occurrence is verified before the historic JSFX DSP checksum is computed.
     cycle = ('  // A cyclic AHDSR reattack also requests a pan flip. Merge with any\n'
              '  // simultaneous arp grid edge below instead of flipping twice.\n'
-             '  pingPongEvent[(size_t)i]=param(256+i)>0.5f && v.gate && v.amp.stage==0;\n')
+             '  const bool ahdsrReattack=param(256+i)>0.5f && v.gate && v.amp.stage==0;\n'
+             '  pingPongEvent[(size_t)i]=pingPongAttack[(size_t)i]=ahdsrReattack;\n')
     assert dsp.count(cycle)==1, 'Unexpected Ping Pong AHDSR trigger wiring'
     dsp=dsp.replace(cycle,'',1)
     # TEST0.2.50: step events change stereo only; remove exact audited wiring
@@ -83,10 +148,15 @@ def restore_live_automation_dsp(dsp: str) -> str:
     new_wiring = [
       (' // At most one pan alternation per operator and sample: an AHDSR reattack\n'
        ' // may coincide with an arpeggiator grid edge.\n'
-       ' std::array<bool,3> pingPongEvent{};\n'),
+       ' std::array<bool,3> pingPongEvent{},pingPongAttack{};\n'),
       '   if(seq.lastTick)pingPongEvent[(size_t)i]=true;\n',
       '   if(event.edge && event.note>=0)pingPongEvent[(size_t)i]=true;\n',
-      '  if(pingPongEvent[(size_t)i])v.pingPongPan.advance();\n',
+      ('  if(pingPongEvent[(size_t)i]){\n'
+       '   // The automatic AHDSR reattack is an Attack *on this sample*, not a\n'
+       '   // continuous-pan modulation. Snap before the oscillator is mixed.\n'
+       '   if(pingPongAttack[(size_t)i])v.pingPongPan.advanceAtAttack(param(259+i));\n'
+       '   else v.pingPongPan.advance();\n'
+       '  }\n'),
     ]
     for addition in new_wiring:
         assert dsp.count(addition)==1, 'Unexpected TEST0.2.50 arp pan DSP change: '+addition
