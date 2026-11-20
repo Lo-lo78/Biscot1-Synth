@@ -306,5 +306,71 @@
     "max": 5.0,
     "step": 0.001,
     "description": "AHDSR peak hold after Attack; zero preserves the original SID-style ADSR"
+  },
+  {
+    "index": 256,
+    "name": "Op1 AHDSR Trigger",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "choices": [
+      "Off",
+      "On"
+    ],
+    "description": "Gate-held VCA AHDSR cycle: Attack Hold Decay Sustain (one sample) Release; restart Attack at Release end while held. Note Off stops cycle."
+  },
+  {
+    "index": 257,
+    "name": "Op2 AHDSR Trigger",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "choices": [
+      "Off",
+      "On"
+    ],
+    "description": "Gate-held VCA AHDSR cycle: Attack Hold Decay Sustain (one sample) Release; restart Attack at Release end while held. Note Off stops cycle."
+  },
+  {
+    "index": 258,
+    "name": "Op3 AHDSR Trigger",
+    "default": 0,
+    "min": 0,
+    "max": 1,
+    "step": 1,
+    "choices": [
+      "Off",
+      "On"
+    ],
+    "description": "Gate-held VCA AHDSR cycle: Attack Hold Decay Sustain (one sample) Release; restart Attack at Release end while held. Note Off stops cycle."
+  },
+  {
+    "index": 259,
+    "name": "Op1 Ping Pong Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "description": "Signed alternate per routed Note On and every cyclic AHDSR reattack. Positive starts right, negative starts left; zero Off. Rounded ~3 ms transitions. Adds to standard Pan and pan modulation."
+  },
+  {
+    "index": 260,
+    "name": "Op2 Ping Pong Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "description": "Signed alternate per routed Note On and every cyclic AHDSR reattack. Positive starts right, negative starts left; zero Off. Rounded ~3 ms transitions. Adds to standard Pan and pan modulation."
+  },
+  {
+    "index": 261,
+    "name": "Op3 Ping Pong Pan",
+    "default": 0.0,
+    "min": -1.0,
+    "max": 1.0,
+    "step": 0.01,
+    "description": "Signed alternate per routed Note On and every cyclic AHDSR reattack. Positive starts right, negative starts left; zero Off. Rounded ~3 ms transitions. Adds to standard Pan and pan modulation."
   }
 ]

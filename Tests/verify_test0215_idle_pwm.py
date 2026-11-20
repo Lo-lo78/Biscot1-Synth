@@ -8,9 +8,9 @@ head=(r/'Source/PluginProcessor.h').read_text()
 editor=(r/'Source/PluginEditor.cpp').read_text()
 lfo=(r/'Source/SidLfoCore.h').read_text()
 workflow=(r/'.github/workflows/build-windows.yml').read_text()
-assert len(re.findall(r'^  \{\d+, "',cat,re.M))==254
-assert 'std::array<ParameterDef,254>' in cat
-assert 'std::array<std::atomic<float>*,256>' in head
+assert len(re.findall(r'^  \{\d+, "',cat,re.M))==260
+assert 'std::array<ParameterDef,260>' in cat
+assert 'std::array<std::atomic<float>*,262>' in head
 for i in range(1,4):
  assert f'{{{230+i}, "LFO{i} Square PWM", 0.05f, 0.95f, 0.001f, 0.5f, ""}}' in cat
  assert f'const int pwm={231}+i, wave=124+i*23;' in editor

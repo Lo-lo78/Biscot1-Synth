@@ -14,8 +14,8 @@
 using namespace biscot;
 int main(){
  constexpr double sr=1000.;
- static_assert(catalog.size()==254);
- static_assert(trackerCatalog.size()==124);
+ static_assert(catalog.size()==260);
+ static_assert(trackerCatalog.size()==126);
  for (int i=0;i<7;++i){
   const auto& def=catalog[(size_t)(247+i)];
   assert(def.index==249+i && def.low==0.f && def.high==5.f && def.step==0.001f && def.initial==0.f);

@@ -8,6 +8,7 @@
 #include "TrackerSongFxCore.h"
 #include <memory>
 #include "SidOutputStage.h"
+#include "SidPingPongPan.h"
 #include "SidFilterCore.h"
 #include "SidWaveCore.h"
 #include "SidMidiNoteState.h"
@@ -103,6 +104,7 @@ private:
   double noiseClock=0,cleanNoiseClock=0;
   float noise=0.f,cleanNoiseValue=0.f,sidNoiseValue=0.f;
   SidAmpEnvelope amp,mod;
+  SidPingPongPan pingPongPan;
   bool pedalLatched=false;int pedalChannel=1;
   int arpStep=0;bool arpGoingUp=true;
   SidQuantizedArp quantizedArp{};
@@ -120,7 +122,7 @@ private:
  std::atomic<std::shared_ptr<const TrackerSongChainMap>> songChainMap{};
  std::atomic<std::shared_ptr<const TrackerSongMidiMap>> songMidiMap{};
  int songMidiTriggerNote=-1;
- // Dedicated host automation parameter: never mapped through the 256 DSP slots.
+ // Dedicated host Song automation parameters keep their legacy parameter order.
  std::atomic<float>* hostSongTriggerParameter=nullptr;
  std::atomic<float>* hostSongTransportParameter=nullptr;
  int hostSongLastSelection=-1,hostSongLastTransport=-1,hostSongPending=-1;
@@ -172,8 +174,8 @@ private:
  std::atomic<std::shared_ptr<const TrackerPlayablePattern>> trackerLibraryPlayable{};
  std::atomic<int> trackerLibraryPreviewSteps{0}; // 0: full Pattern, including all repeats
  TrackerPatternTransport trackerTransport{}; // audio thread only
- std::array<std::atomic<float>,256> trackerOverrideValues{};
- std::array<std::atomic<bool>,256> trackerOverrideMask{};
+ std::array<std::atomic<float>,262> trackerOverrideValues{};
+ std::array<std::atomic<bool>,262> trackerOverrideMask{};
  std::atomic<bool> trackerOverridesEnabled{false};
  void trackerSetOverride(int index,float value) noexcept;
  void trackerClearOverrides() noexcept;
@@ -194,7 +196,7 @@ private:
  std::array<bool,3> lfoUsedCached{};
  // Mix L/R and the four optional stereo stems use independent JSFX output circuits.
  std::array<SidOutputStage,10> outputStages{};
- std::array<std::atomic<float>*,256> parameters{};
+ std::array<std::atomic<float>*,262> parameters{};
  std::array<std::array<std::uint64_t,128>,16> pressed{};
  std::array<std::array<unsigned int,128>,16> pressedCounts{};
  std::uint64_t nextPress=0;

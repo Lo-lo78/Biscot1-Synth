@@ -274,6 +274,26 @@ void BiscotEditor::createGroups(){
  if(filterHold!=filterPage.end())filterPage.erase(filterHold);
  const auto filterAttack=std::find(filterPage.begin(),filterPage.end(),118);
  if(filterAttack!=filterPage.end())filterPage.insert(filterAttack+1,255);
+ // Append-only AHDSR Trigger cycles follow the corresponding VCA Release.
+ for(int i=0;i<3;++i){
+  auto& op=groups[(size_t)(i+1)];
+  const int trigger=256+i,release=43+i;
+  const auto old=std::find(op.begin(),op.end(),trigger);
+  if(old!=op.end())op.erase(old);
+  const auto at=std::find(op.begin(),op.end(),release);
+  if(at!=op.end())op.insert(at+1,trigger);
+  else op.push_back(trigger);
+ }
+ // Ping Pong Pan is a per-operator signed amount beside ordinary Pan.
+ for(int i=0;i<3;++i){
+  auto& op=groups[(size_t)(i+1)];
+  const int pingPong=259+i,basePan=19+i;
+  const auto old=std::find(op.begin(),op.end(),pingPong);
+  if(old!=op.end())op.erase(old);
+  const auto at=std::find(op.begin(),op.end(),basePan);
+  if(at!=op.end())op.insert(at+1,pingPong);
+  else op.push_back(pingPong);
+ }
  // Sustain Pedal is an independent CC64 enable switch per operator,
  // placed beside that operator's ADSR controls rather than at the end.
  for(int i=0;i<3;++i){

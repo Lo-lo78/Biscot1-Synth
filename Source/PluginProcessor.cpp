@@ -161,8 +161,8 @@ float randomUnit(uint32_t& s){s^=s<<13;s^=s>>17;s^=s<<5;return (float)(s&0xfffff
 }
 juce::AudioProcessorValueTreeState::ParameterLayout BiscotProcessor::createLayout(){
  juce::AudioProcessorValueTreeState::ParameterLayout layout;
- for(const auto& d:catalog){
-  const auto pid=juce::ParameterID{id(d.index),1};const auto name=juce::String(d.name);
+ auto addCatalogParameter=[&layout](const ParameterDef& d){
+  const auto pid=juce::ParameterID{BiscotProcessor::id(d.index),1};const auto name=juce::String(d.name);
   if(d.choices && d.choices[0]){
    juce::StringArray options;options.addTokens(juce::String(d.choices),"|","");
    layout.add(std::make_unique<juce::AudioParameterChoice>(pid,name,options,integer(d.initial)));
@@ -172,7 +172,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout BiscotProcessor::createLayou
    auto range=juce::NormalisableRange<float>(d.low,d.high,d.step>0?d.step:0.001f);
    layout.add(std::make_unique<juce::AudioParameterFloat>(pid,name,range,d.initial));
   }
- }
+ };
+ // Preserve the existing index of Song Select and Song Transport in REAPER:
+ // the new operator switches are appended AFTER those two host parameters.
+ for(const auto& d:catalog)if(d.index<256)addCatalogParameter(d);
  // The old Song Trigger ID is retained so saved host automation remains mapped,
  // but choosing a song no longer starts it. Transport is a distinct parameter.
  layout.add(std::make_unique<juce::AudioParameterInt>(
@@ -180,6 +183,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BiscotProcessor::createLayou
  layout.add(std::make_unique<juce::AudioParameterChoice>(
   juce::ParameterID{"trackerSongTransport",1},"Song Transport",
   juce::StringArray{"Stop","Pause","Play"},0));
+ for(const auto& d:catalog)if(d.index>=256)addCatalogParameter(d);
  return layout;
 }
 BiscotProcessor::BiscotProcessor():AudioProcessor(BusesProperties().withOutput("Mix",juce::AudioChannelSet::stereo(),true)
@@ -216,7 +220,9 @@ void BiscotProcessor::prepareToPlay(double sr,int){
  for(int i=0;i<3;++i){voices[(size_t)i].noiseSeed^=(uint32_t)(i*0x9e3779b9u);
   voices[(size_t)i].cleanNoiseSeed=1234567ULL+(uint64_t)i*1111111ULL;
   voices[(size_t)i].sidNoiseSeed=i==0?5930003ULL:i==1?3592873ULL:7281093ULL;
-  lfos[(size_t)i].reset(i);}
+  lfos[(size_t)i].reset(i);
+  voices[(size_t)i].pingPongPan.prepare(sampleRateHz);}
+
  filterEnvelope={};pedalDown.fill(false);sustainedArp.clear();arpReleaseCounts.fill(0);lastPlaying=false;idleSleep.reset();arpPoolCache.invalidate();
  trackerTransport.stop();trackerPlaybackSnapshot.reset();trackerAudibleStep.store(-1);trackerPlaybackStatus.store(0);
  trackerRequested.store(0);trackerClearOverrides();
@@ -243,6 +249,9 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
   if(v.note<0 || portamento<=0)v.noteSmooth=note;
   v.note=note;
  }
+ // The pan moves on each routed MIDI Note On, independent of VCA Legato,
+ // and stays on that side through the Release tail.
+ v.pingPongPan.advance();
  v.channel=channel;v.gate=true;v.pedalLatched=false;
  v.vel=limit(v.vel,0.f,1.f);
  if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed); // Store the random draw, not a frozen Drift amount.
@@ -586,7 +595,13 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
-  amp[(size_t)i]=v.amp.tick(opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),opSharedParam(40,i),opSharedParam(43,i),sampleRateHz);
+  // With the optional cyclic AHDSR, each automatic reattack also alternates
+  // the pan. A MIDI Note On already set stage=1 and never double-flips.
+  if(param(256+i)>0.5f && v.gate && v.amp.stage==0)
+   v.pingPongPan.advance();
+  amp[(size_t)i]=v.amp.tickTrigger(param(256+i)>0.5f,v.gate,
+      opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),
+      opSharedParam(40,i),opSharedParam(43,i),sampleRateHz);
   mod[(size_t)i]=v.mod.tick(param(64+i),param(252+i),param(67+i),param(70+i),param(73+i),sampleRateHz);
   // JSFX retains SID Seq during Release and clears it only after the VCA
   // has completed its release tail (not immediately on Note Off).
@@ -806,7 +821,10 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
    const int src=songFx[(size_t)i].sidechainSource-1;
    oscOut[(size_t)i]*=songFx[(size_t)i].duckGain(amp[(size_t)src]);
   }
-  xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i],-1.f,1.f);
+  // Add a signed L/R alternating offset before the legacy pan clamp;
+  // old presets are bit-exact because Ping Pong Pan defaults to zero.
+  xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i]
+                      +v.pingPongPan.tick(param(259+i)),-1.f,1.f);
  }
  float filterInput[2]{},dry[2]{};
  const float filterInputGain=gain(param(6));
@@ -1153,7 +1171,7 @@ void BiscotProcessor::songStopAudio(bool pause) noexcept {
  songPlayingNumber.store(-1,std::memory_order_relaxed);
 }
 int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) const noexcept {
- if(idx<0||idx>=256)return -1;
+ if(idx<0||idx>=262)return -1;
  // Song Patterns use the generic Op1 columns, never the stored live MIDI mode.
  if(idx>=10&&idx<=102){return ((idx-10)%3)==0?idx+lane:-1;}
  // Routing is controlled exclusively by Song Filter Operators, not the Pattern.
@@ -1161,6 +1179,8 @@ int BiscotProcessor::songMapSlider(int idx,int lane,const TrackerSongClip&) cons
  if(idx>=249&&idx<=251)return idx==249?idx+lane:-1; // VCA Hold follows OP lane
  if(idx>=252&&idx<=254)return idx==252?idx+lane:-1; // Mod Hold follows OP lane
  if(idx==255)return songFilterOwner==lane+1?idx:-1; // shared filter
+ if(idx>=256&&idx<=258)return idx==256?idx+lane:-1; // per-OP AHDSR Trigger
+ if(idx>=259&&idx<=261)return idx==259?idx+lane:-1; // per-OP Ping Pong Pan
  if(idx==6||idx==7||(idx>=108&&idx<=121))return songFilterOwner==lane+1?idx:-1;
  // The three LFO wave generators are shared; depths belong to individual OPs.
  for(int j=0;j<3;++j){
@@ -1783,10 +1803,10 @@ void BiscotProcessor::setStateInformation(const void* ptr,int length){
   if(!readTrackerBank(tree.getProperty(trackerStateKey).toString(),restored))restored.reset();
   TrackerSongBank restoredSongs;
   if(!readSongBank(tree.getProperty(trackerSongStateKey).toString(),restoredSongs))restoredSongs.reset();
-  // Legacy .biscot / REAPER projects have no Hold parameter nodes. Explicitly
-  // insert zero values so recalling them cannot retain non-zero Hold settings
-  // left by the previously loaded preset (or automation).
-  for(int index=249;index<=255;++index){
+  // Legacy .biscot / REAPER projects have no appended Hold, AHDSR Trigger or Ping Pong Pan
+  // nodes. Explicit zeros also prevent the last loaded preset's switch states
+  // from leaking into the next legacy preset.
+  for(int index=249;index<=261;++index){
    const auto key=id(index);
    if(!tree.getChildWithProperty(juce::Identifier("id"),key).isValid()){
     juce::ValueTree parameterNode(juce::Identifier("PARAM"));

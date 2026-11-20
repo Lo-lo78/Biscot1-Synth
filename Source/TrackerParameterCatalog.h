@@ -7,7 +7,7 @@
 #include <algorithm>
 namespace biscot {
 struct TrackerParam { int id; const char* name; int tab; double min,max,step,initial; int synthIndex; };
-inline constexpr std::array<TrackerParam,124> trackerCatalog {{
+inline constexpr std::array<TrackerParam,126> trackerCatalog {{
  {1,"Note",1,0,127,1,60,0},
  {2,"Gate",1,0.01,1,0.01,0.92,0},
  {3,"Previous value",1,1,1,1,1,0},
@@ -19,6 +19,7 @@ inline constexpr std::array<TrackerParam,124> trackerCatalog {{
  {2001,"OP Drift",1,0,1,0.01,0.18,13},
  {2002,"OP Level",1,0,1,0.001,1,16},
  {2003,"OP Pan",1,-1,1,0.01,0,19},
+ {3019,"OP Ping Pong Pan",1,-1,1,0.01,0,259},
  {2004,"OP Wave",1,0,7,1,2,22},
  {2005,"OP Pitch",1,-96,96,0.01,0,25},
  {2006,"OP Fine Pitch",1,-100,100,0.1,0,28},
@@ -29,6 +30,7 @@ inline constexpr std::array<TrackerParam,124> trackerCatalog {{
  {2010,"OP Sustain",1,0,1,0.001,0.7,40},
  {2250,"OP Sustain Pedal",1,0,1,1,0,227},
  {2011,"OP Release",1,0,5,0.001,0,43},
+ {3018,"OP AHDSR Trigger",1,0,1,1,0,256},
  {2012,"OP Portamento",1,0,2,0.001,0,46},
  {2013,"OP Pan Mod Depth",1,-1,1,0.01,0,49},
  {2014,"OP Pitch Mod Depth",1,-48,48,0.01,0,52},

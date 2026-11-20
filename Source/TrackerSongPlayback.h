@@ -112,7 +112,7 @@ inline TrackerPlayableSong compileTrackerSong(const TrackerSong& song,int songNu
     for(int st=0;st<=clip.patternStart;++st)
      for(const auto& aut:compiled->rows[(size_t)st].automation){
       const int idx=aut.synthIndex;
-      if(idx>=0&&idx<256)
+      if(idx>=0&&idx<262)
        seen[idx]=(float)trackerCurveAt(aut,clip.patternStart,0.);
      }
     for(const auto& [idx,value]:seen)clip.initialParams.emplace_back(idx,value);

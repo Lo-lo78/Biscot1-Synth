@@ -3,7 +3,7 @@
 #include <cstdint>
 namespace biscot {
 struct ParameterDef {int index; const char* name; float low, high, step, initial; const char* choices;};
-inline constexpr std::array<ParameterDef,254> catalog {{
+inline constexpr std::array<ParameterDef,260> catalog {{
   {2, "Audio Mode", 0.0f, 1.0f, 1.0f, 0.0f, "Stereo|Multichannel"},
   {3, "MIDI Mode", 0.0f, 2.0f, 1.0f, 0.0f, "All Operators Same Note|Chord Allocate 3 Mono Ops|MIDI Channels 1-3"},
   {4, "Hard Restart", 0.0f, 3.0f, 1.0f, 1.0f, "Off|Fast|Env Reset|Full Reset"},
@@ -258,5 +258,13 @@ inline constexpr std::array<ParameterDef,254> catalog {{
   {253, "Op2 Mod Env Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
   {254, "Op3 Mod Env Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
   {255, "Filter Hold", 0.0f, 5.0f, 0.001f, 0.0f, ""},
+  // Append only. These switches affect the VCA AHDSR, not Mod Env or filter.
+  {256, "Op1 AHDSR Trigger", 0.0f, 1.0f, 1.0f, 0.0f, "Off|On"},
+  {257, "Op2 AHDSR Trigger", 0.0f, 1.0f, 1.0f, 0.0f, "Off|On"},
+  {258, "Op3 AHDSR Trigger", 0.0f, 1.0f, 1.0f, 0.0f, "Off|On"},
+  // Keep all previous host parameter IDs and positions intact.
+  {259, "Op1 Ping Pong Pan", -1.0f, 1.0f, 0.01f, 0.0f, ""},
+  {260, "Op2 Ping Pong Pan", -1.0f, 1.0f, 0.01f, 0.0f, ""},
+  {261, "Op3 Ping Pong Pan", -1.0f, 1.0f, 0.01f, 0.0f, ""},
 }};
 }

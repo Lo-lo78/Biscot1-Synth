@@ -7,9 +7,15 @@ jobs:
     runs-on: windows-2022 # VS 2022; windows-latest currently uses VS 2026
     steps:
       - uses: actions/checkout@v4
+      - name: Verify TEST0.2.49 signed Ping Pong Pan, automation and backward compatibility
+        shell: pwsh
+        run: python Tests/verify_test0249_pingpong.py
       - name: Verify official 0.99.6 release metadata, About and guides
         shell: pwsh
         run: python Tests/verify_public_release_0996.py
+      - name: Verify TEST0.2.48 three AHDSR Trigger switches and DSP wiring
+        shell: pwsh
+        run: python Tests/verify_test0248_ahdsr_trigger.py
       - name: Verify TEST0.2.46 AHDSR parameter compatibility and wiring
         shell: pwsh
         run: python Tests/verify_test0246_ahdsr_hold.py
@@ -267,6 +273,12 @@ jobs:
       - name: Test TEST0.2.46 seven AHDSR Hold envelopes
         shell: pwsh
         run: .\build\Release\SidAhdsrHoldTest.exe
+      - name: Test TEST0.2.48 AHDSR Trigger cycling and Note Off
+        shell: pwsh
+        run: .\build\Release\SidAhdsrTriggerTest.exe
+      - name: Test per-operator signed Ping Pong Pan
+        shell: pwsh
+        run: .\build\Release\SidPingPongPanTest.exe
       - name: Test TEST0.2.47 live envelope automation without a Note On
         shell: pwsh
         run: .\build\Release\SidLiveAutomationTest.exe

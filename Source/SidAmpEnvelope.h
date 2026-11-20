@@ -40,6 +40,20 @@ struct SidAmpEnvelope {
   updateRelease(release,sampleRate);
   return tick(attack,hold,decay,sustain,sampleRate);
  }
+ // Optional oscillator VCA trigger-cycle: while a MIDI/pedal gate is held,
+ // sustain lasts one sample and transitions to a genuine Release. Once that
+ // release has fallen below the existing silence threshold the next Attack
+ // starts from zero. A real Note Off cancels the repeating cycle immediately
+ // and completes the ongoing natural release. Nothing loops in silence.
+ // Off is a pure pass-through, preserving every original envelope sample.
+ float tickTrigger(bool enabled,bool gate,float attack,float hold,float decay,
+                   float sustain,float release,double sampleRate) noexcept {
+  if(enabled && gate){
+   if(stage==3)noteOff(release,sampleRate);
+   else if(stage==0)noteOn(true);
+  }
+  return tick(attack,hold,decay,sustain,release,sampleRate);
+ }
  // Old signature retained for existing SID/arp/filter parity tests.
  float tick(float attack,float decay,float sustain,double sampleRate) noexcept {
   return tick(attack,0.f,decay,sustain,sampleRate);
