@@ -6,7 +6,7 @@
 #include <cmath>
 namespace biscot {
 struct SidPingPongPan {
- bool firstSide=false;  // The first Note On flips to true: signed amount as-is.
+ bool firstSide=false;  // First audible Note On (Arp Off) or grid edge (Arp On) selects signed side.
  float offset=0.f;
  float smoothing=1.f;
  void prepare(double sampleRate) noexcept {

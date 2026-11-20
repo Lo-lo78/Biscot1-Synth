@@ -73,12 +73,24 @@ def restore_live_automation_dsp(dsp: str) -> str:
     """
     # TEST0.2.49: narrowly undo only the new alternate-pan wiring. Every
     # occurrence is verified before the historic JSFX DSP checksum is computed.
-    cycle = ('  // With the optional cyclic AHDSR, each automatic reattack also alternates\n'
-             '  // the pan. A MIDI Note On already set stage=1 and never double-flips.\n'
-             '  if(param(256+i)>0.5f && v.gate && v.amp.stage==0)\n'
-             '   v.pingPongPan.advance();\n')
+    cycle = ('  // A cyclic AHDSR reattack also requests a pan flip. Merge with any\n'
+             '  // simultaneous arp grid edge below instead of flipping twice.\n'
+             '  pingPongEvent[(size_t)i]=param(256+i)>0.5f && v.gate && v.amp.stage==0;\n')
     assert dsp.count(cycle)==1, 'Unexpected Ping Pong AHDSR trigger wiring'
     dsp=dsp.replace(cycle,'',1)
+    # TEST0.2.50: step events change stereo only; remove exact audited wiring
+    # before comparing all unchanged synthesis equations to the old hash.
+    new_wiring = [
+      (' // At most one pan alternation per operator and sample: an AHDSR reattack\n'
+       ' // may coincide with an arpeggiator grid edge.\n'
+       ' std::array<bool,3> pingPongEvent{};\n'),
+      '   if(seq.lastTick)pingPongEvent[(size_t)i]=true;\n',
+      '   if(event.edge && event.note>=0)pingPongEvent[(size_t)i]=true;\n',
+      '  if(pingPongEvent[(size_t)i])v.pingPongPan.advance();\n',
+    ]
+    for addition in new_wiring:
+        assert dsp.count(addition)==1, 'Unexpected TEST0.2.50 arp pan DSP change: '+addition
+        dsp=dsp.replace(addition,'\n' if addition.startswith('  if(pingPongEvent') else '',1)
     pan = ('  // Add a signed L/R alternating offset before the legacy pan clamp;\n'
            '  // old presets are bit-exact because Ping Pong Pan defaults to zero.\n'
            '  xfade[(size_t)i]=limit(param(19+i)+mod[(size_t)i]*param(49+i)+panMod[(size_t)i]\n'

@@ -56,6 +56,9 @@ add_executable(SidAhdsrTriggerTest Tests/SidAhdsrTriggerTest.cpp)
 target_compile_features(SidAhdsrTriggerTest PRIVATE cxx_std_20)
 add_executable(SidPingPongPanTest Tests/SidPingPongPanTest.cpp)
 target_compile_features(SidPingPongPanTest PRIVATE cxx_std_20)
+# TEST0.2.50: alternate at internal arp clock edges, including even-size chords.
+add_executable(SidPingPongArpStepTest Tests/SidPingPongArpStepTest.cpp)
+target_compile_features(SidPingPongArpStepTest PRIVATE cxx_std_20)
 
 # TEST0.2.47: audio-rate host automation while the MIDI gate is no longer held.
 add_executable(SidLiveAutomationTest Tests/SidLiveAutomationTest.cpp)

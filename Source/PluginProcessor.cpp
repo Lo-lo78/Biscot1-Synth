@@ -249,9 +249,10 @@ void BiscotProcessor::noteOn(int i,int note,int channel,bool wasHeld,bool pedalP
   if(v.note<0 || portamento<=0)v.noteSmooth=note;
   v.note=note;
  }
- // The pan moves on each routed MIDI Note On, independent of VCA Legato,
- // and stays on that side through the Release tail.
- v.pingPongPan.advance();
+ // With Arp Off, each physical Note On is an audible new pitch event.
+ // With Arp On, the grid steps (not the number of held MIDI keys) decide
+ // stereo alternation. Otherwise even-size chords cancel the ping-pong.
+ if(!arpOn)v.pingPongPan.advance();
  v.channel=channel;v.gate=true;v.pedalLatched=false;
  v.vel=limit(v.vel,0.f,1.f);
  if(!arpOn || !soundingAlready)v.drift=randomUnit(v.noiseSeed); // Store the random draw, not a frozen Drift amount.
@@ -592,13 +593,15 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
  // All parameter groups are used by this intermediate DSP. Exact JSFX parity,
  // JSFX-derived wavetable and filter core retained; SID Seq uses a native clocked memory.
  std::array<float,3> amp{},mod{},lfo{},previous{},pitchMod{},pwmMod{},levelMod{},panMod{},oscOut{};
+ // At most one pan alternation per operator and sample: an AHDSR reattack
+ // may coincide with an arpeggiator grid edge.
+ std::array<bool,3> pingPongEvent{};
  float cutoffMod=0,resMod=0;
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
   const bool wasActive=v.amp.stage!=0;
-  // With the optional cyclic AHDSR, each automatic reattack also alternates
-  // the pan. A MIDI Note On already set stage=1 and never double-flips.
-  if(param(256+i)>0.5f && v.gate && v.amp.stage==0)
-   v.pingPongPan.advance();
+  // A cyclic AHDSR reattack also requests a pan flip. Merge with any
+  // simultaneous arp grid edge below instead of flipping twice.
+  pingPongEvent[(size_t)i]=param(256+i)>0.5f && v.gate && v.amp.stage==0;
   amp[(size_t)i]=v.amp.tickTrigger(param(256+i)>0.5f,v.gate,
       opSharedParam(34,i),opSharedParam(249,i),opSharedParam(37,i),
       opSharedParam(40,i),opSharedParam(43,i),sampleRateHz);
@@ -679,6 +682,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
        ? heldNotes.chord.top() : seq.releaseRoot;
     seq.process(1,root,param(79+i),tempoBpm,sampleRateHz);
    }else seq.lastTick=false;
+   if(seq.lastTick)pingPongEvent[(size_t)i]=true;
    const float target=seq.target;
    const float glide=std::max(0.f,param(88+i));
    const float coefficient=glide>0.f?1.f/(1.f+glide*glide*2000.f):1.f;
@@ -691,6 +695,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
       (v.amp.stage!=0 ? arpReleaseCounts[(size_t)i] : 0);
    const auto event=v.quantizedArp.process(pool,count,arpMode,param(79+i),
                                            tempoBpm,sampleRateHz,v.noiseSeed);
+   if(event.edge && event.note>=0)pingPongEvent[(size_t)i]=true;
    if(event.note>=0){
     const float destination=(float)event.note-(float)v.note;
     const float glide=param(88+i);
@@ -699,7 +704,7 @@ void BiscotProcessor::renderOne(float& left,float& right,std::array<float,8>& st
   }else if(arpMode<=0){
    v.quantizedArp.reset();v.arpPitch=0;
   } // Through Release, keep the clocked frequency arp; never retrigger the ADSR.
-
+  if(pingPongEvent[(size_t)i])v.pingPongPan.advance();
  }
  std::array<double,3> frequencies{};
  for(int i=0;i<3;++i){auto& v=voices[(size_t)i];
