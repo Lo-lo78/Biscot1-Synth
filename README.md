@@ -1,21 +1,24 @@
 # Biscot1 Synth — Windows VST3
 
-**Current public release candidate: 0.99.6 (16 November 2026).** Free/open-source SID-inspired three-operator synthesizer, with an accessible Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
+**Current public release candidate: 0.99.7 (21 November 2026).** Free/open-source, SID-inspired three-operator synthesizer with an accessible Pattern/Song tracker for REAPER and other VST3 hosts. License: AGPL-3.0-or-later.
 
-## New in 0.99.6 — Seven AHDSR Holds and accessible automation
+## New in 0.99.7 — AHDSR Trigger and pitch-synchronized Ping Pong Pan
 
-- **AHDSR:** independent Hold on all three VCA operator envelopes, all three operator Mod Env envelopes and the global Filter envelope. Hold follows Attack and precedes Decay.
-- **0–5 seconds, 1 ms steps, default 0:** preserves the existing preset sound. Note Off during Hold enters Release.
-- **REAPER Ctrl+Shift+A:** toggles the selected parameter's active automation envelope in Grid / Value / Edit while preserving existing points; NVDA announces **`, Auto`** when active.
-- **Tracker Alt+Q, F1 Pattern:** OP Hold, OP Mod Env Hold and Filter Hold are available to steps and Song lanes.
-- Appended new VST3 IDs **249–255**; historic IDs preserved. Earlier `.biscot` presets and projects remain compatible.
-- Earlier Phase Drift/Lace for all three LFOs, Song playback, SID filters and the experimental noise-clock trial remain in the source. The noise-clock trial's tonal benefit is not claimed as verified.
+- **Three new operator AHDSR Trigger switches (IDs 256–258):** Off by default; when On and a note is held, the VCA envelope cycles Attack/Hold/Decay/Release without restarting oscillator phase. Note Off or CC64-up ends looping with natural Release.
+- **Three signed operator Ping Pong Pan controls (IDs 259–261):** -1..+1, default zero, independently alternating sides for MIDI notes, automatic AHDSR reattacks, and internal SID Seq or classical arpeggiator steps (including even-sized held chords).
+- **Pan follows pitch exactly:** a hard pitch change switches stereo immediately; Portamento, SID Seq Arp Glide and classical arp Glide move Pan with the actual pitch trajectory, including fast/ongoing glides. Independent amount automation retains a short de-click.
+- **Live envelope automation:** seven Release controls work while their tails are sounding after Note Off; seven Hold controls update during their active Hold plateau. Existing operator Drift and Noise Character controls react on sounding voices.
+- All six parameters are **appended** after the 0.99.6 Hold parameters. Older presets default to Trigger Off/Pan zero; earlier IDs, 0.99.5 LFO Phase Drift/Lace and 0.99.6 Ctrl+Shift+A active REAPER automation with **`, Auto`** NVDA feedback are preserved.
 
-**Docs:** [0.99.6 release notes](RELEASE_NOTES_0.99.6.md) · [English guide](Docs/BISCOT1_0.99.6_GUIDE_EN.md) · [Guida italiana](Docs/BISCOT1_0.99.6_GUIDA_IT.md) · [GitHub release description](Docs/GITHUB_RELEASE_0.99.6_BODY_EN.md).
+**Docs:** [0.99.7 release notes](RELEASE_NOTES_0.99.7.md) · [English guide](Docs/BISCOT1_0.99.7_GUIDE_EN.md) · [Guida italiana](Docs/BISCOT1_0.99.7_GUIDA_IT.md) · [GitHub release description](Docs/GITHUB_RELEASE_0.99.7_BODY_EN.md).
 
-**Release workflow:** push the project source to GitHub, verify the Windows x64 VST3 build and publish tag **`v0.99.6`** with `Biscot1-0.99.6-Windows-x64.zip`. If required by the direct-download website, attach the **identical archive** as `Biscot1-0.99.6-Windows-x64.vst3.zip`. The Alt+A About dialog shows the current version.
+**Release workflow:** push the source to GitHub, verify the Windows x64 VST3 build and tag **`v0.99.7`**. GitHub Actions generates `Biscot1-0.99.7-Windows-x64.zip`; for the direct-download website, attach identical contents named `Biscot1-0.99.7-Windows-x64.vst3.zip` if needed. Verify audio and NVDA in REAPER before publication. Alt+A displays the current release and feature summary.
 
 ## Earlier public versions
+
+### 0.99.6 — Seven AHDSR Hold envelopes and accessible REAPER automation
+
+See [RELEASE_NOTES_0.99.6.md](RELEASE_NOTES_0.99.6.md). The original [Italian](Docs/BISCOT1_0.99.6_GUIDA_IT.md) and [English](Docs/BISCOT1_0.99.6_GUIDE_EN.md) guides are kept for release history.
 
 ## Biscot1 Synth 0.99.5 — LFO Phase Drift and Lace
 

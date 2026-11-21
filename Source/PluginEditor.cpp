@@ -51,8 +51,8 @@ HostEnvelopeCommand classifyHostEnvelopeItem(const juce::String& original)
 constexpr int rowsPerColumn=8;
 const juce::Colour foreground=juce::Colour(0xffe5edf6);
 const juce::Colour background=juce::Colour(0xff171b26);
-constexpr auto biscotVersion="0.99.6";
-constexpr auto biscotReleaseDate="16 November 2026";
+constexpr auto biscotVersion="0.99.7";
+constexpr auto biscotReleaseDate="21 November 2026";
 constexpr auto biscotProjectUrl="https://github.com/Lo-lo78/Biscot1-Synth";
 constexpr auto biscotContactEmail="vmanolo301@gmail.com";
 constexpr auto biscotLicense="GNU Affero General Public License v3 or later (AGPL-3.0-or-later)";
@@ -74,7 +74,7 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  setFocusContainerType(juce::Component::FocusContainerType::keyboardFocusContainer);
  setWantsKeyboardFocus(true);
  createGroups();
- title.setText("Biscot1 Synth - VST3 0.99.6",juce::dontSendNotification);
+ title.setText("Biscot1 Synth - VST3 0.99.7",juce::dontSendNotification);
  sectionLabel.setText({},juce::dontSendNotification);
  instructions.setText("Grid / Value / Edit | Alt+Shift+Left/Right: section | Alt+Q: tracker | Alt+B: presets | Alt+S: save | Alt+A: about | type: search",juce::dontSendNotification);
  for(auto* l : {&title,&sectionLabel,&instructions}){
@@ -99,10 +99,13 @@ BiscotEditor::BiscotEditor(BiscotProcessor& p):juce::AudioProcessorEditor(p),gri
  addAndMakeVisible(resetYes);addAndMakeVisible(resetNo);
  const auto aboutText=juce::String("Biscot1 Synth\nVersion: ")+biscotVersion
   +"\nRelease date: "+biscotReleaseDate
-  +"\nNew in 0.99.6: AHDSR Hold for all seven envelopes (Op1-3, Mod Env1-3, Filter)."
-  +"\nHold: 0-5 seconds, 1 ms resolution, default zero to preserve preset sound."
-  +"\nREAPER Ctrl+Shift+A toggles active parameter automation and preserves points; NVDA announces , Auto."
-  +"\nAlso included from 0.99.5: LFO Phase Drift and Lace on all three LFOs."
+  +"\nNew in 0.99.7: independent Op1-3 AHDSR Trigger switches and signed Op1-3 Ping Pong Pan (-1 to +1)."
+  +"\nPing Pong follows MIDI Attack, SID Seq and classical arpeggiator steps, including 2/4/6/8-note chords."
+  +"\nStereo transitions follow the exact Portamento and Arp Glide pitch movement; hard attacks switch immediately."
+  +"\nHold and Release follow live automation during the current envelope stage; Op Drift and Noise Character update live."
+  +"\nFrom 0.99.6: seven AHDSR Hold stages (0-5 s, default zero), and REAPER Ctrl+Shift+A active automation."
+  +"\nCtrl+Shift+A preserves existing automation points; NVDA announces , Auto when active."
+  +"\nFrom 0.99.5: LFO Phase Drift and Lace on all three LFOs."
   +"\nLicense: "+biscotLicense
   +"\nProject: "+biscotProjectUrl
   +"\nContact: "+biscotContactEmail;
